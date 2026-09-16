@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [█████░░░░░░░░░░░░░░░] 12.5% (5 / 40 Tasks hoàn thành)
+Tiến độ dự án: [█████████░░░░░░░░░░░] 22.5% (9 / 40 Tasks hoàn thành)
 Trạng thái:    🟢 Đang triển khai (In Progress)
-Phase hiện tại: Phase 1 — Database Models, Repositories & Data Seeder
+Phase hiện tại: Phase 2 — Authentication Fullstack (Spring Security + Stitch Auth Screens)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 40 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 5 tasks | Toàn bộ Phase 0 hoàn tất (Task 0.1 - 0.5) |
+| **Đã hoàn thành (Done)** | 9 tasks | Hoàn tất 100% Phase 0 (5 tasks) + Phase 1 (4 tasks) |
 | **Đang thực hiện (In Progress)** | 0 tasks | |
-| **Chưa thực hiện (Pending)** | 35 tasks | |
+| **Chưa thực hiện (Pending)** | 31 tasks | |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -58,10 +58,10 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 ### Phase 1: Database Models, Repositories & Data Seeder
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 1.1** | Tạo 5 Entity cốt lõi (`User`, `Account`, `Category`, `Transaction`, `Budget`) | `Pending` | — | — |
-| **Task 1.2** | Định nghĩa Constraints, Unique Keys & Indexes tối ưu | `Pending` | — | — |
-| **Task 1.3** | Tạo các Spring Data JPA Repositories | `Pending` | — | — |
-| **Task 1.4** | Xây dựng Data Seeder khởi tạo danh mục chi tiêu mặc định | `Pending` | — | — |
+| **Task 1.1** | Tạo 5 Entity cốt lõi (`User`, `Account`, `Category`, `Transaction`, `Budget`) | `Completed` | 2026-09-16 | Agent |
+| **Task 1.2** | Định nghĩa Constraints, Unique Keys & Indexes tối ưu | `Completed` | 2026-09-16 | Agent |
+| **Task 1.3** | Tạo các Spring Data JPA Repositories | `Completed` | 2026-09-16 | Agent |
+| **Task 1.4** | Xây dựng Data Seeder khởi tạo danh mục chi tiêu mặc định | `Completed` | 2026-09-16 | Agent |
 
 ### Phase 2: Authentication Fullstack (Spring Security + Stitch Auth Screens)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
@@ -202,6 +202,66 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - `backend/src/test/java/com/finman/exception/GlobalExceptionHandlerTest.java`: Bộ test case kiểm tra định dạng phản hồi chuẩn cho lỗi validation (400), lỗi nghiệp vụ (400), lỗi không tìm thấy (404).
 - **Nội dung công việc**: Chuẩn hóa định dạng phản hồi toàn diện cho Backend, đảm bảo mọi ngoại lệ đều trả về JSON có thông điệp tiếng Việt rõ ràng.
 - **Kết quả kiểm thử**: PASS — Toàn bộ 4 test case đều đạt 100% (`BUILD SUCCESS`).
+- **Trạng thái**: Completed.
+
+### [2026-09-16] Task 1.1: Tạo 5 Thực Thể Entity Cốt Lõi (JPA)
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/entity/enums/AccountType.java`: Enum `CASH`, `BANK`, `CREDIT_CARD`.
+  - `backend/src/main/java/com/finman/entity/enums/CategoryType.java`: Enum `INCOME`, `EXPENSE`.
+  - `backend/src/main/java/com/finman/entity/enums/TransactionType.java`: Enum `INCOME`, `EXPENSE`.
+  - `backend/src/main/java/com/finman/entity/User.java`: Bảng `users` với `email` (UK), `password_hash`, `full_name`, `avatar_url`, `created_at`, `updated_at`.
+  - `backend/src/main/java/com/finman/entity/Account.java`: Bảng `accounts` với `user_id` (FK), `name`, `type`, `initial_balance` (BIGINT), `current_balance` (BIGINT), `credit_limit` (BIGINT), `is_archived`.
+  - `backend/src/main/java/com/finman/entity/Category.java`: Bảng `categories` với `user_id` (FK, nullable cho system defaults), `name`, `type`, `icon`, `is_default`.
+  - `backend/src/main/java/com/finman/entity/Transaction.java`: Bảng `transactions` với `user_id` (FK), `account_id` (FK), `category_id` (FK), `type`, `amount` (BIGINT, positive), `transaction_date` (LocalDate), `note`.
+  - `backend/src/main/java/com/finman/entity/Budget.java`: Bảng `budgets` với `user_id` (FK), `category_id` (FK), `month` (YYYY-MM), `amount` (BIGINT), Unique Constraint `(user_id, category_id, month)`.
+- **Nội dung công việc**: Xây dựng đầy đủ 5 thực thể JPA cốt lõi với cấu trúc POJO chuẩn (viết getters/setters/constructors rõ ràng, không phụ thuộc Lombok để tương thích hoàn hảo Java 25), tuân thủ chặt chẽ ERD trong `ARCHITECTURE.md` (số tiền lưu `BIGINT`, không dùng float, không có chuyển khoản).
+- **Kết quả kiểm thử**: PASS —
+  - `mvn test` chạy thành công 4/4 test cases (`BUILD SUCCESS`).
+  - Kiểm tra trực tiếp PostgreSQL Docker container qua `psql`: Cả 5 bảng `users`, `accounts`, `categories`, `transactions`, `budgets` được Hibernate sinh đúng 100% kèm đầy đủ Primary Keys, Foreign Keys, Check Constraints (`type`) và Unique Constraint trên `budgets(user_id, category_id, month)`.
+- **Trạng thái**: Completed.
+
+### [2026-09-16] Task 1.2: Định Nghĩa Constraints, Unique Keys & Indexes Tối Ưu
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/entity/User.java`: Bổ sung `@UniqueConstraint(name = "uk_users_email", columnNames = {"email"})`, validation `@NotBlank`, `@Email`, `@Size`.
+  - `backend/src/main/java/com/finman/entity/Account.java`: Bổ sung `@Index(name = "idx_accounts_user", columnList = "user_id")`, `@Index(name = "idx_accounts_user_archived", columnList = "user_id, is_archived")`, validation `@NotBlank`, `@NotNull`, `@Min(0)` cho `creditLimit`.
+  - `backend/src/main/java/com/finman/entity/Category.java`: Bổ sung `@Index(name = "idx_categories_user", columnList = "user_id")`, `@Index(name = "idx_categories_type", columnList = "type")`, `@Index(name = "idx_categories_user_default", columnList = "user_id, is_default")`, validation `@NotBlank`, `@NotNull`.
+  - `backend/src/main/java/com/finman/entity/Transaction.java`: Bổ sung `@Index(name = "idx_transactions_user_date", columnList = "user_id, transaction_date DESC")`, `@Index(name = "idx_transactions_user_account", columnList = "user_id, account_id")`, `@Index(name = "idx_transactions_user_category", columnList = "user_id, category_id")`, `@Index(name = "idx_transactions_user_type_date", columnList = "user_id, type, transaction_date DESC")`, validation `@NotNull`, `@Positive(message = "Số tiền giao dịch phải lớn hơn 0")`, `@Size(max = 255)`.
+  - `backend/src/main/java/com/finman/entity/Budget.java`: Bổ sung `@UniqueConstraint(name = "uk_budgets_user_category_month", columnNames = {"user_id", "category_id", "month"})`, `@Index(name = "idx_budgets_user_month", columnList = "user_id, month")`, `@Index(name = "idx_budgets_user_category", columnList = "user_id, category_id")`, validation `@NotBlank`, `@Pattern(YYYY-MM)`, `@Positive(message = "Hạn mức ngân sách phải lớn hơn 0")`.
+- **Nội dung công việc**: Khai báo và cấu hình đầy đủ các Unique Constraints, Check Constraints, Database Indexes tối ưu hiệu năng truy vấn phân trang/lọc theo thời gian, tính toán số dư và quản lý ngân sách, đồng thời bổ sung các Bean Validation annotations bảo vệ toàn vẹn dữ liệu.
+- **Kết quả kiểm thử**: PASS —
+  - `mvn test` chạy thành công 4/4 test cases (`BUILD SUCCESS`).
+  - Kiểm tra trực tiếp PostgreSQL container qua `psql`: Các chỉ mục B-tree (`idx_transactions_user_date`, `idx_transactions_user_account`, `idx_budgets_user_month`, `idx_accounts_user`...) và ràng buộc toàn vẹn duy nhất (`uk_budgets_user_category_month`, `uk_users_email`) đều được tạo và hoạt động chính xác.
+- **Trạng thái**: Completed.
+
+### [2026-09-16] Task 1.3: Tạo Các Spring Data JPA Repositories
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/repository/UserRepository.java`: `findByEmail`, `existsByEmail`.
+  - `backend/src/main/java/com/finman/repository/AccountRepository.java`: `findByUserId`, `findByUserIdAndIsArchivedFalse`, `findByIdAndUserId`, `existsByIdAndUserId`, `sumCurrentBalanceByUserId`, `sumCurrentBalanceByUserIdAndType`.
+  - `backend/src/main/java/com/finman/repository/CategoryRepository.java`: `findByUserId`, `findByIsDefaultTrue`, `findAllAvailableForUser`, `findAllAvailableForUserAndType`, `findAccessibleCategory`.
+  - `backend/src/main/java/com/finman/repository/TransactionRepository.java`: `findByUserId` (Pageable), `findByUserIdAndTransactionDateBetween`, `findByUserIdAndAccountId`, `findByUserIdAndCategoryId`, `sumAmountByUserIdAndTypeAndDateBetween`, `sumAmountByUserIdAndCategoryIdAndDateBetween`, `countByAccountId`, `countByCategoryId`.
+  - `backend/src/main/java/com/finman/repository/BudgetRepository.java`: `findByUserIdAndMonth`, `findByUserIdAndCategoryIdAndMonth`, `existsByUserIdAndCategoryIdAndMonth`, `deleteByIdAndUserId`.
+  - `backend/src/test/java/com/finman/repository/RepositoryIntegrationTest.java`: Bộ test integration kiểm tra hoạt động lưu trữ, cô lập dữ liệu theo `userId`, truy vấn danh mục khả dụng và tính tổng dòng tiền/số dư.
+- **Nội dung công việc**: Xây dựng toàn bộ 5 interface Repository kế thừa `JpaRepository`, cài đặt đầy đủ các phương thức truy vấn đảm bảo cách ly dữ liệu nhiều người dùng (Multi-tenant Data Isolation), hỗ trợ tính toán số dư và tổng dòng tiền bằng `COALESCE(SUM(...), 0)`.
+- **Kết quả kiểm thử**: PASS —
+  - Spring Boot quét và nạp thành công 5 JPA repositories (`Found 5 JPA repository interfaces`).
+  - `mvn test` chạy thành công 5/5 test cases (`BUILD SUCCESS`), kiểm thử CRUD và tính toán trên PostgreSQL thực tế.
+- **Trạng thái**: Completed.
+
+### [2026-09-16] Task 1.4: Xây Dựng Data Seeder Khởi Tạo Danh Mục Mặc Định
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/config/DataSeeder.java`: Component `CommandLineRunner` tự động kiểm tra và chèn 14 danh mục mặc định (`isDefault = true`, `user = null`) khi ứng dụng khởi chạy.
+    - 9 Danh mục Chi tiêu (EXPENSE) chuẩn Stitch UI `design/07_add_transaction`: Ăn uống (`restaurant`), Áo quần (`apparel`), Mua sắm (`shopping_bag`), Giao thông (`directions_car`), Giải trí (`sports_esports`), Sinh hoạt (`home`), Sức khỏe (`favorite`), Giáo dục (`school`), Chi tiêu khác (`more_horiz`).
+    - 5 Danh mục Thu nhập (INCOME) chuẩn PRD & Stitch: Lương (`payments`), Thưởng (`featured_seasonal_and_gifts`), Đầu tư (`trending_up`), Freelance (`laptop_mac`), Thu nhập khác (`savings`).
+  - `backend/src/test/java/com/finman/config/DataSeederTest.java`: Kiểm thử khởi tạo thành công 14 danh mục mặc định và kiểm tra tính bất biến (idempotent - không bị trùng lặp khi chạy lại nhiều lần).
+  - `backend/src/test/java/com/finman/repository/RepositoryIntegrationTest.java`: Cập nhật tái sử dụng danh mục hệ thống mặc định do DataSeeder nạp.
+- **Nội dung công việc**: Khởi tạo tự động dữ liệu danh mục hệ thống mặc định ngay khi app khởi động lần đầu, chuẩn hóa icon theo Google Material Symbols khớp 100% với bản thiết kế Stitch UI.
+- **Kết quả kiểm thử**: PASS —
+  - `mvn test` chạy thành công 6/6 test cases (`BUILD SUCCESS`).
+  - Truy vấn trực tiếp PostgreSQL `SELECT id, name, type, icon, is_default, user_id FROM categories`: Có đầy đủ 14 danh mục mặc định (9 EXPENSE, 5 INCOME, `is_default = true`, `user_id = null`).
 - **Trạng thái**: Completed.
 
 ---
