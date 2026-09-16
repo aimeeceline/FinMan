@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #f7f9fb;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+::-webkit-scrollbar {
+  display: none;
+}

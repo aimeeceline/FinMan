@@ -1,0 +1,21 @@
+# Tools & IDE
+.tools/
+.idea/
+.vscode/
+*.iml
+
+# Java & Maven
+target/
+*.class
+*.jar
+*.war
+
+# Node & Frontend
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# OS
+Thumbs.db
+.DS_Store
