@@ -10,7 +10,7 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [███████████████░░░░░] 36.6% (15 / 41 Tasks hoàn thành)
+Tiến độ dự án: [████████████████░░░░] 39.0% (16 / 41 Tasks hoàn thành)
 Trạng thái:    🟢 Đang triển khai (In Progress)
 Phase hiện tại: Phase 3 — Financial Accounts & Categories Fullstack
 ```
@@ -18,9 +18,9 @@ Phase hiện tại: Phase 3 — Financial Accounts & Categories Fullstack
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 15 tasks | Phase 0 (5 tasks) + Phase 1 (4 tasks) + Phase 2 (6 tasks - Hoàn thành 100%) |
+| **Đã hoàn thành (Done)** | 16 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (1 task: Task 3.1) |
 | **Đang thực hiện (In Progress)** | 0 tasks | |
-| **Chưa thực hiện (Pending)** | 26 tasks | |
+| **Chưa thực hiện (Pending)** | 25 tasks | |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -76,7 +76,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 ### Phase 3: Financial Accounts & Categories Fullstack
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 3.1** | Backend Accounts & Categories APIs (CRUD, Net Worth) | `Pending` | — | — |
+| **Task 3.1** | Backend Accounts & Categories APIs (CRUD, Net Worth) | `Completed` | 2026-09-21 | Agent |
 | **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/10_accounts/code.html` | `Pending` | — | — |
 | **Task 3.3** | Kết nối Frontend Accounts với Backend API | `Pending` | — | — |
 | **Task 3.4** | Tests cho Accounts & Net Worth | `Pending` | — | — |
@@ -497,6 +497,33 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS —
   - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.09s, 0 lỗi TypeScript/Vite).
   - Trải nghiệm nhập liệu trong form đăng ký/đăng nhập hoàn toàn trơn tru, không có hiện tượng giật, chớp nháy hoặc gửi lại request khởi tạo nút Google.
+- **Trạng thái**: Completed.
+
+### [2026-09-21] Task 3.1: Xây Dựng Backend Accounts & Categories APIs (CRUD, Net Worth)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**: Xây dựng toàn bộ các tầng REST APIs (DTO, Service, Controller, Exception Handling) cho 2 nghiệp vụ: Quản lý Tài khoản / Ví tiền (`CASH`, `BANK`, `CREDIT_CARD`), tự động tính Net Worth, và Quản lý Danh mục thu chi (`INCOME`, `EXPENSE`), cô lập dữ liệu người dùng (`userId` từ JWT).
+- **Các file tạo mới / chỉnh sửa**:
+  - DTOs:
+    - `backend/src/main/java/com/finman/dto/request/AccountCreateRequest.java`: DTO tạo tài khoản mới với validation (`@NotBlank`, `@NotNull`, `@Min(0)`).
+    - `backend/src/main/java/com/finman/dto/request/AccountUpdateRequest.java`: DTO cập nhật tài khoản (tên, hạn mức tín dụng, trạng thái lưu trữ).
+    - `backend/src/main/java/com/finman/dto/request/CategoryCreateRequest.java`: DTO tạo danh mục mới.
+    - `backend/src/main/java/com/finman/dto/request/CategoryUpdateRequest.java`: DTO cập nhật tên/icon danh mục cá nhân.
+    - `backend/src/main/java/com/finman/dto/response/AccountResponse.java`: DTO trả về thông tin chi tiết tài khoản.
+    - `backend/src/main/java/com/finman/dto/response/AccountSummaryResponse.java`: DTO tổng hợp tài sản ròng (`totalAssets`, `totalLiabilities`, `netWorth`, `accounts`).
+    - `backend/src/main/java/com/finman/dto/response/CategoryResponse.java`: DTO trả về danh mục.
+  - Services:
+    - `backend/src/main/java/com/finman/service/AccountService.java`: Logic CRUD tài khoản, tính toán `Net Worth = (CASH + BANK) - CREDIT_CARD`, kiểm tra trùng tên, Soft Delete (`isArchived = true`) để bảo toàn lịch sử giao dịch.
+    - `backend/src/main/java/com/finman/service/CategoryService.java`: Logic lấy danh mục hệ thống + cá nhân, chặn xóa/sửa danh mục mặc định của hệ thống (`TC_CAT_03`), kiểm tra trùng tên.
+  - Controllers:
+    - `backend/src/main/java/com/finman/controller/AccountController.java`: Endpoints `/api/v1/accounts` (`GET`, `POST`, `PUT`, `DELETE`), lấy `userId` an toàn từ `@AuthenticationPrincipal UserPrincipal`.
+    - `backend/src/main/java/com/finman/controller/CategoryController.java`: Endpoints `/api/v1/categories` (`GET`, `POST`, `PUT`, `DELETE`).
+  - Tests:
+    - `backend/src/test/java/com/finman/service/AccountServiceTest.java`: 8 unit test cases bao phủ `TC_ACC_01` -> `TC_ACC_05`.
+    - `backend/src/test/java/com/finman/service/CategoryServiceTest.java`: 8 unit test cases bao phủ `TC_CAT_01` -> `TC_CAT_03`.
+    - `backend/src/test/java/com/finman/security/SecurityIntegrationTest.java`: Cập nhật kỳ vọng kiểm thử `/api/v1/accounts` sang `200 OK`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `mvn test`: 47/47 tests passed (0 failures, 0 errors, 0 skipped).
+  - `mvn package`: Đóng gói thành công file JAR `finman-backend-1.0.0-SNAPSHOT.jar`.
 - **Trạng thái**: Completed.
 
 ---

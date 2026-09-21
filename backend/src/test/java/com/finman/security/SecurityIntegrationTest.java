@@ -49,12 +49,13 @@ class SecurityIntegrationTest {
 
         String token = jwtTokenProvider.generateToken(savedUser.getId(), savedUser.getEmail());
 
-        // Since /api/v1/accounts controller is not yet implemented (Phase 3),
-        // passing auth means it is NOT 401 (it will be 404 Not Found from Spring DispatcherServlet)
+        // Now that /api/v1/accounts controller is implemented in Phase 3,
+        // passing auth successfully reaches the controller and returns 200 OK
         mockMvc.perform(get("/api/v1/accounts")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
