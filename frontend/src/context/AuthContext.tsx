@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User } from '../types';
 import { api } from '../services/api';
 
@@ -43,6 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const logout = useCallback(() => {
+    localStorage.removeItem('finman_token');
+    localStorage.removeItem('finman_user');
+    setToken(null);
+    setUser(null);
+  }, []);
+
   useEffect(() => {
     const handleUnauthorized = () => {
       logout();
@@ -50,9 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, []);
+  }, [logout]);
 
-  const login = async (email: string, password: string): Promise<AuthResult> => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -87,9 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: false, message: msg };
     }
-  };
+  }, []);
 
-  const register = async (email: string, fullName: string, password: string): Promise<AuthResult> => {
+  const register = useCallback(async (email: string, fullName: string, password: string): Promise<AuthResult> => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/register', { email, fullName, password });
@@ -124,9 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: false, message: msg };
     }
-  };
+  }, []);
 
-  const loginWithGoogle = async (data: GoogleAuthData): Promise<AuthResult> => {
+  const loginWithGoogle = useCallback(async (data: GoogleAuthData): Promise<AuthResult> => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/google', data);
@@ -161,14 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: false, message: msg };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('finman_token');
-    localStorage.removeItem('finman_user');
-    setToken(null);
-    setUser(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

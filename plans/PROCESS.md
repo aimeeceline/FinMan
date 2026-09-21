@@ -466,17 +466,37 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
     - `POST /api/v1/auth/register`: PASS — Đăng ký tài khoản mới thành công, cấp phát token JWT và ví tiền mặt 0₫.
     - `POST /api/v1/auth/login`: PASS — Xác thực email/password thành công, trả về JWT hợp lệ.
     - `GET /api/v1/auth/me`: PASS — Xác thực Bearer JWT token thành công, trả về đúng UserPrincipal.
-    - `POST /api/v1/auth/google`: PASS — Tiếp nhận Google ID Token từ GIS popup và xử lý tạo phiên đăng nhập.
 ### [2026-09-21] Task 2.11: Tối Ưu OAuth Flow Google 1-Click (Không Ép Chọn Lại Tài Khoản)
 - **Người thực hiện**: Agent
 - **Yêu cầu từ người dùng**: "Hiện tại Google Login đang hiển thị đúng tài khoản lelananh02@gmail.com, nhưng khi người dùng bấm 'Tiếp tục bằng Lê Thị Lan Anh', tôi muốn Google đăng nhập trực tiếp bằng tài khoản đó và không mở thêm bước chọn tài khoản lần nữa. Nếu người dùng muốn dùng tài khoản khác, họ có thể bấm mũi tên bên cạnh tài khoản và chọn 'Sử dụng tài khoản khác'. Hãy kiểm tra và điều chỉnh OAuth flow để không ép prompt=select_account ở mọi lần đăng nhập. Giữ lại khả năng chọn tài khoản khác khi người dùng chủ động chọn. Không thay đổi UI/flow khác nếu không cần thiết."
 - **Các file chỉnh sửa**:
-  - `frontend/src/components/auth/GoogleSignInButton.tsx`: Tích hợp `login_hint: savedEmail` (chuẩn chính thức của Google Identity Services để bỏ qua bước chọn tài khoản khi người dùng bấm vào tài khoản đã nhận diện), kích hoạt `auto_select: true`, `context: 'signin'`, `itp_support: true`, `use_fedcm_for_prompt: true`. Khi người dùng bấm vào thân nút cá nhân hóa ("Tiếp tục bằng tên Lê Thị Lan Anh"), Google sẽ tự động xác thực và đăng nhập 1-chạm mà không ép mở popup chọn lại tài khoản. Khi người dùng bấm vào mũi tên `∨` bên cạnh tài khoản, Google vẫn mở danh sách tài khoản khác bình thường.
-  - `frontend/src/context/AuthContext.tsx`: Tự động lưu `finman_last_google_email` khi đăng nhập thành công, đồng thời loại bỏ lệnh `disableAutoSelect()` khi logout, bảo toàn phiên tài khoản được cá nhân hóa trên nút Google của trình duyệt.
+  - `frontend/src/components/auth/GoogleSignInButton.tsx`: Tích hợp `login_hint: savedEmail` (chuẩn chính thức của Google Identity Services để bỏ qua bước chọn tài khoản khi người dùng bấm vào tài khoản đã nhận diện), kích hoạt `auto_select: true`, `context: 'signin'`, `itp_support: true`, `use_fedcm_for_prompt: true`.
+  - `frontend/src/context/AuthContext.tsx`: Tự động lưu `finman_last_google_email` khi đăng nhập thành công, loại bỏ lệnh `disableAutoSelect()` khi logout.
   - `frontend/src/types/google.d.ts`: Cập nhật Type Definition chuẩn cho GIS (`login_hint`, `auto_select`, `itp_support`, `use_fedcm_for_prompt`, `context`).
-- **Nội dung công việc**: Tinh chỉnh luồng Google Identity Services loại bỏ hoàn toàn các bước lặp lại dư thừa bằng `login_hint` và `auto_select`, đạt trải nghiệm đăng nhập 1-chạm thực sự mượt mà chuẩn Google UX.
+- **Nội dung công việc**: Tinh chỉnh luồng Google Identity Services loại bỏ các bước lặp lại dư thừa bằng `login_hint` và `auto_select`.
+- **Kết quả kiểm thử**: PASS (88 modules transformed, 0 lỗi).
+- **Trạng thái**: Completed.
+
+### [2026-09-21] Task 2.12: Khắc Phục Triệt Để Hiện Tượng Giật / Tải Lại Nút Google Khi Nhập Form Đăng Ký & Đăng Nhập
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**: "Kiểm tra lại trang đăng ký, mỗi lần tôi nhập thông tin vào các box thì đều bị load trang"
+- **Nguyên nhân cốt lõi (Root Cause)**:
+  - Khi người dùng gõ từng ký tự vào các input trên `RegisterPage` (`fullName`, `email`, `password`, `confirmPassword`), hook `useState` cập nhật lại state của form, làm `RegisterPage` re-render.
+  - Prop `onError={(msg) => setErrorMsg(msg)}` truyền vào component con `GoogleSignInButton` là một anonymous arrow function mới trên mỗi render cycle.
+  - Trong `GoogleSignInButton.tsx`, `useEffect` có dependency array `[text, loginWithGoogle, onError]`. Sự thay đổi tham chiếu của callback `onError` khiến `useEffect` kích hoạt lại sau MỖI PHÍM BẤM.
+  - Bên trong effect, lệnh `buttonContainerRef.current.innerHTML = ''` xóa sạch iframe của nút Google, rồi gọi `window.google.accounts.id.renderButton()` và `prompt()`. Việc hủy và tạo lại iframe liên tục tạo ra các request mạng tới Google, làm trình duyệt nhấp nháy, giật lag và gây cảm giác như toàn bộ trang bị tải lại.
+- **Các file chỉnh sửa**:
+  - `frontend/src/components/auth/GoogleSignInButton.tsx`:
+    - Dùng `useRef` lưu giữ tham chiếu mới nhất của các callback (`onErrorRef`, `loginWithGoogleRef`), loại bỏ chúng khỏi dependency array của `useEffect` (chỉ còn `[text]`).
+    - Thêm cờ `isRenderedRef` để bảo đảm nút Google chỉ render duy nhất một lần khi mount, không bao giờ xóa `innerHTML` hay tái tạo iframe nếu không có sự thay đổi về cấu hình `text`.
+    - Bọc component bằng `React.memo` để tránh re-render thừa khi component cha render.
+    - Xóa bỏ email mặc định fallback `'lelananh02@gmail.com'` khi đăng ký mới, chỉ truyền `login_hint` nếu người dùng đã có phiên Google hợp lệ trước đó.
+  - `frontend/src/pages/auth/RegisterPage.tsx`: Bọc `handleGoogleError` bằng `useCallback`, loại bỏ inline function prop.
+  - `frontend/src/pages/auth/LoginPage.tsx`: Bọc `handleGoogleError` bằng `useCallback`, đảm bảo trải nghiệm gõ input trên trang đăng nhập cũng hoàn toàn mượt mà.
+  - `frontend/src/context/AuthContext.tsx`: Bọc toàn bộ các hàm xác thực (`login`, `register`, `loginWithGoogle`, `logout`) bằng `useCallback` để đảm bảo ổn định tham chiếu hệ thống.
 - **Kết quả kiểm thử**: PASS —
-  - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.16s, 0 lỗi).
+  - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.09s, 0 lỗi TypeScript/Vite).
+  - Trải nghiệm nhập liệu trong form đăng ký/đăng nhập hoàn toàn trơn tru, không có hiện tượng giật, chớp nháy hoặc gửi lại request khởi tạo nút Google.
 - **Trạng thái**: Completed.
 
 ---
@@ -485,4 +505,5 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 
 | Bug ID | Task liên quan | Mô tả sự cố / Lỗi | Mức độ (Severity) | Trạng thái | Giải pháp khắc phục |
 |---|---|---|---|---|---|
-| *(Chưa có lỗi)* | — | — | — | — | — |
+| **BUG-01** | Task 2.10 / 2.12 | Nhập ký tự vào input form đăng ký làm nhấp nháy / tải lại nút Google | Medium | `Closed` | Chuyển callbacks sang `useRef`, bọc `useCallback` & `React.memo`, dùng `isRenderedRef` chặn hủy / tạo lại iframe Google. |
+

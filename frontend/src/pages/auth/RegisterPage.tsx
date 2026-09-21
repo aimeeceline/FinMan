@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 
@@ -15,6 +15,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigateToLogin })
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const handleGoogleError = useCallback((msg: string) => {
+    setErrorMsg(msg);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +117,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigateToLogin })
             <div className="mb-6">
               <GoogleSignInButton
                 text="signup_with"
-                onError={(msg) => setErrorMsg(msg)}
+                onError={handleGoogleError}
               />
             </div>
 

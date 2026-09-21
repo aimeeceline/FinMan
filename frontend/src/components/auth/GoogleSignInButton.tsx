@@ -11,7 +11,7 @@ interface GoogleSignInButtonProps {
   className?: string;
 }
 
-export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
+export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = React.memo(({
   text = 'continue_with',
   onError,
   className = '',
@@ -21,16 +21,31 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  // Keep latest callbacks in refs so changes don't re-trigger initialization
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  const loginWithGoogleRef = useRef(loginWithGoogle);
+  loginWithGoogleRef.current = loginWithGoogle;
+
+  const isRenderedRef = useRef(false);
+
   useEffect(() => {
+    isRenderedRef.current = false;
     let checkInterval: ReturnType<typeof setInterval> | null = null;
+    let isCancelled = false;
 
     const initGoogleIdentity = () => {
       if (!window.google?.accounts?.id || !buttonContainerRef.current) {
         return false;
       }
 
-      const savedEmail =
-        localStorage.getItem('finman_last_google_email') || 'lelananh02@gmail.com';
+      // If already rendered into this container, do not wipe innerHTML or re-create iframe
+      if (isRenderedRef.current) {
+        return true;
+      }
+
+      const savedEmail = localStorage.getItem('finman_last_google_email') || '';
 
       try {
         window.google.accounts.id.initialize({
@@ -38,18 +53,18 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           login_hint: savedEmail || undefined,
           callback: async (response: { credential: string }) => {
             if (!response.credential) {
-              if (onError) onError('Không nhận được mã xác thực bảo mật từ Google.');
+              if (onErrorRef.current) onErrorRef.current('Không nhận được mã xác thực bảo mật từ Google.');
               return;
             }
 
             setIsAuthenticating(true);
             try {
-              const res = await loginWithGoogle({ idToken: response.credential });
-              if (!res.success && onError) {
-                onError(res.message || 'Xác thực tài khoản Google không thành công.');
+              const res = await loginWithGoogleRef.current({ idToken: response.credential });
+              if (!res.success && onErrorRef.current) {
+                onErrorRef.current(res.message || 'Xác thực tài khoản Google không thành công.');
               }
             } catch {
-              if (onError) onError('Đã có lỗi kết nối tới máy chủ FinMan.');
+              if (onErrorRef.current) onErrorRef.current('Đã có lỗi kết nối tới máy chủ FinMan.');
             } finally {
               setIsAuthenticating(false);
             }
@@ -61,25 +76,31 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           use_fedcm_for_prompt: true,
         });
 
-        // Clear previous button elements if any
-        buttonContainerRef.current.innerHTML = '';
+        if (buttonContainerRef.current) {
+          // Clear previous button elements if any
+          buttonContainerRef.current.innerHTML = '';
 
-        // Render official Google button
-        window.google.accounts.id.renderButton(buttonContainerRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text,
-          shape: 'rectangular',
-          logo_alignment: 'left',
-          width: buttonContainerRef.current.offsetWidth || 380,
-          locale: 'vi',
-        });
+          // Render official Google button
+          window.google.accounts.id.renderButton(buttonContainerRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text,
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            width: buttonContainerRef.current.offsetWidth || 380,
+            locale: 'vi',
+          });
+
+          isRenderedRef.current = true;
+        }
 
         // Trigger Google One Tap if available
         window.google.accounts.id.prompt();
 
-        setIsReady(true);
+        if (!isCancelled) {
+          setIsReady(true);
+        }
         return true;
       } catch (err) {
         console.error('Lỗi khởi tạo Google Identity Services:', err);
@@ -100,9 +121,10 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     }
 
     return () => {
+      isCancelled = true;
       if (checkInterval) clearInterval(checkInterval);
     };
-  }, [text, loginWithGoogle, onError]);
+  }, [text]);
 
   return (
     <div className={`w-full flex flex-col items-center justify-center relative ${className}`}>
@@ -132,4 +154,4 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       )}
     </div>
   );
-};
+});

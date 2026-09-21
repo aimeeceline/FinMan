@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
@@ -15,6 +15,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  const handleGoogleError = useCallback((msg: string) => {
+    setErrorMsg(msg);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +127,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             {/* Official Google Identity Services Provider */}
             <GoogleSignInButton
               text="continue_with"
-              onError={(msg) => setErrorMsg(msg)}
+              onError={handleGoogleError}
             />
 
             {/* Divider */}
