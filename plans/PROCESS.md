@@ -77,8 +77,8 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 3.1** | Backend Accounts & Categories APIs (CRUD, Net Worth) | `Completed` | 2026-09-21 | Agent |
-| **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html` | `Pending` | — | — |
-| **Task 3.3** | Kết nối Frontend Accounts với Backend API | `Pending` | — | — |
+| **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html` | `Completed` | 2026-09-21 | Agent |
+| **Task 3.3** | Kết nối Frontend Accounts với Backend API | `Completed` | 2026-09-21 | Agent |
 | **Task 3.4** | Tests cho Accounts & Net Worth | `Pending` | — | — |
 
 ### Phase 4: Core Transaction Engine Fullstack (Home, Add Txn & Calendar)
@@ -523,7 +523,26 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
     - `backend/src/test/java/com/finman/security/SecurityIntegrationTest.java`: Cập nhật kỳ vọng kiểm thử `/api/v1/accounts` sang `200 OK`.
 - **Kết quả kiểm thử**: PASS 100% —
   - `mvn test`: 47/47 tests passed (0 failures, 0 errors, 0 skipped).
-  - `mvn package`: Đóng gói thành công file JAR `finman-backend-1.0.0-SNAPSHOT.jar`.
+- **Trạng thái**: Completed.
+
+### [2026-09-21] Task 3.2 & Task 3.3: Frontend Accounts Screen & API Integration
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Bóc tách toàn diện màn hình Quản lý Tài khoản & Tài sản ròng từ mã nguồn Stitch Web Desktop [design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html](file:///d:/FinMan/design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html) (Task 3.2).
+  - Kết nối trực tiếp Frontend với Backend REST APIs `/api/v1/accounts` (Task 3.3).
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/types/index.ts`: Bổ sung các kiểu dữ liệu `AccountSummary`, `AccountCreatePayload`, `AccountUpdatePayload`, mở rộng thuộc tính `createdAt`, `updatedAt` cho `Account`.
+  - `frontend/src/services/accountService.ts`: Tạo mới service gọi REST APIs backend (`getAccountsSummary()`, `getAccountById()`, `createAccount()`, `updateAccount()`, `deleteAccount()`).
+  - `frontend/src/pages/accounts/AccountsPage.tsx`: Tái hiện 100% chuẩn thiết kế Stitch Fintech Prestige:
+    - **VIP Net Worth Hero Card**: Màu Dark Gunmetal gradient, hiệu ứng đốm mờ blur, nút con mắt bảo mật số dư (`hideBalance`), dải phân rã phương trình tài chính (Tổng tài sản thực có, Dư nợ thẻ, Thặng dư ròng & tỷ lệ thanh khoản).
+    - **Biểu đồ Donut SVG Phân bổ dòng vốn**: Tính toán động tỷ trọng % phân bổ vốn thực tế từ các tài khoản khả dụng.
+    - **3 Cột phân loại nguồn tiền Desktop-First**: Tiền mặt (`CASH`), Tài khoản ngân hàng (`BANK`), Thẻ tín dụng & Nợ (`CREDIT_CARD`).
+    - **Mục tiêu Tích lũy & Dự phòng**: Quỹ khẩn cấp và mục tiêu sắm laptop với thanh tiến độ trực quan.
+    - **Hệ thống Dialog / Modal chuẩn Stitch**: Modal Thêm tài khoản mới đầy đủ các trường dữ liệu và loại ví, Modal Xuất file Excel (.xlsx), và Dialog xác nhận Lưu trữ tài khoản (Soft Delete).
+  - `frontend/src/App.tsx`: Tự động tải và đồng bộ danh sách tài khoản thực tế từ `/api/v1/accounts` khi người dùng đăng nhập, chia sẻ dữ liệu ví realtime cho toàn bộ hệ thống (Dashboard, Add Transaction Modal).
+- **Kết quả kiểm thử**: PASS 100% —
+  - `npm run build`: Build thành công trong 1.18s, không có bất kỳ lỗi TypeScript hay linter nào.
+  - `mvn test`: Toàn bộ 47 unit/integration test cases backend chạy thành công 100%.
 - **Trạng thái**: Completed.
 
 ---

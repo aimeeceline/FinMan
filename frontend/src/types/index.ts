@@ -20,6 +20,31 @@ export interface Account {
   bankName?: string;
   napasLinked?: boolean;
   isArchived?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AccountSummary {
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  accounts: Account[];
+}
+
+export interface AccountCreatePayload {
+  name: string;
+  type: AccountType;
+  initialBalance: number;
+  creditLimit?: number;
+  accountNumber?: string;
+  bankName?: string;
+}
+
+export interface AccountUpdatePayload {
+  name?: string;
+  creditLimit?: number;
+  accountNumber?: string;
+  bankName?: string;
 }
 
 export interface Category {

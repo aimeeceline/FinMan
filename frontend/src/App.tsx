@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar, type NavRoute } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
@@ -12,6 +12,7 @@ import { StatisticsPage } from './pages/statistics/StatisticsPage';
 import { AIAssistantPage } from './pages/ai/AIAssistantPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { DEFAULT_ACCOUNTS } from './constants/accounts';
+import { accountService } from './services/accountService';
 import type { Account, Transaction } from './types';
 
 const MainApp: React.FC = () => {
@@ -22,6 +23,23 @@ const MainApp: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch accounts from backend when authenticated
+  const loadAccounts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const summary = await accountService.getAccountsSummary();
+      if (summary && summary.accounts && summary.accounts.length > 0) {
+        setAccounts(summary.accounts);
+      }
+    } catch (err) {
+      console.warn('Could not load accounts from backend in App.tsx:', err);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
 
   // Handle adding new transaction
   const handleAddTransaction = (newTx: Omit<Transaction, 'id'>) => {
@@ -44,7 +62,13 @@ const MainApp: React.FC = () => {
   };
 
   const handleAddAccount = (newAcc: Account) => {
-    setAccounts((prev) => [...prev, newAcc]);
+    setAccounts((prev) => {
+      const exists = prev.some((a) => a.id === newAcc.id);
+      if (exists) {
+        return prev.map((a) => (a.id === newAcc.id ? newAcc : a));
+      }
+      return [...prev, newAcc];
+    });
   };
 
   // If not authenticated, render Login/Register
@@ -98,7 +122,11 @@ const MainApp: React.FC = () => {
         {currentRoute === 'quan-ly-ngan-sach' && <BudgetPage />}
 
         {currentRoute === 'tai-khoan-va-tai-san' && (
-          <AccountsPage accounts={accounts} onAddAccount={handleAddAccount} />
+          <AccountsPage
+            accounts={accounts}
+            onAddAccount={handleAddAccount}
+            onRefresh={loadAccounts}
+          />
         )}
 
         {currentRoute === 'thong-ke-va-bao-cao' && (
