@@ -447,6 +447,21 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS —
   - `npm run build`: 100% biên dịch thành công không có lỗi (88 modules transformed trong 1.15s).
   - Grep search kiểm tra: 0 kết quả cho `mock`, `demo`, `minhkhang`, `khang` trong toàn bộ `frontend/src`.
+### [2026-09-21] Task 2.10: Tích Hợp Google Identity Services Chính Thức & Gỡ Bỏ Đăng Nhập Thủ Công
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**: "985373734063-qnaa9b0gh7hotm83ir996kqutav885t5.apps.googleusercontent.com sau khi thay thế việc sử dụng clientID hãy gỡ những thành phần liên quan đến việc đăng nhập gg bằng cách nhập thủ công"
+- **Các file tạo mới / chỉnh sửa / xóa bỏ**:
+  - `frontend/.env`: Cấu hình `VITE_GOOGLE_CLIENT_ID=985373734063-qnaa9b0gh7hotm83ir996kqutav885t5.apps.googleusercontent.com`.
+  - `frontend/index.html`: Nhúng SDK Google Identity Services (`https://accounts.google.com/gsi/client`).
+  - `frontend/src/components/auth/GoogleSignInButton.tsx`: **TẠO MỚI** component nút Google Sign-In chuẩn Google Identity Services: tự động khởi tạo SDK với Client ID, render nút chuẩn Google, kích hoạt One Tap và tiếp nhận JWT ID Token (`credential`) gửi về backend `/api/v1/auth/google`.
+  - `frontend/src/pages/auth/GoogleAuthModal.tsx`: **ĐÃ XÓA VĨNH VIỄN** (gỡ bỏ toàn bộ modal và form nhập email Google thủ công).
+  - `frontend/src/pages/auth/LoginPage.tsx`: Gỡ bỏ modal cũ, thay thế bằng `<GoogleSignInButton text="continue_with" />`.
+  - `frontend/src/pages/auth/RegisterPage.tsx`: Gỡ bỏ modal cũ, thay thế bằng `<GoogleSignInButton text="signup_with" />`.
+  - `frontend/src/pages/auth/index.ts`: Xóa export `GoogleAuthModal`.
+- **Nội dung công việc**: Chuyển đổi toàn diện cơ chế xác thực Google từ mô phỏng nhập form thủ công sang luồng OAuth 2.0 chính thức của Google Identity Services (GIS), tự động mở popup chọn tài khoản Google đang có trên máy của client.
+- **Kết quả kiểm thử**: PASS —
+  - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.73s, 0 lỗi TypeScript).
+  - Grep search: 0 tham chiếu tới `GoogleAuthModal` trong toàn bộ mã nguồn.
 - **Trạng thái**: Completed.
 
 ---
