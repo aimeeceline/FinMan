@@ -1,42 +1,108 @@
-function App() {
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Sidebar, type NavRoute } from './components/layout/Sidebar';
+import { TopHeader } from './components/layout/TopHeader';
+import { AddTransactionModal } from './components/modals/AddTransactionModal';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { DashboardPage } from './pages/dashboard/DashboardPage';
+import { BudgetPage } from './pages/budget/BudgetPage';
+import { AccountsPage } from './pages/accounts/AccountsPage';
+import { StatisticsPage } from './pages/statistics/StatisticsPage';
+import { AIAssistantPage } from './pages/ai/AIAssistantPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
+import { mockTransactions } from './services/mockData';
+import type { Transaction } from './types';
+
+const MainApp: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
+  const [currentRoute, setCurrentRoute] = useState<NavRoute>('giao-dich');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle adding new transaction
+  const handleAddTransaction = (newTx: Omit<Transaction, 'id'>) => {
+    const tx: Transaction = {
+      ...newTx,
+      id: Date.now(),
+    };
+    setTransactions([tx, ...transactions]);
+  };
+
+  // If not authenticated, render Login/Register
+  if (!isAuthenticated) {
+    if (authScreen === 'register') {
+      return <RegisterPage onNavigateToLogin={() => setAuthScreen('login')} />;
+    }
+    return <LoginPage onNavigateToRegister={() => setAuthScreen('register')} />;
+  }
+
+  // Filter transactions by search query
+  const filteredTransactions = transactions.filter((t) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (t.note && t.note.toLowerCase().includes(q)) ||
+      t.category.name.toLowerCase().includes(q) ||
+      t.account.name.toLowerCase().includes(q) ||
+      t.amount.toString().includes(q)
+    );
+  });
+
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-gutter">
-      <div className="max-w-[420px] w-full bg-surface-container-lowest rounded-2xl shadow-sm p-space-lg flex flex-col items-center text-center space-y-space-md border border-surface-container-high/60">
-        <div className="w-20 h-20 rounded-full shadow-md overflow-hidden ring-2 ring-primary/20 flex items-center justify-center">
-          <img
-            src="/logo-fm.png"
-            alt="FinMan Official Logo"
-            className="w-full h-full object-cover"
+    <div className="min-h-screen bg-surface flex flex-col">
+      {/* 1. Fixed Left Sidebar */}
+      <Sidebar
+        currentRoute={currentRoute}
+        onNavigate={(route) => setCurrentRoute(route)}
+        onOpenAddModal={() => setIsAddModalOpen(true)}
+      />
+
+      {/* 2. Fixed Top Header */}
+      <TopHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onExportExcel={() => alert('Đang trích xuất file Excel lịch sử giao dịch (.xlsx)...')}
+      />
+
+      {/* 3. Main Stage Content Area (Offset pl-72 pt-20) */}
+      <main className="pl-72 pt-20 min-h-screen bg-surface">
+        {currentRoute === 'giao-dich' && (
+          <DashboardPage
+            transactions={filteredTransactions}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onNavigateToAccounts={() => setCurrentRoute('tai-khoan-va-tai-san')}
+            onNavigateToReports={() => setCurrentRoute('thong-ke-va-bao-cao')}
           />
-        </div>
+        )}
 
-        <div>
-          <h1 className="font-headline-lg text-headline-lg text-on-background tracking-tight">
-            FinMan
-          </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            Hệ Thống Quản Lý Tài Chính Cá Nhân
-          </p>
-        </div>
+        {currentRoute === 'quan-ly-ngan-sach' && <BudgetPage />}
 
-        <div className="w-full grid grid-cols-2 gap-space-sm pt-2">
-          <div className="p-3 rounded-xl bg-surface-container-low flex flex-col items-center">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Tone Màu Thu</span>
-            <span className="font-headline-sm text-headline-sm text-secondary font-bold">+6.000.000₫</span>
-          </div>
-          <div className="p-3 rounded-xl bg-surface-container-low flex flex-col items-center">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Tone Màu Chi</span>
-            <span className="font-headline-sm text-headline-sm text-primary font-bold">-1.090.000₫</span>
-          </div>
-        </div>
+        {currentRoute === 'tai-khoan-va-tai-san' && <AccountsPage />}
 
-        <div className="w-full p-3 rounded-xl bg-tertiary-container/10 border border-tertiary-container/20 flex items-center justify-center gap-2 text-tertiary font-label-md">
-          <span className="material-symbols-outlined text-[18px]">verified</span>
-          <span>Đã nhúng Design Tokens Stitch & Logo FM</span>
-        </div>
-      </div>
+        {currentRoute === 'thong-ke-va-bao-cao' && <StatisticsPage />}
+
+        {currentRoute === 'tro-ly-finman-ai' && <AIAssistantPage />}
+
+        {currentRoute === 'cai-dat-va-danh-muc' && <SettingsPage />}
+      </main>
+
+      {/* 4. Global Add Transaction Modal */}
+      <AddTransactionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddTransaction={handleAddTransaction}
+      />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}

@@ -35,13 +35,13 @@ Mọi hành vi vi phạm các nguyên tắc dưới đây đều bị coi là **
 - **Giao dịch nguyên tử (Atomic Transactions)**: Tất cả các hàm thêm/sửa/xóa giao dịch tác động lên số dư ví bắt buộc phải có annotation `@Transactional`.
 - **Bảo mật Multi-tenant**: Mọi câu lệnh truy vấn dữ liệu từ database **bắt buộc** phải có điều kiện ràng buộc `user_id = :currentUserId` lấy từ Security Context. Không được tin tưởng `userId` gửi lên từ body hoặc query param nếu không được xác thực.
 
-### 📌 Nguyên Tắc 5: Bắt Buộc Đọc Mã Nguồn Giao Diện Từ Thư Mục `design/` (Stitch UI Adherence)
+### 📌 Nguyên Tắc 5: Bắt Buộc Đọc Mã Nguồn Giao Diện Từ Thư Mục `design/` (Stitch Web UI Adherence)
 - Khi phát triển các màn hình và component ở Frontend, Agent **bắt buộc phải đọc file `code.html` và ảnh `screen.png`** trong thư mục `design/` tương ứng (theo bảng ánh xạ trong `CODE_PLAN.md`).
 - **Nghiêm cấm tự sáng tạo giao diện khác**: Phải bóc tách và tái sử dụng chính xác:
-  - Cấu trúc DOM / thẻ HTML từ Stitch.
-  - Toàn bộ class Tailwind CSS, các biến màu sắc (`surface`, `primary`, `secondary`...).
-  - Biểu tượng Material Symbols Outlined và Font chữ `Plus Jakarta Sans`.
-  - Bố cục responsive (`max-w-[480px] mx-auto`, `pb-safe`, `pt-safe`).
+  - Cấu trúc DOM / thẻ HTML từ Stitch Web.
+  - Toàn bộ class Tailwind CSS, các biến màu sắc (`surface`, `primary`, `secondary`, `tertiary`...).
+  - Biểu tượng Material Symbols Outlined và Typography (`Plus Jakarta Sans` cho headings/body, `Inter` cho currency lining figures).
+  - Bố cục Desktop-First (`max-w-[1600px] mx-auto`, `pl-72`, `pt-20`, dual-rail sidebar).
 
 ### 📌 Nguyên Tắc 6: Xử Lý Khi Gặp Điểm Mơ Hồ (Handling Ambiguity)
 - Khi gặp trường hợp nghiệp vụ chưa rõ ràng, mâu thuẫn hoặc thiếu thông tin:

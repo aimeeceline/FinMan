@@ -46,8 +46,7 @@ graph TD
 # 2. Tech Stack Chi Tiết
 
 | Tầng (Layer) | Công nghệ lựa chọn | Mục đích & Lý do lựa chọn |
-|---|---|---|
-| **Frontend** | React / Next.js / Vanilla Modern UI | Xây dựng giao diện Web/Mobile responsive theo mockup Stitch, tiêu thụ REST API. |
+| **Frontend** | **React 19 + Vite + TypeScript + Tailwind CSS** | Xây dựng Web Application chuẩn Desktop-First (1600px analytical canvas, 288px dual-rail sidebar) theo chuẩn thiết kế Stitch Fintech Prestige, tiêu thụ REST API từ Spring Boot. |
 | **Backend Framework** | **Java 17/21 + Spring Boot 3.x** | Nền tảng enterprise vững chắc, độ ổn định cao, quản lý transaction tài chính chuẩn mực. |
 | **Security** | Spring Security 6 + JJWT | Xác thực stateless JWT Bearer Token, mã hóa mật khẩu BCrypt. |
 | **ORM / Data Access** | Spring Data JPA (Hibernate) | Quản lý quan hệ thực thể, tối ưu truy vấn với JPQL & Specification, hỗ trợ migration. |
@@ -212,44 +211,39 @@ d:\FinMan/
 │   ├── src/main/resources/              # application.yml, seed data
 │   └── pom.xml                          # Maven build dependencies
 │
-├── frontend/                            # [FRONTEND] Ứng dụng Web / Mobile PWA (React + Vite)
-│   ├── public/
-│   │   ├── logo-fm.png                  # Logo FM 3D kim loại vàng lấy từ design/00_branding_logo
-│   │   └── manifest.json                # Cấu hình Mobile PWA
+├── frontend/                            # [FRONTEND] Web Application (React 19 + Vite + Tailwind CSS)
+│   ├── index.html                       # HTML Shell, Google Fonts (Plus Jakarta Sans & Inter), Material Symbols
+│   ├── vite.config.ts                   # Cấu hình Vite build & proxy
+│   ├── tailwind.config.js               # Fintech Prestige Design Tokens (Colors, Typography, Spacing)
 │   ├── src/
-│   │   ├── assets/                      # Hình ảnh & icon tĩnh
-│   │   ├── components/                  # UI Components (BottomNav, TopBar, Modal, Buttons)
-│   │   ├── context/                     # AuthContext, FinancialContext
-│   │   ├── pages/                       # Các trang bóc tách trực tiếp từ Stitch design
-│   │   │   ├── auth/                    # Splash, Login, Register, Forgot Password
-│   │   │   ├── transactions/            # Home Dashboard, Add Transaction, Calendar
-│   │   │   ├── accounts/                # Accounts Management & Net Worth
-│   │   │   ├── budget/                  # Budget Management & Alerts
-│   │   │   ├── statistics/              # Charts & Category Breakdown
-│   │   │   ├── ai/                      # AI Assistant & Quick Add
-│   │   │   └── settings/                # Profile, Excel Export, Logout
-│   │   ├── services/                    # Axios API Clients kết nối Spring Boot
-│   │   ├── index.css                    # Tailwind CSS base styles & typography
-│   │   └── App.tsx                      # App Routing
-│   ├── tailwind.config.js               # Tokens trích xuất từ design/14_design_system_reference
-│   └── package.json
+│   │   ├── components/
+│   │   │   ├── layout/                  # Sidebar (288px fixed), TopHeader (sticky search & month switcher)
+│   │   │   └── modals/                  # AddTransactionModal (Glassmorphism, Quick Amount chips)
+│   │   ├── context/                     # AuthContext (JWT auth state & demo fallback)
+│   │   ├── pages/                       # Các trang Web chính từ Stitch
+│   │   │   ├── auth/                    # LoginPage, RegisterPage (Desktop split presentation)
+│   │   │   ├── dashboard/               # DashboardPage (KPI strip, AI prompt, ledger, net worth rail)
+│   │   │   ├── budget/                  # BudgetPage (Hạn mức tổng thể, segmented progress bars)
+│   │   │   ├── accounts/                # AccountsPage (Dark Gunmetal VIP Net worth card, danh sách ví/thẻ)
+│   │   │   ├── statistics/              # StatisticsPage (Biểu đồ Thu/Chi, thặng dư dòng tiền)
+│   │   │   ├── ai/                      # AIAssistantPage (Gemini 2.0 Flash chat & bóc tách tiếng Việt)
+│   │   │   └── settings/                # SettingsPage (Profile, danh mục, xuất Excel)
+│   │   ├── services/                    # Axios API Client (api.ts) & mockData.ts
+│   │   ├── types/                       # TypeScript models (Transaction, Account, Budget, User)
+│   │   ├── App.tsx                      # Root App Component điều phối Routing & State
+│   │   ├── main.tsx                     # React DOM Root
+│   │   └── index.css                    # Tabular lining figures, thin scrollbar, base styles
+│   └── package.json                     # Vite & React dependencies
 │
-├── design/                              # [STITCH UI SOURCE] 15 Thư mục màn hình mẫu chuẩn hóa
-│   ├── 00_branding_logo/                # Logo FM 3D huy hiệu vàng kim loại (screen.png)
-│   ├── 01_splash_screen/                # Splash Screen (code.html & screen.png)
-│   ├── 02_login/                        # Màn hình Đăng nhập
-│   ├── 03_register/                     # Màn hình Đăng ký
-│   ├── 04_forgot_password/              # Màn hình Quên mật khẩu
-│   ├── 05_google_login/                 # Chọn tài khoản Google Auth
-│   ├── 06_transactions_home/            # Màn hình Giao dịch Home
-│   ├── 07_add_transaction/              # Màn hình Thêm giao dịch (Thu/Chi)
-│   ├── 08_calendar/                     # Màn hình Lịch giao dịch
-│   ├── 09_statistics/                   # Màn hình Thống kê chi tiêu
-│   ├── 10_accounts/                     # Màn hình Quản lý tài khoản ví
-│   ├── 11_budget/                       # Màn hình Quản lý ngân sách
-│   ├── 12_ai_assistant/                 # Màn hình Trợ lý AI (Quick Add)
-│   ├── 13_more_settings/                # Màn hình Cài đặt & Xuất dữ liệu
-│   └── 14_design_system_reference/      # Tài liệu tổng hợp Design Tokens
+├── design/                              # [STITCH WEB DESIGN SOURCE] 7 Màn hình Web chuẩn Desktop + DESIGN.md
+│   ├── finman_web_ng_nh_p_h_th_ng/      # Màn hình Đăng nhập Web (code.html & screen.png)
+│   ├── finman_web_ng_k_t_i_kho_n/       # Màn hình Đăng ký Web (code.html & screen.png)
+│   ├── finman_web_giao_d_ch_dashboard/  # Màn hình Dashboard & Sổ cái Giao dịch Web
+│   ├── finman_web_popup_th_m_giao_d_ch_m_i/ # Modal Thêm giao dịch Glassmorphism Web
+│   ├── finman_web_qu_n_l_ng_n_s_ch/     # Màn hình Quản lý Ngân sách chi tiêu Web
+│   ├── finman_web_t_i_kho_n_t_i_s_n_r_ng/ # Màn hình Tài khoản & Tài sản ròng Web
+│   ├── finman_web_th_ng_k_b_o_c_o/      # Màn hình Thống kê & Báo cáo dòng tiền Web
+│   └── fintech_prestige/                # DESIGN.md - Bộ quy chuẩn thiết kế Fintech Prestige
 │
 ├── plans/                               # [PLANS] Bộ 6 tài liệu kỹ thuật
 │   ├── PRD.md

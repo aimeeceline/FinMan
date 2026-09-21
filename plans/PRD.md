@@ -2,9 +2,10 @@
 ## Personal Finance Management Application
 
 **Product Name:** FinMan  
-**Product Type:** Personal Finance Management App  
-**Platform:** Mobile/Web
-**Target Users:** Cá nhân muốn theo dõi và quản lý thu nhập, chi tiêu, ngân sách và tài sản cá nhân.
+**Product Type:** Personal Finance Management Web Application  
+**Platform:** Modern Web Application (Desktop-first responsive interface, 1600px analytical canvas, fixed 288px dual-rail sidebar, Plus Jakarta Sans & Inter typography, Tailwind CSS tokens)  
+**Design System:** Fintech Prestige (Stitch Web UI)  
+**Target Users:** Cá nhân muốn theo dõi và quản lý thu nhập, chi tiêu, ngân sách và tài sản cá nhân trên nền tảng Web hiện đại.
 
 ---
 

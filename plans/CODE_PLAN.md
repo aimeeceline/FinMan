@@ -3,33 +3,27 @@
 
 Tài liệu này xác định thứ tự lập trình chi tiết cho dự án FinMan theo mô hình **Fullstack Monorepo**:
 - **`backend/`**: Java Spring Boot 3.x (REST API, JPA, Spring Security 6, JWT, Gemini API, Apache POI).
-- **`frontend/`**: React / Vite + Tailwind CSS (Được bóc tách và tích hợp trực tiếp từ mã nguồn giao diện Stitch trong thư mục `design/`).
-- **`design/`**: Bộ thiết kế UI gốc từ Stitch với 15 màn hình chuẩn hóa (`code.html` & `screen.png`).
+- **`backend/`**: Java Spring Boot 3.x (REST API, JPA, Spring Security 6, JWT, Gemini API, Apache POI).
+- **`frontend/`**: React 19 + Vite + TypeScript + Tailwind CSS (Được xây dựng chuẩn hóa từ bộ thiết kế Stitch Web Application trong thư mục `design/`).
+- **`design/`**: Bộ thiết kế Web Desktop từ Stitch với 7 module hoàn chỉnh và tài liệu `fintech_prestige/DESIGN.md`.
 
 ---
 
-# Bảng Ánh Xạ Thư Mục Giao Diện Stitch (`design/`) Với Kế Hoạch Lập Trình
+# Bảng Ánh Xạ Thư Mục Giao Diện Web Stitch (`design/`) Với Kế Hoạch Lập Trình
 
 > [!IMPORTANT]
-> **Quy tắc bất biến cho Agent**: Trước khi code bất kỳ màn hình nào ở Frontend, Agent **bắt buộc phải đọc file `code.html` và ảnh `screen.png`** trong thư mục `design/` tương ứng để tái sử dụng chính xác cấu trúc HTML, các class Tailwind CSS, inline icons (Material Symbols) và layout.
+> **Quy tắc bất biến cho Agent**: Trước khi code bất kỳ màn hình nào ở Frontend, Agent **bắt buộc phải đọc file `code.html` và ảnh `screen.png`** trong thư mục `design/` tương ứng để tái sử dụng chính xác cấu trúc HTML, các class Tailwind CSS, inline icons (Material Symbols) và layout Desktop-First (1600px analytical canvas).
 
 | Thư mục Stitch (`design/`) | Tên màn hình / Tài nguyên | Phase & Task triển khai |
 |---|---|---|
-| [`design/00_branding_logo`](file:///d:/FinMan/design/00_branding_logo) | Logo FM 3D huy hiệu vàng kim loại | **Task 0.4**: Lưu vào `frontend/public/logo-fm.png` |
-| [`design/14_design_system_reference`](file:///d:/FinMan/design/14_design_system_reference) | Toàn bộ Design Tokens (Màu sắc, Font, Spacing) | **Task 0.4**: Cấu hình `tailwind.config.js` |
-| [`design/01_splash_screen`](file:///d:/FinMan/design/01_splash_screen) | Màn hình khởi động (Splash Screen) | **Task 2.3**: `SplashScreen.tsx` |
-| [`design/02_login`](file:///d:/FinMan/design/02_login) | Màn hình Đăng nhập (Login) | **Task 2.3**: `LoginPage.tsx` |
-| [`design/03_register`](file:///d:/FinMan/design/03_register) | Màn hình Đăng ký (Register) | **Task 2.3**: `RegisterPage.tsx` |
-| [`design/04_forgot_password`](file:///d:/FinMan/design/04_forgot_password) | Màn hình Quên mật khẩu | **Task 2.3**: `ForgotPasswordModal.tsx` |
-| [`design/05_google_login`](file:///d:/FinMan/design/05_google_login) | Chọn tài khoản Google Auth | **Task 2.3**: `GoogleAuthModal.tsx` |
-| [`design/10_accounts`](file:///d:/FinMan/design/10_accounts) | Màn hình Quản lý tài khoản (Ví & Thẻ) | **Task 3.2**: `AccountsPage.tsx` |
-| [`design/06_transactions_home`](file:///d:/FinMan/design/06_transactions_home) | Màn hình Giao dịch chính (Home Dashboard) | **Task 4.2**: `TransactionsHomePage.tsx` |
-| [`design/07_add_transaction`](file:///d:/FinMan/design/07_add_transaction) | Màn hình Thêm giao dịch (Thu/Chi) | **Task 4.3**: `AddTransactionModal.tsx` |
-| [`design/08_calendar`](file:///d:/FinMan/design/08_calendar) | Màn hình Lịch giao dịch | **Task 4.4**: `CalendarPage.tsx` |
-| [`design/11_budget`](file:///d:/FinMan/design/11_budget) | Màn hình Quản lý ngân sách | **Task 5.2**: `BudgetPage.tsx` |
-| [`design/09_statistics`](file:///d:/FinMan/design/09_statistics) | Màn hình Thống kê & Biểu đồ chi tiêu | **Task 6.2**: `StatisticsPage.tsx` |
-| [`design/12_ai_assistant`](file:///d:/FinMan/design/12_ai_assistant) | Màn hình Trợ lý AI (Quick Add tự nhiên) | **Task 7.3**: `AiAssistantModal.tsx` |
-| [`design/13_more_settings`](file:///d:/FinMan/design/13_more_settings) | Màn hình Cài đặt, Hồ sơ & Đăng xuất | **Task 8.2**: `SettingsPage.tsx` |
+| [`design/fintech_prestige`](file:///d:/FinMan/design/fintech_prestige) | Toàn bộ Design Tokens & Quy chuẩn thiết kế (DESIGN.md) | **Task 0.4**: Cấu hình `tailwind.config.js` & `src/index.css` |
+| [`design/finman_web_ng_nh_p_h_th_ng`](file:///d:/FinMan/design/finman_web_ng_nh_p_h_th_ng) | Màn hình Đăng nhập Web (Login split screen) | **Task 2.3**: `src/pages/auth/LoginPage.tsx` |
+| [`design/finman_web_ng_k_t_i_kho_n`](file:///d:/FinMan/design/finman_web_ng_k_t_i_kho_n) | Màn hình Đăng ký Web (Register split screen) | **Task 2.3**: `src/pages/auth/RegisterPage.tsx` |
+| [`design/finman_web_giao_d_ch_dashboard`](file:///d:/FinMan/design/finman_web_giao_d_ch_dashboard) | Màn hình Dashboard & Sổ cái Giao dịch Web | **Task 4.2**: `src/pages/dashboard/DashboardPage.tsx` |
+| [`design/finman_web_popup_th_m_giao_d_ch_m_i`](file:///d:/FinMan/design/finman_web_popup_th_m_giao_d_ch_m_i) | Modal Thêm giao dịch Glassmorphism Web | **Task 4.3**: `src/components/modals/AddTransactionModal.tsx` |
+| [`design/finman_web_qu_n_l_ng_n_s_ch`](file:///d:/FinMan/design/finman_web_qu_n_l_ng_n_s_ch) | Màn hình Quản lý Ngân sách chi tiêu Web | **Task 5.2**: `src/pages/budget/BudgetPage.tsx` |
+| [`design/finman_web_t_i_kho_n_t_i_s_n_r_ng`](file:///d:/FinMan/design/finman_web_t_i_kho_n_t_i_s_n_r_ng) | Màn hình Tài khoản & Tài sản ròng Web (VIP Net Worth) | **Task 3.2**: `src/pages/accounts/AccountsPage.tsx` |
+| [`design/finman_web_th_ng_k_b_o_c_o`](file:///d:/FinMan/design/finman_web_th_ng_k_b_o_c_o) | Màn hình Thống kê & Báo cáo dòng tiền Web | **Task 6.2**: `src/pages/statistics/StatisticsPage.tsx` |
 
 ---
 
@@ -65,19 +59,19 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Files**: `docker-compose.yml`, `backend/src/main/resources/application.yml`.
 - **DoD**: PostgreSQL khởi động ổn định, kết nối HikariCP thành công.
 
-### Task 0.3: Khởi tạo Frontend Project (`frontend/`)
-- **Mục tiêu**: Tạo dự án Frontend React + Vite + TypeScript trong thư mục `frontend/`, cài đặt Tailwind CSS, Lucide Icons, Axios.
-- **Files**: `frontend/package.json`, `frontend/vite.config.ts`, `frontend/index.html`.
-- **DoD**: Lệnh `npm run dev` khởi chạy thành công ứng dụng Frontend cục bộ.
+### Task 0.3: Khởi tạo Frontend Web Project (`frontend/`)
+- **Mục tiêu**: Tạo dự án Frontend React 19 + Vite + TypeScript trong thư mục `frontend/`, cấu hình Tailwind CSS, Axios, Lucide React, Google Fonts.
+- **Files**: `frontend/package.json`, `frontend/vite.config.ts`, `frontend/index.html`, `frontend/src/App.tsx`.
+- **DoD**: Lệnh `npm run dev` khởi chạy thành công và `npm run build` biên dịch sạch sẽ không có lỗi TypeScript.
 
-### Task 0.4: Nhúng Design System & Logo Từ Stitch Vào Frontend
+### Task 0.4: Nhúng Design Tokens & Quy Chuẩn Fintech Prestige Vào Frontend Web
 - **Mục tiêu**:
-  - **Đọc tài liệu**: Đọc file [design/14_design_system_reference/code.html](file:///d:/FinMan/design/14_design_system_reference/code.html) và [design/06_transactions_home/code.html](file:///d:/FinMan/design/06_transactions_home/code.html).
-  - Trích xuất toàn bộ bảng màu Stitch (`surface`, `surface-container`, `primary`, `secondary`, `tertiary`, `outline`...) vào file `frontend/tailwind.config.js`.
-  - Cấu hình font chữ `Plus Jakarta Sans` và font biểu tượng `Material Symbols Outlined` trong `frontend/index.html`.
-  - Copy ảnh Logo FM 3D kim loại từ [design/00_branding_logo/screen.png](file:///d:/FinMan/design/00_branding_logo/screen.png) vào `frontend/public/logo-fm.png`.
-- **Files**: `frontend/tailwind.config.js`, `frontend/src/index.css`, `frontend/public/logo-fm.png`.
-- **DoD**: Toàn bộ hệ màu và typography của Stitch được nhận diện chính xác trong ứng dụng Frontend.
+  - **Đọc tài liệu**: Đọc file [design/fintech_prestige/DESIGN.md](file:///d:/FinMan/design/fintech_prestige/DESIGN.md).
+  - Khai báo toàn bộ bảng màu Fintech Prestige (`surface`, `surface-container-*`, `primary`, `secondary`, `tertiary`, `outline`...) vào `frontend/tailwind.config.js`.
+  - Cấu hình font chữ `Plus Jakarta Sans` cho headings/body và `Inter` cho `currency-display`, `currency-row` (tabular lining figures) trong `frontend/src/index.css`.
+  - Cấu hình các lớp bo góc, shadow glassmorphism, và scrollbar mỏng tùy biến.
+- **Files**: `frontend/tailwind.config.js`, `frontend/src/index.css`, `frontend/index.html`.
+- **DoD**: Giao diện Web hiển thị đúng 100% mã màu, typography và elevation theo chuẩn Fintech Prestige.
 
 ### Task 0.5: Xây dựng Global Exception Handler & ApiResponse Standard (Backend)
 - **Mục tiêu**: Chuẩn hóa định dạng JSON phản hồi `ApiResponse<T>` và bắt các lỗi validation, business error.
@@ -127,27 +121,31 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Files**: `backend/src/main/java/com/finman/controller/AuthController.java`, `service/AuthService.java`.
 - **DoD**: Đăng ký và đăng nhập thành công qua Postman, kiểm tra trùng email chặt chẽ.
 
-### Task 2.3: Frontend Auth Screens (Bóc tách từ Stitch)
+### Task 2.3: Frontend Auth Screens (React Web SPA từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**:
-    - [design/01_splash_screen/code.html](file:///d:/FinMan/design/01_splash_screen/code.html) → Tạo `frontend/src/pages/auth/SplashScreen.tsx`.
-    - [design/02_login/code.html](file:///d:/FinMan/design/02_login/code.html) → Tạo `frontend/src/pages/auth/LoginPage.tsx`.
-    - [design/03_register/code.html](file:///d:/FinMan/design/03_register/code.html) → Tạo `frontend/src/pages/auth/RegisterPage.tsx`.
-    - [design/04_forgot_password/code.html](file:///d:/FinMan/design/04_forgot_password/code.html) → Tạo `frontend/src/pages/auth/ForgotPasswordModal.tsx`.
-    - [design/05_google_login/code.html](file:///d:/FinMan/design/05_google_login/code.html) → Tạo `frontend/src/pages/auth/GoogleAuthModal.tsx`.
-  - Tái sử dụng trọn vẹn HTML cấu trúc form, input có icon Material Symbols, nút ẩn/hiện mật khẩu, checkbox "Ghi nhớ", và Logo FM.
-- **Files**: `frontend/src/pages/auth/*`.
-- **DoD**: Các màn hình Auth hiển thị giống 100% so với ảnh `screen.png` trong từng thư mục Stitch tương ứng.
+  - **Đọc trực tiếp từ Stitch Web**:
+    - [design/finman_web_ng_nh_p_h_th_ng/code.html](file:///d:/FinMan/design/finman_web_ng_nh_p_h_th_ng/code.html) → Tạo `frontend/src/pages/auth/LoginPage.tsx`.
+    - [design/finman_web_ng_k_t_i_kho_n/code.html](file:///d:/FinMan/design/finman_web_ng_k_t_i_kho_n/code.html) → Tạo `frontend/src/pages/auth/RegisterPage.tsx`.
+  - Tái sử dụng trọn vẹn cấu trúc Desktop split-screen, hero showcase cards, form input có icon Material Symbols, nút ẩn/hiện mật khẩu, Google login trigger, và logo FM.
+- **Files**: `frontend/src/pages/auth/LoginPage.tsx`, `frontend/src/pages/auth/RegisterPage.tsx`.
+- **DoD**: Các màn hình Auth hiển thị đúng 100% so với thiết kế Web Stitch, build thành công với Vite.
 
 ### Task 2.4: Kết Nối Frontend Auth Với Backend API
-- **Mục tiêu**: Gửi request đăng nhập/đăng ký từ form Frontend tới Spring Boot backend, lưu token vào `localStorage`, chuyển hướng tới Dashboard sau khi đăng nhập thành công.
-- **Files**: `frontend/src/services/authService.ts`, `frontend/src/context/AuthContext.tsx`.
-- **DoD**: Đăng ký và đăng nhập mượt mà trên giao diện Web, lưu token an toàn.
+- **Mục tiêu**: Gửi request đăng nhập/đăng ký từ form Web tới Spring Boot backend, lưu token vào `localStorage`, tự động gán Bearer Token vào Axios Request Interceptor, chuyển hướng tới Web Dashboard sau khi xác thực thành công.
+- **Files**: `frontend/src/services/api.ts`, `frontend/src/context/AuthContext.tsx`.
+- **DoD**: Đăng ký và đăng nhập mượt mà trên trình duyệt Web, tự động lưu token và đồng bộ trạng thái User.
 
 ### Task 2.5: Unit Test Cho Luồng Xác Thực
 - **Mục tiêu**: Viết Unit Test cho `AuthService` (Backend) và kiểm tra validate form Auth (Frontend).
 - **Files**: `backend/src/test/java/com/finman/service/AuthServiceTest.java`.
 - **DoD**: Test cases `TC_AUTH_01` đến `TC_AUTH_07` đạt PASS 100%.
+
+### Task 2.6: Tích Hợp Google OAuth 2.0 Fullstack (Backend & Frontend Web)
+- **Mục tiêu**:
+  - Backend: Xây dựng endpoint `POST /api/v1/auth/google` xử lý xác thực token Google / tài khoản Google, tự động tạo User + Ví tiền mặt 0đ ban đầu nếu là người dùng mới, và cấp phát token JWT FinMan.
+  - Frontend: Tích hợp nút đăng nhập Google OAuth trên Web, kết nối trigger Google với `login` trong `AuthContext`.
+- **Files**: `backend/src/main/java/com/finman/dto/request/GoogleAuthRequest.java`, `backend/src/main/java/com/finman/service/AuthService.java`, `backend/src/main/java/com/finman/controller/AuthController.java`, `frontend/src/pages/auth/LoginPage.tsx`, `frontend/src/context/AuthContext.tsx`.
+- **DoD**: Bấm "Đăng nhập với Google" đăng nhập thành công vào ứng dụng và nhận token JWT thật từ backend.
 
 ---
 
@@ -341,14 +339,14 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Files**: `frontend/src/pages/settings/SettingsPage.tsx`.
 - **DoD**: Màn hình cài đặt hiển thị đầy đủ các tính năng hỗ trợ, đăng xuất chuyển hướng về Login.
 
-### Task 8.3: Tinh Chỉnh Responsive Mobile/Desktop & PWA
-- **Mục tiêu**: Đảm bảo giao diện hiển thị hoàn hảo trên màn hình điện thoại (mobile viewport fit) và căn giữa thanh lịch trên màn hình Desktop/Tablet (`max-w-[480px] mx-auto`). Cấu hình `manifest.json` để có thể cài đặt như app PWA trên điện thoại.
-- **Files**: `frontend/public/manifest.json`, `frontend/src/index.css`.
-- **DoD**: Ứng dụng hỗ trợ thao tác cảm ứng mượt mà, cài đặt được icon FinMan ra màn hình chính điện thoại.
+### Task 8.3: Tối Ưu Trải Nghiệm Web Responsive & Performance
+- **Mục tiêu**: Tinh chỉnh giao diện Web responsive từ Desktop (1600px canvas) xuống Tablet và Mobile viewport. Tối ưu animation CSS, lazy loading và bundle size với Vite.
+- **Files**: `frontend/src/index.css`, `frontend/src/App.tsx`, `frontend/tailwind.config.js`.
+- **DoD**: Trải nghiệm mượt mà trên mọi kích thước màn hình trình duyệt, Lighthouse Performance & Accessibility đạt chuẩn.
 
-### Task 8.4: Kiểm Tra Đối Chiếu Toàn Diện Với Ảnh Mockup Stitch
-- **Mục tiêu**: So sánh từng màn hình đã code với ảnh `screen.png` trong tất cả các thư mục `design/01` đến `design/13`.
-- **DoD**: Không có sự sai lệch về màu sắc thương hiệu, font chữ, icon hoặc khoảng cách (spacing).
+### Task 8.4: Kiểm Tra Đối Chiếu Toàn Diện Với Thiết Kế Stitch Web
+- **Mục tiêu**: So sánh từng trang Web đã code với mã nguồn `code.html` và ảnh `screen.png` trong tất cả các thư mục `design/finman_web_*`.
+- **DoD**: Chuẩn xác 100% về bảng màu Fintech Prestige, typography Plus Jakarta Sans, layout dual-rail sidebar và spacing chuẩn design system.
 
 ---
 

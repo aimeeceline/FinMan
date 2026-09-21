@@ -1,0 +1,390 @@
+<!DOCTYPE html><html lang="vi" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>FinMan Web - Thêm giao dịch mới</title>
+<!-- Google Fonts: Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            finman: {
+              red: '#dc2626',
+              darkred: '#b91c1c',
+              gold: '#D4AF37',
+              darkgold: '#B8860B',
+              surface: '#F8FAFC',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          boxShadow: {
+            'modal': '0 25px 60px -15px rgba(0, 0, 0, 0.35)',
+            'glow-red': '0 4px 20px -2px rgba(220, 38, 38, 0.35)',
+          }
+        }
+      }
+    };
+  </script>
+<!-- Custom Styles -->
+<style data-purpose="custom-scrollbars">
+    /* Custom thin scrollbar for modal content */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased overflow-hidden select-none">
+<!-- BEGIN: BlurredDashboardBackground -->
+<!-- Mimics the underlying FinMan Dashboard Desktop Interface -->
+<div aria-hidden="true" class="fixed inset-0 flex pointer-events-none filter blur-[6px] opacity-75 scale-[1.01] select-none">
+<!-- Sidebar Preview -->
+<aside class="w-64 bg-white border-r border-slate-200 p-5 flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-3 mb-8">
+<img alt="FinMan" class="w-10 h-10 rounded-full shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUilI8_vkzqsOCu1rGQcv5SyWRpU7j4_7Crt7MxuiuBbbnABNfnACZMmymnj_ivHaAVcffTSIGXApAOwloYuPTEqV5MkfbhnYkzWPHP_5O2ehSsXUpEyuxKiGp7---8qKQv__NNHBhLCZPPyC0IjUN2M_dMJ3rN5aWqmbXg3QcVO3irC_ij6GsWDLMDP-LwneI1pkP3KltP5VFZ8HNttND-u-ffOgDYhVfbcJhhC2228Oo_zOYJNJt">
+<span class="font-extrabold text-xl tracking-tight text-slate-900">FinMan</span>
+</div>
+<div class="space-y-3">
+<div class="h-10 bg-red-600 rounded-xl"></div>
+<div class="h-8 bg-slate-100 rounded-lg"></div>
+<div class="h-8 bg-slate-100 rounded-lg"></div>
+<div class="h-8 bg-slate-100 rounded-lg"></div>
+</div>
+</div>
+<div class="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-slate-300"></div>
+<div class="space-y-1">
+<div class="w-20 h-3 bg-slate-300 rounded"></div>
+<div class="w-28 h-2 bg-slate-200 rounded"></div>
+</div>
+</div>
+</aside>
+<!-- Main Content Background -->
+<main class="flex-1 p-8 space-y-6 overflow-hidden">
+<div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+<div class="w-80 h-10 bg-slate-100 rounded-xl"></div>
+<div class="flex gap-4">
+<div class="w-28 h-10 bg-slate-100 rounded-xl"></div>
+<div class="w-10 h-10 bg-slate-100 rounded-full"></div>
+</div>
+</div>
+<!-- Cards grid -->
+<div class="grid grid-cols-3 gap-6">
+<div class="h-32 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm"></div>
+<div class="h-32 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm"></div>
+<div class="h-32 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm"></div>
+</div>
+<!-- Large container preview -->
+<div class="grid grid-cols-3 gap-6 h-96">
+<div class="col-span-2 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm"></div>
+<div class="col-span-1 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm"></div>
+</div>
+</main>
+</div>
+<!-- END: BlurredDashboardBackground -->
+<!-- BEGIN: ModalBackdropOverlay -->
+<!-- Dimmed overlay with high-end glassmorphism effect -->
+<div class="fixed inset-0 bg-slate-950/65 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-6 transition-all duration-300" data-purpose="modal-container">
+<!-- BEGIN: TransactionModalBox -->
+<section class="bg-white w-full max-w-4xl rounded-3xl shadow-modal border border-slate-100 flex flex-col max-h-[95vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<!-- Modal Header -->
+<header class="relative px-7 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/70 via-white to-amber-50/30 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="FinMan VIP Emblem" class="w-11 h-11 object-contain drop-shadow-md rounded-full border border-amber-300/40 p-0.5 bg-amber-50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2pQqVbPbI9N0fCcKdpGvLwGojrsw6feudJSCP2O3UzNb97u6JVBLTzQGXZ36B9qw786scYBZ4mDKxQoaMRT5vTwM343dRCmGr5DKYi3AxnKM8kA1SoXDjJvfWPGxLafTFgpS9YzQxMQmwBCxsVoAsqkOjfhO0uOhRZiepLxnwO_5iB83U-LDDPeG-lFn3FaDnb0cKkyznA1hfLLgmVkklSuWwbAW2600VdZfRw61DuijnQCGorJPg">
+<span class="absolute -bottom-1 -right-1 flex h-4 w-4">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-4 w-4 bg-red-600 border-2 border-white"></span>
+</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-xl font-bold text-slate-900 tracking-tight">Thêm giao dịch mới</h2>
+
+</div>
+
+</div>
+</div>
+<!-- Close Button -->
+<button aria-label="Đóng cửa sổ" class="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200" type="button">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</header>
+<!-- Scrollable Modal Body -->
+<div class="overflow-y-auto custom-scroll px-7 py-5 space-y-5">
+<!-- Transaction Type Switcher (Tabs) -->
+<div class="flex justify-center">
+<nav aria-label="Loại giao dịch" class="inline-flex p-1.5 bg-slate-100/90 rounded-2xl gap-1 border border-slate-200/80 shadow-inner">
+<!-- Active Expense Tab -->
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-red-600 text-white shadow-glow-red transition-all duration-200" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 14l-7 7m0 0l-7-7m7 7V3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<span class="">Khoản Chi tiêu</span>
+</button>
+<!-- Income Tab -->
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:text-emerald-700 hover:bg-white/80 transition-all duration-200" type="button">
+<svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M5 10l7-7m0 0l7 7m-7-7v18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<span class="">Khoản Thu nhập</span>
+</button>
+<!-- Transfer Tab -->
+
+</nav>
+</div>
+<!-- Big Amount Hero Input -->
+<div class="bg-gradient-to-b from-red-50/60 to-transparent border border-red-100 rounded-2xl p-5 text-center shadow-sm">
+<label class="block text-xs font-bold uppercase tracking-wider text-red-600/80 mb-1">
+            Số tiền chi tiêu
+          </label>
+<div class="flex items-center justify-center gap-2">
+<span class="text-3xl lg:text-4xl font-extrabold text-red-600 tracking-tight">-</span>
+<input class="w-72 lg:w-96 text-center text-4xl lg:text-5xl font-extrabold text-red-600 bg-transparent border-0 border-b-2 border-red-300 focus:border-red-600 focus:ring-0 p-0 font-sans tracking-tight" type="text" value="90.000">
+<span class="text-2xl lg:text-3xl font-bold text-red-600 underline decoration-red-300">đ</span>
+</div>
+<!-- Quick Denomination Buttons -->
+<div class="flex flex-wrap items-center justify-center gap-2 mt-4">
+<button class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 shadow-sm active:scale-95 transition-all" type="button">
+              +10.000đ
+            </button>
+<button class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 shadow-sm active:scale-95 transition-all" type="button">
+              +50.000đ
+            </button>
+<button class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 shadow-sm active:scale-95 transition-all" type="button">
+              +100.000đ
+            </button>
+<button class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 shadow-sm active:scale-95 transition-all" type="button">
+              +500.000đ
+            </button>
+<button class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 shadow-sm active:scale-95 transition-all" type="button">
+              +1.000.000đ
+            </button>
+<button class="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 shadow-sm active:scale-95 transition-all" title="Xóa số tiền" type="button">
+              Xóa (C)
+            </button>
+</div>
+</div>
+<!-- AI Smart Parser Container (PRD 32.1) -->
+
+<!-- Main Form: Two Column Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 pt-1">
+<!-- LEFT COLUMN: Categories Selection (7 cols) -->
+<div class="md:col-span-7 space-y-4">
+<div class="flex items-center justify-between">
+<label class="text-sm font-bold text-slate-800 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-600"></span>
+                Chọn Danh mục chi tiêu
+              </label>
+
+</div>
+<!-- Categories Grid -->
+<div class="grid grid-cols-3 gap-2.5">
+<!-- Item 1: Active Ăn uống -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-red-50/90 border-2 border-red-500 shadow-sm transition-all hover:scale-[1.02] text-left" type="button">
+<div class="w-11 h-11 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md mb-2 text-xl">
+                  🍜
+                </div>
+<span class="text-xs font-bold text-red-900">Ăn uống</span>
+
+</button>
+<!-- Item 2: Áo quần -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mb-2 text-xl">
+                  👕
+                </div>
+<span class="text-xs font-semibold text-slate-700">Áo quần</span>
+
+</button>
+<!-- Item 3: Mua sắm -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2 text-xl">
+                  🛒
+                </div>
+<span class="text-xs font-semibold text-slate-700">Mua sắm</span>
+
+</button>
+<!-- Item 4: Giao thông -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2 text-xl">
+                  🚕
+                </div>
+<span class="text-xs font-semibold text-slate-700">Giao thông</span>
+
+</button>
+<!-- Item 5: Giải trí -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center mb-2 text-xl">
+                  🎮
+                </div>
+<span class="text-xs font-semibold text-slate-700">Giải trí</span>
+
+</button>
+<!-- Item 6: Sinh hoạt -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-2 text-xl">
+                  🏠
+                </div>
+<span class="text-xs font-semibold text-slate-700">Sinh hoạt</span>
+
+</button>
+<!-- Item 7: Sức khỏe -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-pink-100 text-pink-700 flex items-center justify-center mb-2 text-xl">
+                  💊
+                </div>
+<span class="text-xs font-semibold text-slate-700">Sức khỏe</span>
+
+</button>
+<!-- Item 8: Giáo dục -->
+<button class="flex flex-col items-center p-3 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all hover:scale-[1.02]" type="button">
+<div class="w-11 h-11 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-2 text-xl">
+                  📚
+                </div>
+<span class="text-xs font-semibold text-slate-700">Giáo dục</span>
+
+</button>
+<!-- Item 9: Thêm danh mục -->
+<button class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50 transition-all text-slate-500 hover:text-slate-700" type="button">
+<div class="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
+<svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="text-xs font-bold">Thêm mới</span>
+</button>
+</div>
+<!-- Realtime Category Budget Status Bar -->
+<div class="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+<div class="flex items-center justify-between text-xs mb-1.5">
+<span class="font-bold text-amber-900 flex items-center gap-1.5">
+<svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fill-rule="evenodd"></path>
+</svg>
+                  Ngân sách "Ăn uống" Tháng 9/2026:
+                </span>
+<span class="font-semibold text-amber-800">Đã chi 90.000đ / 1.500.000đ</span>
+</div>
+<div class="w-full bg-amber-200/60 rounded-full h-2 overflow-hidden">
+<div class="bg-amber-500 h-2 rounded-full w-[6%]"></div>
+</div>
+<p class="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center justify-between">
+<span class="">Còn lại: 1.410.000đ</span>
+<span class="bg-emerald-100 text-emerald-800 px-2 py-0.2 rounded-full text-[10px]">An toàn (94%)</span>
+</p>
+</div>
+</div>
+<!-- RIGHT COLUMN: Payment Account & Metadata (5 cols) -->
+<div class="md:col-span-5 space-y-4">
+<!-- Payment Account Selector -->
+<div>
+<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Tài khoản thanh toán
+              </label>
+<div class="relative">
+<select class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all appearance-none cursor-pointer">
+<option selected="" value="cash">💵 Ví tiền mặt (Khả dụng: 1.090.000 đ)</option>
+<option value="vcb">🏛️ Vietcombank - TK Chính (6.000.000 đ)</option>
+<option value="tpbank">💳 TPBank EVO Visa (Hạn mức 15.000.000 đ)</option>
+<option value="momo">🟣 Ví MoMo Pay (450.000 đ)</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Date & Time Picker Row -->
+<div>
+<div class="flex items-center justify-between mb-1.5">
+<label class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Thời gian ghi nhận
+                </label>
+<div class="flex gap-1.5">
+<button class="text-[11px] font-bold px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors" type="button">
+                    Hôm nay
+                  </button>
+<button class="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors" type="button">
+                    Hôm qua
+                  </button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="relative">
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold py-2 px-3 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500" type="date" value="2026-09-16">
+</div>
+<div class="relative">
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold py-2 px-3 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500" type="time" value="12:45">
+</div>
+</div>
+</div>
+<!-- Note / Description Field -->
+<div>
+<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Ghi chú giao dịch
+              </label>
+<div class="relative">
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" placeholder="Nhập nội dung chi tiết..." type="text" value="Cà phê Highlands gặp bạn trao đổi dự án">
+</div>
+</div>
+<!-- Receipt Photo Attachment Upload -->
+<div>
+
+
+</div>
+<!-- Additional Checkbox Options -->
+<div class="pt-1 space-y-2 border-t border-slate-100">
+
+<label class="flex items-center gap-2.5 cursor-pointer">
+
+
+</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Footer Actions -->
+<footer class="px-7 py-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between">
+
+<div class="flex items-center gap-3">
+<!-- Cancel Button -->
+<button class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-300/80 transition-colors shadow-sm" type="button">
+            Hủy bỏ
+          </button>
+<!-- Save Primary CTA Button -->
+<button class="px-7 py-2.5 rounded-xl text-xs font-extrabold text-white bg-gradient-to-r from-red-600 via-red-600 to-finman-darkred hover:from-red-700 hover:to-red-800 shadow-glow-red transition-all flex items-center gap-2 active:scale-95" type="button">
+<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<span class="">Lưu giao dịch (Enter)</span>
+</button>
+</div>
+</footer>
+</section>
+<!-- END: TransactionModalBox -->
+</div>
+<!-- END: ModalBackdropOverlay -->
+
+
+</body></html>
