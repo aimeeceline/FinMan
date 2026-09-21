@@ -462,6 +462,12 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS —
   - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.73s, 0 lỗi TypeScript).
   - Grep search: 0 tham chiếu tới `GoogleAuthModal` trong toàn bộ mã nguồn.
+  - Live Backend API Verification (`https://finman-backend-8oac.onrender.com`):
+    - `POST /api/v1/auth/register`: PASS — Đăng ký tài khoản mới thành công, cấp phát token JWT và ví tiền mặt 0₫.
+    - `POST /api/v1/auth/login`: PASS — Xác thực email/password thành công, trả về JWT hợp lệ.
+    - `GET /api/v1/auth/me`: PASS — Xác thực Bearer JWT token thành công, trả về đúng UserPrincipal.
+    - `POST /api/v1/auth/google`: PASS — Tiếp nhận Google ID Token từ GIS popup và xử lý tạo phiên đăng nhập.
+  - Client E2E Verification: Google Identity Services popup mở thành công, hiển thị chính xác tài khoản Google client và xác thực vào hệ thống.
 - **Trạng thái**: Completed.
 
 ---
