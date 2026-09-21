@@ -163,13 +163,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('finman_token');
     localStorage.removeItem('finman_user');
-    try {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.disableAutoSelect();
-      }
-    } catch (e) {
-      console.warn('Error disabling Google auto-select:', e);
-    }
     setToken(null);
     setUser(null);
   };

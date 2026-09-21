@@ -10,6 +10,10 @@ declare global {
             callback: (response: { credential: string }) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            context?: 'signin' | 'signup' | 'use';
+            itp_support?: boolean;
+            use_fedcm_for_prompt?: boolean;
+            ux_mode?: 'popup' | 'redirect';
           }) => void;
           renderButton: (
             parent: HTMLElement,

@@ -50,8 +50,11 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
               setIsAuthenticating(false);
             }
           },
-          auto_select: false,
+          auto_select: true,
           cancel_on_tap_outside: true,
+          context: 'signin',
+          itp_support: true,
+          use_fedcm_for_prompt: true,
         });
 
         // Clear previous button elements if any

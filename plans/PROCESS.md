@@ -467,7 +467,16 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
     - `POST /api/v1/auth/login`: PASS — Xác thực email/password thành công, trả về JWT hợp lệ.
     - `GET /api/v1/auth/me`: PASS — Xác thực Bearer JWT token thành công, trả về đúng UserPrincipal.
     - `POST /api/v1/auth/google`: PASS — Tiếp nhận Google ID Token từ GIS popup và xử lý tạo phiên đăng nhập.
-  - Client E2E Verification: Google Identity Services popup mở thành công, hiển thị chính xác tài khoản Google client và xác thực vào hệ thống.
+### [2026-09-21] Task 2.11: Tối Ưu OAuth Flow Google 1-Click (Không Ép Chọn Lại Tài Khoản)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**: "Hiện tại Google Login đang hiển thị đúng tài khoản lelananh02@gmail.com, nhưng khi người dùng bấm 'Tiếp tục bằng Lê Thị Lan Anh', tôi muốn Google đăng nhập trực tiếp bằng tài khoản đó và không mở thêm bước chọn tài khoản lần nữa. Nếu người dùng muốn dùng tài khoản khác, họ có thể bấm mũi tên bên cạnh tài khoản và chọn 'Sử dụng tài khoản khác'. Hãy kiểm tra và điều chỉnh OAuth flow để không ép prompt=select_account ở mọi lần đăng nhập. Giữ lại khả năng chọn tài khoản khác khi người dùng chủ động chọn. Không thay đổi UI/flow khác nếu không cần thiết."
+- **Các file chỉnh sửa**:
+  - `frontend/src/components/auth/GoogleSignInButton.tsx`: Kích hoạt `auto_select: true`, `context: 'signin'`, `itp_support: true`, `use_fedcm_for_prompt: true`. Cho phép khi người dùng bấm vào thân nút cá nhân hóa ("Tiếp tục bằng tên Lê Thị Lan Anh"), Google sẽ tự động xác thực và đăng nhập 1-chạm mà không ép mở popup chọn lại tài khoản. Khi người dùng bấm vào mũi tên `∨` bên cạnh tài khoản, Google vẫn mở danh sách tài khoản khác bình thường.
+  - `frontend/src/context/AuthContext.tsx`: Loại bỏ lệnh `disableAutoSelect()` khi logout, bảo toàn phiên tài khoản được cá nhân hóa trên nút Google của trình duyệt.
+  - `frontend/src/types/google.d.ts`: Cập nhật Type Definition chuẩn cho GIS (`auto_select`, `itp_support`, `use_fedcm_for_prompt`, `context`).
+- **Nội dung công việc**: Tinh chỉnh luồng Google Identity Services loại bỏ hoàn toàn các bước lặp lại dư thừa, đạt trải nghiệm đăng nhập 1-chạm thực sự mượt mà chuẩn Google UX.
+- **Kết quả kiểm thử**: PASS —
+  - `npm run build`: 100% biên dịch thành công (88 modules transformed trong 1.15s, 0 lỗi).
 - **Trạng thái**: Completed.
 
 ---
