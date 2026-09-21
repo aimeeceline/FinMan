@@ -89,11 +89,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.error("Database integrity violation: ", ex);
+        String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        ApiResponse<Void> response = ApiResponse.error(
+                "Lỗi dữ liệu: " + detail,
+                "DATA_INTEGRITY_VIOLATION"
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
         log.error("Unhandled internal server exception: ", ex);
+        String message = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
         ApiResponse<Void> response = ApiResponse.error(
-                "Lỗi hệ thống nội bộ, vui lòng thử lại sau",
+                "Lỗi hệ thống: " + message,
                 "INTERNAL_SERVER_ERROR"
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

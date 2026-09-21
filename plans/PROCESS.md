@@ -407,6 +407,21 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - Browser Automation Verification: Đã chụp màn hình và xác nhận kiểm thử hoạt động tương tác mượt mà trên tất cả các tab (Dashboard, Budget, Accounts, Statistics, Modal thêm giao dịch).
 - **Trạng thái**: Completed.
 
+### [2026-09-21] Task 2.8: Hoàn Thiện Xác Thực Web Fullstack (Login, Register & Google Auth 1-Click)
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/context/AuthContext.tsx`: Chuyển đổi quản lý token & user thực tế từ `localStorage`, loại bỏ mock auth mặc định để người dùng mới thấy trang Login/Register, bổ sung `loginWithGoogle`, `loginDemo`, trích xuất đúng `res.data.data` và trả về thông báo lỗi chi tiết từ backend.
+  - `frontend/src/pages/auth/RegisterPage.tsx`: Bổ sung nút "Đăng ký nhanh bằng Google" chuẩn Google SVG icon và divider "HOẶC ĐĂNG KÝ VỚI EMAIL", kết nối `GoogleAuthModal`, hiển thị thông báo lỗi chi tiết từ máy chủ (trùng email, mật khẩu ngắn).
+  - `frontend/src/pages/auth/LoginPage.tsx`: Kết nối nút "Tiếp tục với Google" mở `GoogleAuthModal`, thêm nút "Trải nghiệm nhanh với tài khoản Demo (1-Click)", kết nối "Quên mật khẩu?" mở `ForgotPasswordModal`, xử lý hiển thị lỗi đăng nhập từ backend.
+  - `frontend/src/pages/auth/GoogleAuthModal.tsx`: Nâng cấp giao diện chọn tài khoản Google chuẩn OAuth 2.0 (tài khoản mẫu + nhập email Google bất kỳ), kết nối gọi trực tiếp API `POST /api/v1/auth/google`.
+  - `backend/src/main/java/com/finman/exception/GlobalExceptionHandler.java`: Bổ sung xử lý `DataIntegrityViolationException` và chi tiết hóa thông báo `INTERNAL_SERVER_ERROR`.
+  - `plans/DEPLOYMENT_PLAN.md`: Kế hoạch triển khai toàn diện cloud 0 VNĐ và VPS Docker.
+- **Nội dung công việc**: Hoàn thiện toàn diện trang Đăng nhập, Đăng ký và tính năng Đăng ký/Đăng nhập bằng Google cho phiên bản Web, khớp nối đồng bộ từ Frontend Vite tới Backend Spring Boot và Database PostgreSQL trên Cloud.
+- **Kết quả kiểm thử**: PASS —
+  - `npm run build`: Frontend build 100% thành công trong 2.15s (0 TypeScript errors).
+  - `mvn test`: 31/31 backend tests PASS (0 failures, 0 errors) với `BUILD SUCCESS`.
+- **Trạng thái**: Completed.
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)

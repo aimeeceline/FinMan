@@ -1,34 +1,48 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { GoogleAuthModal } from './GoogleAuthModal';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface LoginPageProps {
   onNavigateToRegister: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) => {
-  const { login, isLoading } = useAuth();
+  const { login, loginDemo, isLoading } = useAuth();
   const [email, setEmail] = useState('minhkhang.finance@gmail.com');
   const [password, setPassword] = useState('MatKhauBaoMat2026');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    try {
-      const success = await login(email, password);
-      if (!success) {
-        setErrorMsg('Email hoặc mật khẩu không chính xác.');
-      }
-    } catch {
-      setErrorMsg('Đã có lỗi xảy ra. Vui lòng thử lại.');
+    const res = await login(email, password);
+    if (!res.success) {
+      setErrorMsg(res.message || 'Email hoặc mật khẩu không chính xác.');
     }
   };
 
-  const handleGoogleLogin = async () => {
-    await login('google.user@gmail.com', 'google_oauth_pass');
-  };
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordModal
+        onNavigate={(screen) => {
+          if (screen === 'login') setShowForgotPassword(false);
+          if (screen === 'register') {
+            setShowForgotPassword(false);
+            onNavigateToRegister();
+          }
+        }}
+        onSendResetLink={(emailSent) => {
+          alert(`Đã gửi liên kết khôi phục mật khẩu đến: ${emailSent}`);
+          setShowForgotPassword(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-surface flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden select-none">
@@ -61,7 +75,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             </h1>
 
             <p className="font-body-md text-body-md text-on-surface-variant mb-8">
-              Bảo mật ngân hàng, kiểm soát dòng tiền lucid và phân tích thông minh cùng FinMan AI.
+              Bảo mật cấp ngân hàng, kiểm soát dòng tiền lucid và phân tích chi tiêu thông minh cùng FinMan AI.
             </p>
 
             {/* Floating Metric Showcase Cards */}
@@ -100,16 +114,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                   </div>
                   <div className="flex flex-col">
                     <span className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                      Trợ lý tài chính cá nhân
+                      Trợ lý FinMan AI
                     </span>
                     <span className="font-title-md text-title-md font-bold text-on-surface">
-                      Tối ưu chi tiêu cùng FinMan AI
+                      Tự động hóa thông minh
                     </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold">
-                    Tiếng Việt
+                  <span className="font-label-sm text-label-sm font-bold text-tertiary px-2.5 py-1 rounded-full bg-tertiary/10">
+                    Gemini 2.0 Flash
                   </span>
                 </div>
               </div>
@@ -117,14 +131,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
           </div>
         </div>
 
-        {/* Right Login Auth Form Stage (7 cols) */}
+        {/* Right Stage: Login Form (7 cols) */}
         <div className="lg:col-span-7 flex justify-center lg:justify-end w-full">
           <div className="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-xl p-8 sm:p-10 relative overflow-hidden border border-outline-variant/20">
-            {/* Top Accent Gradient Bar */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary-container to-amber-500"></div>
+            {/* Top Accent Line */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary-container to-secondary"></div>
 
-            {/* Auth Header */}
-            <div className="flex flex-col items-start mb-8">
+            <div className="flex flex-col items-start mb-6">
               <div className="w-12 h-12 rounded-2xl bg-surface-container-low shadow-sm flex items-center justify-center mb-4 text-primary">
                 <span className="material-symbols-outlined text-2xl font-bold">lock</span>
               </div>
@@ -145,7 +158,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
 
             {/* Google OAuth Provider Trigger */}
             <button
-              onClick={handleGoogleLogin}
+              onClick={() => setIsGoogleModalOpen(true)}
               className="w-full h-12 py-3 px-4 rounded-xl bg-surface hover:bg-surface-container transition-all duration-200 shadow-sm hover:shadow flex items-center justify-center gap-3 cursor-pointer group border border-outline-variant/30"
               type="button"
             >
@@ -161,7 +174,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             </button>
 
             {/* Divider */}
-            <div className="relative my-7 flex items-center justify-center">
+            <div className="relative my-6 flex items-center justify-center">
               <div className="w-full h-px bg-surface-container-high"></div>
               <span className="absolute px-4 bg-surface-container-lowest font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant tracking-wider">
                 HOẶC TIẾP TỤC VỚI EMAIL
@@ -169,7 +182,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div className="flex flex-col space-y-1.5">
                 <label className="font-label-md text-label-md font-semibold text-on-surface">
@@ -196,16 +209,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                   <label className="font-label-md text-label-md font-semibold text-on-surface">
                     Mật khẩu
                   </label>
-                  <a
-                    href="#forgot"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert('Vui lòng liên hệ quản trị viên hoặc sử dụng tài khoản demo.');
-                    }}
-                    className="font-label-sm text-label-sm text-primary hover:underline font-semibold"
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="font-label-sm text-label-sm text-primary hover:underline font-semibold cursor-pointer"
                   >
                     Quên mật khẩu?
-                  </a>
+                  </button>
                 </div>
                 <div className="relative flex items-center">
                   <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px]">
@@ -260,6 +270,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                   </>
                 )}
               </button>
+
+              {/* 1-Click Demo Testing Button */}
+              <button
+                type="button"
+                onClick={loginDemo}
+                className="w-full py-2.5 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 border border-outline-variant/30"
+              >
+                <span className="material-symbols-outlined text-[18px] text-amber-500">auto_awesome</span>
+                <span>Trải nghiệm nhanh với tài khoản Demo (1-Click)</span>
+              </button>
             </form>
 
             {/* Switch to Register */}
@@ -277,6 +297,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
           </div>
         </div>
       </div>
+
+      {/* Google Auth Modal */}
+      <GoogleAuthModal
+        isOpen={isGoogleModalOpen}
+        onClose={() => setIsGoogleModalOpen(false)}
+      />
     </div>
   );
 };
