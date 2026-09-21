@@ -143,6 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
+        if (receivedUser.email) {
+          localStorage.setItem('finman_last_google_email', receivedUser.email);
+        }
         setToken(receivedToken);
         setUser(receivedUser);
         setIsLoading(false);

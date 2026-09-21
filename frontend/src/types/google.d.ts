@@ -8,6 +8,7 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential: string }) => void;
+            login_hint?: string;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
             context?: 'signin' | 'signup' | 'use';

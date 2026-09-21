@@ -29,9 +29,13 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         return false;
       }
 
+      const savedEmail =
+        localStorage.getItem('finman_last_google_email') || 'lelananh02@gmail.com';
+
       try {
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
+          login_hint: savedEmail || undefined,
           callback: async (response: { credential: string }) => {
             if (!response.credential) {
               if (onError) onError('Không nhận được mã xác thực bảo mật từ Google.');
