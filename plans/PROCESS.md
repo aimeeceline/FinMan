@@ -77,7 +77,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 3.1** | Backend Accounts & Categories APIs (CRUD, Net Worth) | `Completed` | 2026-09-21 | Agent |
-| **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/10_accounts/code.html` | `Pending` | — | — |
+| **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html` | `Pending` | — | — |
 | **Task 3.3** | Kết nối Frontend Accounts với Backend API | `Pending` | — | — |
 | **Task 3.4** | Tests cho Accounts & Net Worth | `Pending` | — | — |
 
@@ -85,9 +85,9 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Pending` | — | — |
-| **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/06_transactions_home` | `Pending` | — | — |
-| **Task 4.3** | Frontend Add Transaction Screen: Bóc tách từ `design/07_add_transaction` | `Pending` | — | — |
-| **Task 4.4** | Frontend Calendar Screen: Bóc tách từ `design/08_calendar` | `Pending` | — | — |
+| **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Pending` | — | — |
+| **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Pending` | — | — |
+| **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Pending` | — | — |
 | **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Pending` | — | — |
 | **Task 4.6** | Tests cho Core Transaction Engine & Balance Consistency | `Pending` | — | — |
 
@@ -95,7 +95,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 5.1** | Backend Budget APIs (Upsert, tính amountSpent, cảnh báo 80%, 100%) | `Pending` | — | — |
-| **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/11_budget/code.html` | `Pending` | — | — |
+| **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` | `Pending` | — | — |
 | **Task 5.3** | Kết nối Frontend Budget với Backend API | `Pending` | — | — |
 | **Task 5.4** | Tests cho Budgeting System | `Pending` | — | — |
 
@@ -103,7 +103,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 6.1** | Backend Aggregation & Apache POI Excel Export Service | `Pending` | — | — |
-| **Task 6.2** | Frontend Statistics Screen: Bóc tách từ `design/09_statistics/code.html` | `Pending` | — | — |
+| **Task 6.2** | Frontend Statistics Screen: Bóc tách từ `design/finman_web_th_ng_k_b_o_c_o/code.html` | `Pending` | — | — |
 | **Task 6.3** | Kết nối Frontend Statistics & Kích hoạt tải file Excel | `Pending` | — | — |
 | **Task 6.4** | Tests cho Statistics & Excel Export | `Pending` | — | — |
 
@@ -112,7 +112,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 |---|---|---|---|---|
 | **Task 7.1** | Backend Gemini AI Client & Structured Prompt Engine | `Pending` | — | — |
 | **Task 7.2** | Backend Quick-Add & Spending Insights APIs | `Pending` | — | — |
-| **Task 7.3** | Frontend AI Assistant Screen: Bóc tách từ `design/12_ai_assistant/code.html` | `Pending` | — | — |
+| **Task 7.3** | Frontend AI Assistant Screen: Giao diện trợ lý ảo AI Web Desktop | `Pending` | — | — |
 | **Task 7.4** | Tests cho Google Gemini AI Features | `Pending` | — | — |
 
 ### Phase 8: Settings, Profile & Web Polish (APIs + Stitch Settings Screen + Web Polish)

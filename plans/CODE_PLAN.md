@@ -160,16 +160,21 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 3.2: Frontend Accounts Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/10_accounts/code.html](file:///d:/FinMan/design/10_accounts/code.html).
+  - **Đọc trực tiếp từ Stitch**: [design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html](file:///d:/FinMan/design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html).
   - Tạo `frontend/src/pages/accounts/AccountsPage.tsx`.
-  - Tái sử dụng: Card tổng hợp tài sản ròng Net Worth (Tài sản, Khoản nợ, Cộng), thẻ Ví tiền mặt, thẻ Ngân hàng, thẻ Thẻ tín dụng (Dư nợ, Hạn mức), và modal thêm tài khoản mới.
-- **Files**: `frontend/src/pages/accounts/AccountsPage.tsx`, `frontend/src/components/accounts/*`.
-- **DoD**: Giao diện hiển thị đúng layout sang trọng của Stitch, có nút thêm ví tiện lợi.
+  - Tái sử dụng:
+    - Thẻ VIP Dark Gunmetal hiển thị Tài sản ròng (Net Worth = Assets - Liabilities) và nút ẩn/hiện số dư bảo mật.
+    - Dải phương trình tài chính (Tổng tài sản thực có, Khoản nợ / Dư nợ thẻ, Thặng dư ròng).
+    - Biểu đồ phân bổ dòng vốn Donut SVG vector tự động tính % tỷ trọng dòng tiền.
+    - 3 Cột nhóm tài khoản: Tiền mặt (`CASH`), Tài khoản ngân hàng (`BANK`), Thẻ tín dụng & Nợ (`CREDIT_CARD`).
+    - Modal thêm tài khoản mới chuẩn Stitch Web.
+- **Files**: `frontend/src/pages/accounts/AccountsPage.tsx`.
+- **DoD**: Giao diện hiển thị đúng layout Desktop-First sang trọng của Stitch, có nút thêm ví và lưu trữ ví tiện lợi.
 
 ### Task 3.3: Kết Nối Frontend Accounts Với Backend API
 - **Mục tiêu**: Tải danh sách ví thực tế từ `/api/v1/accounts`, xử lý form tạo ví mới và cập nhật trạng thái số dư theo thời gian thực.
 - **Files**: `frontend/src/services/accountService.ts`.
-- **DoD**: Người dùng tạo ví mới trên giao diện, ví hiển thị ngay lập tức và số dư tổng cập nhật chuẩn xác.
+- **DoD**: Người dùng tạo ví mới trên giao diện, ví hiển thị ngay lập tức và số dư tổng cập nhật chuẩn xác từ database.
 
 ### Task 3.4: Tests Cho Accounts & Net Worth
 - **Mục tiêu**: Kiểm thử test cases `TC_ACC_01` đến `TC_ACC_05` (kiểm tra phân quyền multi-tenant, tính toán Net Worth).
@@ -177,7 +182,7 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ---
 
-## Phase 4: Core Transaction Engine Fullstack (Home, Add Txn & Calendar)
+## Phase 4: Core Transaction Engine Fullstack (Dashboard, Add Txn & Calendar)
 
 ### Task 4.1: Backend Transaction Service (`@Transactional`)
 - **Mục tiêu**:
@@ -187,39 +192,37 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Files**: `backend/src/main/java/com/finman/service/TransactionService.java`, `controller/TransactionController.java`.
 - **DoD**: Đảm bảo tính toán số dư chính xác từng đồng VNĐ, có rollback khi lỗi.
 
-### Task 4.2: Frontend Transactions Home Dashboard (Bóc tách từ Stitch)
+### Task 4.2: Frontend Transactions Web Dashboard (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/06_transactions_home/code.html](file:///d:/FinMan/design/06_transactions_home/code.html).
-  - Tạo `frontend/src/pages/transactions/TransactionsHomePage.tsx`.
+  - **Đọc trực tiếp từ Stitch**: [design/finman_web_giao_d_ch_dashboard/code.html](file:///d:/FinMan/design/finman_web_giao_d_ch_dashboard/code.html).
+  - Tạo `frontend/src/pages/dashboard/DashboardPage.tsx`.
   - Tái sử dụng:
-    - Interactive Top Action & Month Picker Row (Chọn tháng 8, 9, 10...)
-    - Hero Financial Summary Card (Tổng số dư khả dụng, nút ẩn/hiện con mắt, thẻ Thu nhập xanh, thẻ Chi tiêu đỏ/cam)
-    - Danh sách giao dịch nhóm theo ngày (16 Thứ 4: Áo quần, Tiền lương, có icon tròn, số tiền màu xanh/cam)
-    - Bottom Navigation Bar (Giao dịch, Thống kê, Tài khoản, Hơn)
-    - Nút Floating Action Button (+) thêm giao dịch.
-- **Files**: `frontend/src/pages/transactions/TransactionsHomePage.tsx`, `frontend/src/components/navigation/BottomNav.tsx`.
-- **DoD**: Màn hình Home hiển thị chuẩn xác từng pixel theo Stitch design.
+    - Interactive Header & Bộ chọn tháng (Tháng 8, 9, 10...).
+    - KPI Strip: Tổng số dư khả dụng, Thu nhập xanh, Chi tiêu đỏ, Tỷ lệ tích lũy.
+    - Khung nhập lệnh nhanh FinMan AI (Quick AI Prompt bar).
+    - Sổ cái giao dịch gần đây nhóm theo thời gian.
+    - Cột Net Worth & Tài khoản nhanh phía bên phải.
+- **Files**: `frontend/src/pages/dashboard/DashboardPage.tsx`.
+- **DoD**: Màn hình Web Dashboard hiển thị chuẩn xác từng pixel theo thiết kế Stitch Web.
 
-### Task 4.3: Frontend Add Transaction Screen (Bóc tách từ Stitch)
+### Task 4.3: Frontend Add Transaction Modal (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/07_add_transaction/code.html](file:///d:/FinMan/design/07_add_transaction/code.html).
-  - Tạo `frontend/src/pages/transactions/AddTransactionModal.tsx`.
+  - **Đọc trực tiếp từ Stitch**: [design/finman_web_popup_th_m_giao_d_ch_m_i/code.html](file:///d:/FinMan/design/finman_web_popup_th_m_giao_d_ch_m_i/code.html).
+  - Tạo `frontend/src/components/modals/AddTransactionModal.tsx`.
   - Tái sử dụng:
-    - Tab chuyển đổi: **Thu nhập** | **Chi tiêu** (Bỏ hoàn toàn tab chuyển khoản)
-    - Numpad / Bàn phím số nhập tiền nhanh hiển thị số to (ví dụ: `1.000.000₫`)
-    - Bộ chọn danh mục (Ăn uống, Giải trí, Áo quần...) với icon tương ứng
-    - Bộ chọn tài khoản ví (Tiền mặt, Ngân hàng...)
+    - Popup Glassmorphism chuẩn Web Desktop.
+    - Tab chuyển đổi: **Chi tiêu** | **Thu nhập** (Bỏ hoàn toàn tab chuyển khoản).
+    - Quick Amount Chips: 50k, 100k, 200k, 500k, 1M, 2M, 5M.
+    - Bộ chọn danh mục với icon tương ứng.
+    - Bộ chọn tài khoản ví liên kết.
     - Chọn ngày và ô nhập ghi chú.
-- **Files**: `frontend/src/pages/transactions/AddTransactionModal.tsx`.
+- **Files**: `frontend/src/components/modals/AddTransactionModal.tsx`.
 - **DoD**: Modal thêm giao dịch hoạt động mượt mà, đổi màu chủ đạo khi chuyển giữa Thu và Chi.
 
-### Task 4.4: Frontend Calendar Screen (Bóc tách từ Stitch)
-- **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/08_calendar/code.html](file:///d:/FinMan/design/08_calendar/code.html).
-  - Tạo `frontend/src/pages/transactions/CalendarPage.tsx`.
-  - Hiển thị lịch tháng với số tiền thu/chi vắn tắt dưới mỗi ô ngày, bấm vào ngày nào hiển thị danh sách giao dịch ngày đó.
-- **Files**: `frontend/src/pages/transactions/CalendarPage.tsx`.
-- **DoD**: Người dùng dễ dàng theo dõi dòng tiền trực quan theo ngày trên lịch.
+### Task 4.4: Frontend Calendar & Time Filtering
+- **Mục tiêu**: Tích hợp bộ lọc thời gian trực quan theo tháng và khoảng ngày trên Header và Dashboard, đồng bộ sổ cái giao dịch tức thì.
+- **Files**: `frontend/src/components/layout/TopHeader.tsx`, `frontend/src/pages/dashboard/DashboardPage.tsx`.
+- **DoD**: Người dùng dễ dàng chuyển đổi chu kỳ tháng và theo dõi dòng tiền trực quan.
 
 ### Task 4.5: Kết Nối Frontend Transactions Với Backend API
 - **Mục tiêu**: Khi bấm "Lưu giao dịch" → gọi `POST /api/v1/transactions` → cập nhật số dư trên Hero Card và danh sách giao dịch ngày tức thì.
@@ -241,12 +244,12 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 5.2: Frontend Budget Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/11_budget/code.html](file:///d:/FinMan/design/11_budget/code.html).
+  - **Đọc trực tiếp từ Stitch**: [design/finman_web_qu_n_l_ng_n_s_ch/code.html](file:///d:/FinMan/design/finman_web_qu_n_l_ng_n_s_ch/code.html).
   - Tạo `frontend/src/pages/budget/BudgetPage.tsx`.
   - Tái sử dụng:
-    - Header chọn tháng ngân sách
-    - Card tổng quan ngân sách tháng (Tổng ngân sách, Đã chi, Còn lại)
-    - Danh sách các danh mục có thanh tiến độ (Progress bar) đổi màu Xanh (<80%), Vàng (80-100%), Đỏ (>100%)
+    - Header chọn tháng ngân sách.
+    - Card tổng quan ngân sách tháng (Tổng ngân sách, Đã chi, Còn lại).
+    - Danh sách các danh mục có thanh tiến độ (Progress bar) đổi màu Xanh (<80%), Vàng (80-100%), Đỏ (>100%).
     - Modal thiết lập hạn mức ngân sách mới.
 - **Files**: `frontend/src/pages/budget/BudgetPage.tsx`.
 - **DoD**: Giao diện ngân sách phản ánh trực quan cảnh báo hạn mức chi tiêu.
@@ -271,12 +274,12 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 6.2: Frontend Statistics Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/09_statistics/code.html](file:///d:/FinMan/design/09_statistics/code.html).
+  - **Đọc trực tiếp từ Stitch**: [design/finman_web_th_ng_k_b_o_c_o/code.html](file:///d:/FinMan/design/finman_web_th_ng_k_b_o_c_o/code.html).
   - Tạo `frontend/src/pages/statistics/StatisticsPage.tsx`.
   - Tái sử dụng:
-    - Tab lọc thời gian: Tuần, Tháng, Hàng năm, Tùy chọn (Period)
-    - Biểu đồ tròn (Pie chart) chi tiêu theo danh mục (tỷ lệ % và số tiền)
-    - Danh sách tỷ trọng chi tiêu (Áo quần 91.7%, Ăn uống...) kèm thanh màu sắc tương ứng
+    - Tab lọc thời gian: Tuần, Tháng, Hàng năm, Tùy chọn (Period).
+    - Biểu đồ tỷ trọng chi tiêu theo danh mục (tỷ lệ % và số tiền).
+    - Danh sách chi tiết chi tiêu kèm thanh màu sắc tương ứng.
     - Nút tải file Excel xuất báo cáo.
 - **Files**: `frontend/src/pages/statistics/StatisticsPage.tsx`.
 - **DoD**: Biểu đồ hiển thị sắc nét, đồng bộ màu sắc với thiết kế Stitch.
@@ -306,13 +309,11 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 7.3: Frontend AI Assistant Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/12_ai_assistant/code.html](file:///d:/FinMan/design/12_ai_assistant/code.html).
-  - Tạo `frontend/src/pages/ai/AiAssistantModal.tsx`.
-  - Tái sử dụng:
-    - Khung nhập lệnh AI thông minh với placeholder gợi ý câu nói
-    - Bong bóng chat tư vấn tài chính thông minh
+  - Tái sử dụng giao diện trợ lý ảo AI trên nền tảng Web Desktop:
+    - Khung nhập lệnh AI thông minh với placeholder gợi ý câu nói tự nhiên.
+    - Bong bóng chat tư vấn tài chính thông minh qua Gemini.
     - Card xem trước thông tin giao dịch mà AI bóc tách được trước khi lưu (Số tiền, Danh mục, Ví, Ngày).
-- **Files**: `frontend/src/pages/ai/AiAssistantModal.tsx`.
+- **Files**: `frontend/src/pages/ai/AIAssistantPage.tsx`.
 - **DoD**: Trải nghiệm nhập liệu bằng AI trực quan, thân thiện, người dùng chỉ cần gõ 1 câu là xong.
 
 ### Task 7.4: Tests Cho Google Gemini AI
@@ -321,7 +322,7 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ---
 
-## Phase 8: Settings, Profile & App Polish (APIs + Stitch Settings Screen + PWA)
+## Phase 8: Settings, Profile & App Polish (APIs + Stitch Settings Screen)
 
 ### Task 8.1: Backend Profile & Settings APIs
 - **Mục tiêu**: Cập nhật thông tin cá nhân (Họ tên, Mật khẩu), API đăng xuất.
@@ -330,12 +331,9 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 8.2: Frontend More & Settings Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
-  - **Đọc trực tiếp từ Stitch**: [design/13_more_settings/code.html](file:///d:/FinMan/design/13_more_settings/code.html).
-  - Tạo `frontend/src/pages/settings/SettingsPage.tsx`.
-  - Tái sử dụng:
-    - Profile header (Avatar, Tên người dùng, Email)
-    - Danh sách menu: Thông tin cá nhân, Quản lý tài khoản, Danh mục thu chi, Cài đặt thông báo, Xuất dữ liệu Excel, Đăng xuất
-    - Modal xác nhận đăng xuất.
+  - Tái sử dụng giao diện Cài đặt Web Desktop:
+    - Profile header (Avatar, Tên người dùng, Email).
+    - Danh sách tab: Thông tin cá nhân, Quản lý tài khoản, Danh mục thu chi, Cài đặt thông báo, Xuất dữ liệu Excel, Đăng xuất.
 - **Files**: `frontend/src/pages/settings/SettingsPage.tsx`.
 - **DoD**: Màn hình cài đặt hiển thị đầy đủ các tính năng hỗ trợ, đăng xuất chuyển hướng về Login.
 
