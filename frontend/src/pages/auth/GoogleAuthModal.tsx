@@ -13,47 +13,24 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   onSuccess,
 }) => {
   const { loginWithGoogle } = useAuth();
-  const [selectedAccount, setSelectedAccount] = useState<'khang' | 'maianh' | 'custom'>('khang');
-  const [customEmail, setCustomEmail] = useState('');
-  const [customName, setCustomName] = useState('');
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loadingState, setLoadingState] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
 
-  const accounts = {
-    khang: {
-      name: 'Nguyễn Minh Khang',
-      email: 'minhkhang.finance@gmail.com',
-      badge: 'Đã liên kết FinMan Pro',
-      avatar: 'K',
-      bg: 'bg-primary-fixed text-primary',
-    },
-    maianh: {
-      name: 'Đỗ Mai Anh',
-      email: 'maianh.finance@gmail.com',
-      badge: 'Tài khoản Google mới',
-      avatar: 'A',
-      bg: 'bg-secondary-fixed text-on-secondary-fixed',
-    },
-  };
-
-  const handleConfirm = async () => {
+  const handleConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg('');
-    let emailToSend = '';
-    let nameToSend = '';
 
-    if (selectedAccount === 'custom') {
-      if (!customEmail.trim()) {
-        setErrorMsg('Vui lòng nhập địa chỉ email Google.');
-        return;
-      }
-      emailToSend = customEmail.trim();
-      nameToSend = customName.trim() || customEmail.split('@')[0];
-    } else {
-      emailToSend = accounts[selectedAccount].email;
-      nameToSend = accounts[selectedAccount].name;
+    if (!googleEmail.trim()) {
+      setErrorMsg('Vui lòng nhập địa chỉ email Google.');
+      return;
     }
+
+    const emailToSend = googleEmail.trim().toLowerCase();
+    const nameToSend = fullName.trim() || emailToSend.split('@')[0];
 
     setLoadingState('authenticating');
 
@@ -72,7 +49,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             onSuccess({ name: nameToSend, email: emailToSend });
           }
           onClose();
-        }, 700);
+        }, 600);
       } else {
         setLoadingState('idle');
         setErrorMsg(res.message || 'Xác thực Google không thành công.');
@@ -91,23 +68,17 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
         onClick={loadingState === 'idle' ? onClose : undefined}
       />
 
-      {/* Google OAuth Native Bottom Sheet Modal */}
+      {/* Google OAuth Modal */}
       <div
         aria-labelledby="oauth-heading"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-50 max-w-[480px] mx-auto w-full bg-surface-container-lowest sm:rounded-3xl rounded-t-[28px] shadow-2xl transition-all duration-300 flex flex-col overflow-hidden border border-outline-variant/20"
+        className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-50 max-w-[460px] mx-auto w-full bg-surface-container-lowest sm:rounded-3xl rounded-t-[28px] shadow-2xl transition-all duration-300 flex flex-col overflow-hidden border border-outline-variant/20"
         role="dialog"
       >
-        {/* Drag Handle on Mobile */}
-        <div className="w-full flex items-center justify-center pt-3 pb-1 sm:hidden cursor-grab">
-          <div className="w-10 h-1 rounded-full bg-surface-container-highest" />
-        </div>
-
-        <div className="p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-          {/* Top Modal Header */}
+        <div className="p-6 flex flex-col gap-4">
+          {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Google Official Multi-colored G Logo */}
               <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 border border-surface-container">
                 <svg aria-label="Google logo" className="w-6 h-6" viewBox="0 0 24 24">
                   <path
@@ -133,14 +104,13 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
                   Đăng nhập bằng Google
                 </h2>
                 <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  để kết nối tới ứng dụng <span className="font-label-md text-label-md font-bold text-primary">FinMan</span>
+                  Xác thực trực tiếp với FinMan
                 </p>
               </div>
             </div>
 
-            {/* Close Button */}
             <button
-              aria-label="Đóng bảng đăng nhập"
+              aria-label="Đóng"
               className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all shrink-0 cursor-pointer"
               onClick={onClose}
               disabled={loadingState !== 'idle'}
@@ -157,171 +127,89 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             </div>
           )}
 
-          {/* Account Selection Feed */}
-          <div className="flex flex-col gap-2">
-            <p className="font-label-md text-label-md font-semibold text-on-surface-variant px-1">
-              Chọn tài khoản Google của bạn:
-            </p>
-
-            {/* Account 1 */}
-            <button
-              className={`w-full text-left rounded-2xl p-3 flex items-center gap-3 transition-all cursor-pointer border ${
-                selectedAccount === 'khang'
-                  ? 'bg-secondary/10 border-secondary'
-                  : 'bg-surface-container-lowest border-outline-variant/30 hover:bg-surface-container-low'
-              }`}
-              onClick={() => setSelectedAccount('khang')}
-              type="button"
-            >
-              <div className={`w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center shadow-sm font-bold ${accounts.khang.bg}`}>
-                {accounts.khang.avatar}
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-label-lg text-label-lg font-bold text-on-surface truncate">
-                  {accounts.khang.name}
+          {/* Form to enter Google Account */}
+          <form onSubmit={handleConfirm} className="flex flex-col gap-3">
+            <div className="space-y-1">
+              <label className="font-label-md text-label-md font-semibold text-on-surface">
+                Email Google của bạn
+              </label>
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px]">
+                  mail
                 </span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  {accounts.khang.email}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-secondary font-semibold mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                  {accounts.khang.badge}
-                </span>
-              </div>
-              {selectedAccount === 'khang' && (
-                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-[16px]">check</span>
-                </div>
-              )}
-            </button>
-
-            {/* Account 2 */}
-            <button
-              className={`w-full text-left rounded-2xl p-3 flex items-center gap-3 transition-all cursor-pointer border ${
-                selectedAccount === 'maianh'
-                  ? 'bg-secondary/10 border-secondary'
-                  : 'bg-surface-container-lowest border-outline-variant/30 hover:bg-surface-container-low'
-              }`}
-              onClick={() => setSelectedAccount('maianh')}
-              type="button"
-            >
-              <div className={`w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center shadow-sm font-bold ${accounts.maianh.bg}`}>
-                {accounts.maianh.avatar}
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-label-lg text-label-lg font-bold text-on-surface truncate">
-                  {accounts.maianh.name}
-                </span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  {accounts.maianh.email}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-tertiary font-semibold mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
-                  {accounts.maianh.badge}
-                </span>
-              </div>
-              {selectedAccount === 'maianh' && (
-                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-[16px]">check</span>
-                </div>
-              )}
-            </button>
-
-            {/* Account 3: Custom Google Account */}
-            <button
-              className={`w-full text-left rounded-2xl p-3 flex items-center gap-3 transition-all cursor-pointer border ${
-                selectedAccount === 'custom'
-                  ? 'bg-secondary/10 border-secondary'
-                  : 'bg-surface-container-lowest border-outline-variant/30 hover:bg-surface-container-low'
-              }`}
-              onClick={() => setSelectedAccount('custom')}
-              type="button"
-            >
-              <div className="w-11 h-11 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0">
-                <span className="material-symbols-outlined text-[22px]">person_add</span>
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-label-lg text-label-lg font-bold text-on-surface truncate">
-                  Sử dụng tài khoản Google khác
-                </span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  Nhập địa chỉ email Google bất kỳ để đăng nhập / đăng ký
-                </span>
-              </div>
-              {selectedAccount === 'custom' && (
-                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-[16px]">check</span>
-                </div>
-              )}
-            </button>
-
-            {/* Custom Input Form (Appears when 'custom' is selected) */}
-            {selectedAccount === 'custom' && (
-              <div className="p-3 bg-surface rounded-xl border border-secondary/30 space-y-2 mt-1 animate-fadeIn">
                 <input
                   type="email"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  placeholder="Nhập email Google (vd: yourname@gmail.com)"
-                  className="w-full px-3 py-2 bg-surface-container-lowest rounded-lg border border-outline-variant text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                  required
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  placeholder="yourname@gmail.com"
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all"
                   autoFocus
                 />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-label-md text-label-md font-semibold text-on-surface">
+                Họ và tên hiển thị
+              </label>
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px]">
+                  person
+                </span>
                 <input
                   type="text"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="Tên hiển thị của bạn (vd: Nguyễn Văn A)"
-                  className="w-full px-3 py-2 bg-surface-container-lowest rounded-lg border border-outline-variant text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Họ tên của bạn"
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all"
                 />
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Google Permissions Notice */}
-          <div className="bg-surface-container-low rounded-xl p-3 text-[12px] text-on-surface-variant leading-relaxed">
-            Để tiếp tục, Google sẽ xác thực và liên kết an toàn tài khoản của bạn với FinMan. Dữ liệu được bảo vệ chuẩn OAuth 2.0.
-          </div>
+            <div className="bg-surface-container-low rounded-xl p-3 text-[12px] text-on-surface-variant leading-relaxed">
+              Tài khoản Google của bạn sẽ được liên kết an toàn với hệ thống FinMan để đồng bộ dữ liệu tài chính.
+            </div>
 
-          {/* Action Button */}
-          <div className="flex flex-col gap-2 pt-1">
-            <button
-              className="w-full py-3.5 px-4 rounded-xl bg-secondary text-white font-label-lg text-label-lg font-bold shadow-md flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-75"
-              disabled={loadingState !== 'idle'}
-              onClick={handleConfirm}
-              type="button"
-            >
-              {loadingState === 'idle' && (
-                <>
-                  <span>Tiếp tục xác thực Google</span>
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </>
-              )}
-              {loadingState === 'authenticating' && (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Đang kết nối với Google...</span>
-                </>
-              )}
-              {loadingState === 'success' && (
-                <>
-                  <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                  <span>Đăng nhập thành công!</span>
-                </>
-              )}
-            </button>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                className="w-full py-3 px-4 rounded-xl bg-secondary text-white font-label-lg text-label-lg font-bold shadow-md flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-75"
+                disabled={loadingState !== 'idle'}
+                type="submit"
+              >
+                {loadingState === 'idle' && (
+                  <>
+                    <span>Xác nhận đăng nhập Google</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </>
+                )}
+                {loadingState === 'authenticating' && (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang kết nối...</span>
+                  </>
+                )}
+                {loadingState === 'success' && (
+                  <>
+                    <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                    <span>Đăng nhập thành công!</span>
+                  </>
+                )}
+              </button>
 
-            <button
-              className="w-full py-2.5 px-4 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors cursor-pointer text-center"
-              onClick={onClose}
-              disabled={loadingState !== 'idle'}
-              type="button"
-            >
-              Hủy bỏ
-            </button>
-          </div>
+              <button
+                className="w-full py-2 px-4 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors cursor-pointer text-center"
+                onClick={onClose}
+                disabled={loadingState !== 'idle'}
+                type="button"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </form>
 
           {/* Footer Security Badges */}
-          <div className="flex items-center justify-center gap-4 text-[12px] text-on-surface-variant">
+          <div className="flex items-center justify-center gap-4 text-[12px] text-on-surface-variant pt-1 border-t border-outline-variant/20">
             <div className="flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">lock</span>
               <span>Google Identity Secure</span>
@@ -329,7 +217,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             <span className="inline-block w-1 h-1 rounded-full bg-outline-variant" />
             <div className="flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">verified_user</span>
-              <span>OAuth 2.0 Verified</span>
+              <span>OAuth 2.0</span>
             </div>
           </div>
         </div>

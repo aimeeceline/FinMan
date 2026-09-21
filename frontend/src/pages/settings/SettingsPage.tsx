@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { mockCategories } from '../../services/mockData';
+import { DEFAULT_CATEGORIES } from '../../constants/categories';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -27,18 +27,24 @@ export const SettingsPage: React.FC = () => {
           </h3>
 
           <div className="flex items-center gap-4">
-            <img
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'}
-              alt="Avatar"
-              className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
-            />
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt="Avatar"
+                className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xl ring-2 ring-primary/20">
+                {(user?.fullName || user?.email || 'U').charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h4 className="font-title-md text-title-md font-bold text-on-surface">
-                {user?.fullName || 'Nguyễn Minh Khang'}
+                {user?.fullName || user?.email || 'Tài khoản người dùng'}
               </h4>
               <p className="text-xs text-on-surface-variant">{user?.email}</p>
               <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary text-[11px] font-bold">
-                Tài khoản VIP Fintech
+                {user?.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên FinMan'}
               </span>
             </div>
           </div>
@@ -92,7 +98,7 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {mockCategories.map((c) => (
+            {DEFAULT_CATEGORIES.map((c) => (
               <div
                 key={c.id}
                 className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between"

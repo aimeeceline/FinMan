@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { mockBudgets, mockCategories } from '../../services/mockData';
+import { DEFAULT_CATEGORIES } from '../../constants/categories';
 import type { Budget } from '../../types';
 
 export const BudgetPage: React.FC = () => {
-  const [budgets, setBudgets] = useState<Budget[]>(mockBudgets);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isAddingBudget, setIsAddingBudget] = useState(false);
-  const [newCategoryId, setNewCategoryId] = useState<number>(mockCategories[4].id);
-  const [newAmount, setNewAmount] = useState<number>(1000000);
+  const [newCategoryId, setNewCategoryId] = useState<number>(DEFAULT_CATEGORIES[0].id);
+  const [newAmount, setNewAmount] = useState<number>(0);
 
   const totalAllocated = budgets.reduce((acc, b) => acc + b.allocatedAmount, 0);
   const totalSpent = budgets.reduce((acc, b) => acc + b.spentAmount, 0);
@@ -16,7 +16,7 @@ export const BudgetPage: React.FC = () => {
 
   const handleCreateBudget = (e: React.FormEvent) => {
     e.preventDefault();
-    const category = mockCategories.find((c) => c.id === newCategoryId);
+    const category = DEFAULT_CATEGORIES.find((c) => c.id === newCategoryId);
     if (!category || newAmount <= 0) return;
 
     const existingIndex = budgets.findIndex((b) => b.category.id === category.id);
@@ -93,7 +93,7 @@ export const BudgetPage: React.FC = () => {
                 onChange={(e) => setNewCategoryId(Number(e.target.value))}
                 className="w-full bg-surface-container-low rounded-xl px-3 py-2 text-sm border border-outline-variant/40"
               >
-                {mockCategories
+                {DEFAULT_CATEGORIES
                   .filter((c) => c.type === 'EXPENSE')
                   .map((c) => (
                     <option key={c.id} value={c.id}>
@@ -216,8 +216,27 @@ export const BudgetPage: React.FC = () => {
           Chi tiết Hạn mức theo Danh mục
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter-desktop">
-          {budgets.map((b) => {
+        {budgets.length === 0 ? (
+          <div className="p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant mb-3">
+              <span className="material-symbols-outlined text-3xl">savings</span>
+            </div>
+            <h4 className="font-title-md text-title-md font-bold text-on-surface mb-1">
+              Chưa thiết lập ngân sách nào
+            </h4>
+            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mb-4">
+              Hãy thiết lập hạn mức chi tiêu cho các danh mục để kiểm soát tài chính hiệu quả hơn.
+            </p>
+            <button
+              onClick={() => setIsAddingBudget(true)}
+              className="px-4 py-2 rounded-xl bg-secondary text-white font-label-md text-label-md font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
+            >
+              + Thiết lập ngân sách đầu tiên
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter-desktop">
+            {budgets.map((b) => {
             const pct = b.allocatedAmount > 0 ? (b.spentAmount / b.allocatedAmount) * 100 : 0;
             const isDanger = pct >= 100;
             const isWarning = pct >= 80 && pct < 100;
@@ -283,6 +302,7 @@ export const BudgetPage: React.FC = () => {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

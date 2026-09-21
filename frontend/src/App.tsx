@@ -11,15 +11,16 @@ import { AccountsPage } from './pages/accounts/AccountsPage';
 import { StatisticsPage } from './pages/statistics/StatisticsPage';
 import { AIAssistantPage } from './pages/ai/AIAssistantPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
-import { mockTransactions } from './services/mockData';
-import type { Transaction } from './types';
+import { DEFAULT_ACCOUNTS } from './constants/accounts';
+import type { Account, Transaction } from './types';
 
 const MainApp: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const [currentRoute, setCurrentRoute] = useState<NavRoute>('giao-dich');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Handle adding new transaction
@@ -29,6 +30,21 @@ const MainApp: React.FC = () => {
       id: Date.now(),
     };
     setTransactions([tx, ...transactions]);
+
+    // Update account balance dynamically
+    setAccounts((prevAccounts) =>
+      prevAccounts.map((acc) => {
+        if (acc.id === newTx.account.id) {
+          const change = newTx.type === 'INCOME' ? newTx.amount : -newTx.amount;
+          return { ...acc, currentBalance: acc.currentBalance + change };
+        }
+        return acc;
+      })
+    );
+  };
+
+  const handleAddAccount = (newAcc: Account) => {
+    setAccounts((prev) => [...prev, newAcc]);
   };
 
   // If not authenticated, render Login/Register
@@ -72,6 +88,7 @@ const MainApp: React.FC = () => {
         {currentRoute === 'giao-dich' && (
           <DashboardPage
             transactions={filteredTransactions}
+            accounts={accounts}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onNavigateToAccounts={() => setCurrentRoute('tai-khoan-va-tai-san')}
             onNavigateToReports={() => setCurrentRoute('thong-ke-va-bao-cao')}
@@ -80,9 +97,13 @@ const MainApp: React.FC = () => {
 
         {currentRoute === 'quan-ly-ngan-sach' && <BudgetPage />}
 
-        {currentRoute === 'tai-khoan-va-tai-san' && <AccountsPage />}
+        {currentRoute === 'tai-khoan-va-tai-san' && (
+          <AccountsPage accounts={accounts} onAddAccount={handleAddAccount} />
+        )}
 
-        {currentRoute === 'thong-ke-va-bao-cao' && <StatisticsPage />}
+        {currentRoute === 'thong-ke-va-bao-cao' && (
+          <StatisticsPage transactions={transactions} />
+        )}
 
         {currentRoute === 'tro-ly-finman-ai' && <AIAssistantPage />}
 
@@ -94,6 +115,7 @@ const MainApp: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddTransaction={handleAddTransaction}
+        accounts={accounts}
       />
     </div>
   );

@@ -8,9 +8,9 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) => {
-  const { login, loginDemo, isLoading } = useAuth();
-  const [email, setEmail] = useState('minhkhang.finance@gmail.com');
-  const [password, setPassword] = useState('MatKhauBaoMat2026');
+  const { login, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -75,57 +75,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             </h1>
 
             <p className="font-body-md text-body-md text-on-surface-variant mb-8">
-              Bảo mật cấp ngân hàng, kiểm soát dòng tiền lucid và phân tích chi tiêu thông minh cùng FinMan AI.
+              Bảo mật cấp ngân hàng, kiểm soát dòng tiền minh bạch và phân tích chi tiêu thông minh cùng FinMan AI.
             </p>
 
-            {/* Floating Metric Showcase Cards */}
-            <div className="w-full space-y-3.5">
-              {/* Metric Card 1 */}
-              <div className="w-full p-4 rounded-xl bg-surface-container-lowest shadow-md flex items-center justify-between border border-outline-variant/20 hover:shadow-lg transition-all">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
-                    <span className="material-symbols-outlined text-2xl font-bold">trending_up</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                      Tăng trưởng tài sản thuần
-                    </span>
-                    <span className="font-title-md text-title-md font-bold text-on-surface">
-                      Thặng dư tích lũy tháng
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-currency-row text-currency-row font-extrabold text-secondary flex items-center gap-0.5 justify-end">
-                    +81.8%
-                    <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                  </span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant/80">
-                    So với kỳ trước
-                  </span>
-                </div>
+            {/* Feature List */}
+            <div className="w-full space-y-3 font-body-md text-body-md text-on-surface-variant">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+                <span>Theo dõi dòng tiền thu chi tức thời</span>
               </div>
-
-              {/* Metric Card 2 */}
-              <div className="w-full p-4 rounded-xl bg-surface-container-lowest shadow-md flex items-center justify-between border border-outline-variant/20 hover:shadow-lg transition-all">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary">
-                    <span className="material-symbols-outlined text-2xl">neurology</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                      Trợ lý FinMan AI
-                    </span>
-                    <span className="font-title-md text-title-md font-bold text-on-surface">
-                      Tự động hóa thông minh
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-label-sm text-label-sm font-bold text-tertiary px-2.5 py-1 rounded-full bg-tertiary/10">
-                    Gemini 2.0 Flash
-                  </span>
-                </div>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+                <span>Kiểm soát ngân sách đa ngưỡng 80% - 100%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+                <span>Trợ lý FinMan AI phân tích bằng Gemini</span>
               </div>
             </div>
           </div>
@@ -142,10 +107,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                 <span className="material-symbols-outlined text-2xl font-bold">lock</span>
               </div>
               <h2 className="font-headline-lg text-headline-lg font-extrabold text-on-surface tracking-tight mb-1">
-                Chào mừng trở lại
+                Đăng nhập hệ thống
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                Đăng nhập để tiếp tục tối ưu dòng tiền thông minh cùng FinMan
+                Nhập thông tin tài khoản FinMan của bạn để tiếp tục
               </p>
             </div>
 
@@ -177,7 +142,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             <div className="relative my-6 flex items-center justify-center">
               <div className="w-full h-px bg-surface-container-high"></div>
               <span className="absolute px-4 bg-surface-container-lowest font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant tracking-wider">
-                HOẶC TIẾP TỤC VỚI EMAIL
+                HOẶC ĐĂNG NHẬP VỚI EMAIL
               </span>
             </div>
 
@@ -197,7 +162,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="Nhập email của bạn"
                     className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                   />
                 </div>
@@ -226,7 +191,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu của bạn"
+                    placeholder="Nhập mật khẩu"
                     className="w-full pl-10 pr-12 py-3 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                   />
                   <button
@@ -269,16 +234,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </>
                 )}
-              </button>
-
-              {/* 1-Click Demo Testing Button */}
-              <button
-                type="button"
-                onClick={loginDemo}
-                className="w-full py-2.5 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 border border-outline-variant/30"
-              >
-                <span className="material-symbols-outlined text-[18px] text-amber-500">auto_awesome</span>
-                <span>Trải nghiệm nhanh với tài khoản Demo (1-Click)</span>
               </button>
             </form>
 

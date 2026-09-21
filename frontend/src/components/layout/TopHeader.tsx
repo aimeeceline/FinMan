@@ -107,7 +107,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <img
             alt="Profile"
             className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
-            src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'}
+            src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=0D8ABC&color=fff`}
           />
         </div>
       </div>

@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import type { Account, AccountType } from '../../types';
-import { mockAccounts, mockStats } from '../../services/mockData';
+import { DEFAULT_ACCOUNTS } from '../../constants/accounts';
 
-export const AccountsPage: React.FC = () => {
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+interface AccountsPageProps {
+  accounts?: Account[];
+  onAddAccount?: (account: Account) => void;
+}
+
+export const AccountsPage: React.FC<AccountsPageProps> = ({
+  accounts: propAccounts,
+  onAddAccount,
+}) => {
+  const [localAccounts, setLocalAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
+  const accounts = propAccounts || localAccounts;
+  const setAccounts = (newAccs: Account[]) => setLocalAccounts(newAccs);
+
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('BANK');
@@ -35,7 +46,11 @@ export const AccountsPage: React.FC = () => {
       napasLinked: type === 'BANK',
     };
 
-    setAccounts([...accounts, newAcc]);
+    if (onAddAccount) {
+      onAddAccount(newAcc);
+    } else {
+      setAccounts([...accounts, newAcc]);
+    }
     setName('');
     setInitialBalance(0);
     setAccountNumber('');
@@ -178,8 +193,8 @@ export const AccountsPage: React.FC = () => {
                 <span className="font-currency-display text-2xl text-slate-400 font-medium">₫</span>
               </div>
               <div className="inline-flex items-center gap-space-2xs px-space-sm py-space-2xs rounded-full bg-emerald-500/15 text-emerald-400 font-label-md text-label-md font-semibold">
-                <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                <span>+{mockStats.previousMonthNetWorthDelta}% so với tháng trước</span>
+                <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+                <span>{accounts.length} tài khoản</span>
               </div>
             </div>
 

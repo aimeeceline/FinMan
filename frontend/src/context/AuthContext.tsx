@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '../types';
 import { api } from '../services/api';
-import { mockUser } from '../services/mockData';
 
 export interface GoogleAuthData {
   idToken?: string;
@@ -23,7 +22,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthResult>;
   register: (email: string, fullName: string, password: string) => Promise<AuthResult>;
   loginWithGoogle: (data: GoogleAuthData) => Promise<AuthResult>;
-  loginDemo: () => void;
   logout: () => void;
 }
 
@@ -66,8 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const receivedUser: User = {
           id: userObj?.id || 1,
           email: userObj?.email || email,
-          fullName: userObj?.fullName || 'Nguyễn Minh Khang',
-          avatarUrl: userObj?.avatarUrl || mockUser.avatarUrl,
+          fullName: userObj?.fullName || 'Người dùng FinMan',
+          avatarUrl: userObj?.avatarUrl || '',
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
@@ -104,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: userObj?.id || 1,
           email: userObj?.email || email,
           fullName: userObj?.fullName || fullName,
-          avatarUrl: userObj?.avatarUrl || mockUser.avatarUrl,
+          avatarUrl: userObj?.avatarUrl || '',
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
@@ -139,9 +137,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (receivedToken) {
         const receivedUser: User = {
           id: userObj?.id || Date.now(),
-          email: userObj?.email || data.email || 'google.user@gmail.com',
-          fullName: userObj?.fullName || data.fullName || 'Google User',
-          avatarUrl: userObj?.avatarUrl || data.avatarUrl || mockUser.avatarUrl,
+          email: userObj?.email || data.email || '',
+          fullName: userObj?.fullName || data.fullName || 'Người dùng Google',
+          avatarUrl: userObj?.avatarUrl || data.avatarUrl || '',
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
@@ -162,14 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginDemo = () => {
-    const demoToken = 'mock_jwt_token_demo_authenticated';
-    localStorage.setItem('finman_token', demoToken);
-    localStorage.setItem('finman_user', JSON.stringify(mockUser));
-    setToken(demoToken);
-    setUser(mockUser);
-  };
-
   const logout = () => {
     localStorage.removeItem('finman_token');
     localStorage.removeItem('finman_user');
@@ -187,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         loginWithGoogle,
-        loginDemo,
         logout,
       }}
     >

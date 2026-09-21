@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChatMessage {
   id: number;
@@ -8,11 +9,12 @@ interface ChatMessage {
 }
 
 export const AIAssistantPage: React.FC = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
       sender: 'ai',
-      text: 'Xin chào Khang! Tôi là Trợ lý FinMan AI được vận hành bởi Gemini. Tôi có thể giúp bạn bóc tách giao dịch nhanh từ văn bản tiếng Việt, phân tích thói quen chi tiêu tháng 9 hoặc tư vấn hạn mức ngân sách tối ưu. Bạn cần hỗ trợ gì hôm nay?',
+      text: `Xin chào ${user?.fullName || 'bạn'}! Tôi là Trợ lý FinMan AI được vận hành bởi Gemini 2.0 Flash. Tôi có thể hỗ trợ bạn phân loại giao dịch tài chính từ câu nói tiếng Việt và tư vấn quản lý ngân sách thông minh. Bạn cần hỗ trợ gì hôm nay?`,
       time: '09:00',
     },
   ]);
@@ -35,12 +37,12 @@ export const AIAssistantPage: React.FC = () => {
     setIsTyping(true);
 
     setTimeout(() => {
-      let reply = 'Dựa trên dữ liệu tài chính tháng 9 của bạn: Thu nhập 6.000.000 ₫, Chi tiêu 1.090.000 ₫ (18.2%), thặng dư tích lũy hiện tại là +4.910.000 ₫. Bạn đang kiểm soát rất tốt chi tiêu!';
+      let reply = 'Tôi đã tiếp nhận yêu cầu của bạn. Tôi có thể giúp bạn phân loại khoản chi, gợi ý ngân sách chi tiêu hợp lý hoặc phân tích dòng tiền.';
       const lower = text.toLowerCase();
       if (lower.includes('ăn uống') || lower.includes('chi tiêu')) {
-        reply = 'Hạng mục Ăn uống của bạn đang chiếm 50.5% tổng chi tiêu (550.000 ₫ / 2.000.000 ₫ hạn mức). Bạn còn 1.450.000 ₫ cho 13 ngày tới, tương đương khoảng 111.000 ₫/ngày.';
+        reply = 'Khoản chi cho ăn uống sinh hoạt nên được duy trì hợp lý trong hạn mức ngân sách để đảm bảo an toàn tài chính và tích lũy bền vững.';
       } else if (lower.includes('ngân sách') || lower.includes('tiết kiệm')) {
-        reply = 'Gợi ý: Bạn có thể chuyển 3.000.000 ₫ thặng dư vào tài khoản Tiết kiệm có kỳ hạn tại Vietcombank để hưởng lãi suất và tránh chi tiêu bộc phát.';
+        reply = 'Quy tắc 50/30/20 là phương pháp quản lý tài chính phổ biến: 50% cho nhu cầu thiết yếu, 30% cho mong muốn cá nhân và 20% cho tiết kiệm/đầu tư.';
       }
 
       const aiMsg: ChatMessage = {

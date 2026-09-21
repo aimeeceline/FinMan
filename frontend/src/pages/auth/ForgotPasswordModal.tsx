@@ -9,9 +9,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   onNavigate,
   onSendResetLink,
 }) => {
-  const [email, setEmail] = useState('minhkhang.finance@gmail.com')
-  const [secondsRemaining, setSecondsRemaining] = useState(54)
-  const [isSent, setIsSent] = useState(true)
+  const [email, setEmail] = useState('')
+  const [secondsRemaining, setSecondsRemaining] = useState(0)
+  const [isSent, setIsSent] = useState(false)
   const [isPulse, setIsPulse] = useState(false)
 
   useEffect(() => {

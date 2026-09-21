@@ -150,7 +150,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigateToLogin })
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nguyễn Minh Khang"
+                    placeholder="Ví dụ: Nguyễn Văn A"
                     className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all"
                   />
                 </div>
@@ -170,7 +170,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigateToLogin })
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="khang.finance@gmail.com"
+                    placeholder="tenban@example.com"
                     className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-outline-variant/40 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary transition-all"
                   />
                 </div>

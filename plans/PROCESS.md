@@ -422,6 +422,33 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - `mvn test`: 31/31 backend tests PASS (0 failures, 0 errors) với `BUILD SUCCESS`.
 - **Trạng thái**: Completed.
 
+### [2026-09-21] Task 2.9: Xóa Bỏ Toàn Bộ Thông Tin Demo & Dữ Liệu Mock Fallback Cho Production
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**: "xóa hết tất cả các thông tin demo, tôi không cần có những thông tin fallback"
+- **Các file tạo mới / chỉnh sửa / xóa bỏ**:
+  - `frontend/src/services/mockData.ts`: **ĐÃ XÓA VĨNH VIỄN** (loại bỏ toàn bộ `mockUser`, `mockTransactions`, `mockBudgets`, `mockStats`, `mockAccounts`).
+  - `frontend/src/constants/categories.ts`: **TẠO MỚI** `DEFAULT_CATEGORIES` (9 danh mục thu chi hệ thống tiêu chuẩn: Ăn uống, Mua sắm, Giao thông, Lương, v.v.).
+  - `frontend/src/constants/accounts.ts`: **TẠO MỚI** `DEFAULT_ACCOUNTS` (chỉ duy nhất 1 ví "Tiền mặt" ban đầu với số dư 0₫ chuẩn như database thực tế).
+  - `frontend/src/context/AuthContext.tsx`: Xóa bỏ hoàn toàn `mockUser`, phương thức `loginDemo` và các fallback token giả. Người dùng bắt buộc phải đăng nhập/đăng ký tài khoản thực tế qua JWT.
+  - `frontend/src/pages/auth/LoginPage.tsx`: Xóa bỏ nút "Trải nghiệm nhanh với tài khoản Demo (1-Click)", xóa bỏ giá trị khởi tạo email/mật khẩu demo.
+  - `frontend/src/pages/auth/ForgotPasswordModal.tsx`: Xóa bỏ email điền sẵn mặc định.
+  - `frontend/src/pages/auth/GoogleAuthModal.tsx`: Xóa bỏ các thẻ demo profile tĩnh ("khang", "maianh"), cho phép người dùng nhập trực tiếp tài khoản Google thực và xác thực qua backend `POST /api/v1/auth/google`.
+  - `frontend/src/pages/auth/RegisterPage.tsx`: Đổi các placeholder demo ("Nguyễn Minh Khang", "khang.finance@gmail.com") thành ví dụ chung ("Ví dụ: Nguyễn Văn A", "tenban@example.com").
+  - `frontend/src/components/layout/Sidebar.tsx` & `TopHeader.tsx`: Xóa bỏ tên fallback cố định 'Nguyễn Minh Khang' và ảnh Unsplash mockup. Hiển thị động theo `user?.fullName` hoặc chữ cái đại diện tài khoản.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Loại bỏ toàn bộ `mockStats` và `mockAccounts`. Tất cả các chỉ số (Tổng số dư, Thu nhập, Chi tiêu, Tỷ lệ tích lũy) được tính toán hoàn toàn động theo danh sách giao dịch thực tế của người dùng. Hiển thị trạng thái rỗng sạch (Clean Empty State) khi chưa có giao dịch. Xóa bỏ mẫu văn bản AI điền sẵn.
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Xóa bỏ `mockStats`, tính toán động 100% từ `transactions` prop. Tự động hiển thị empty state khi dữ liệu trống.
+  - `frontend/src/pages/accounts/AccountsPage.tsx`: Xóa bỏ toàn bộ tài khoản demo (Vietcombank 4M, Techcombank, VPBank nợ thẻ). Khởi tạo với ví "Tiền mặt" (0₫) và hỗ trợ thêm tài khoản ngân hàng thực tế.
+  - `frontend/src/pages/budget/BudgetPage.tsx`: Khởi tạo danh sách ngân sách là mảng rỗng `[]`, xóa bỏ các ngân sách mẫu 2M/1M/500k, reset số tiền ban đầu về 0, hiển thị giao diện empty state thân thiện.
+  - `frontend/src/pages/ai/AIAssistantPage.tsx`: Xóa bỏ tên chào hỏi "Khang" cố định và các con số mẫu (6.000.000₫ / 1.090.000₫), lời chào hiển thị linh hoạt theo tên tài khoản thực tế.
+  - `frontend/src/pages/settings/SettingsPage.tsx`: Xóa bỏ fallback tên và avatar Unsplash mẫu, sử dụng `DEFAULT_CATEGORIES`.
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Reset số tiền khởi tạo về 0 (thay vì 90.000₫ demo), danh mục dùng `DEFAULT_CATEGORIES`, danh sách tài khoản liên kết trực tiếp với tài khoản thực của người dùng.
+  - `frontend/src/App.tsx`: Khởi tạo `transactions = []` (0 giao dịch demo), `accounts = DEFAULT_ACCOUNTS`, tự động cập nhật số dư tài khoản khi ghi nhận giao dịch mới, truyền dữ liệu đồng bộ xuống tất cả các trang con.
+- **Nội dung công việc**: Dọn dẹp sạch sẽ 100% dữ liệu mẫu, thông tin giả lập (persona "Nguyễn Minh Khang") và các giá trị fallback ở tầng Frontend, chuyển toàn bộ ứng dụng sang chế độ Production-ready hoạt động trên dữ liệu thực tế của người dùng.
+- **Kết quả kiểm thử**: PASS —
+  - `npm run build`: 100% biên dịch thành công không có lỗi (88 modules transformed trong 1.15s).
+  - Grep search kiểm tra: 0 kết quả cho `mock`, `demo`, `minhkhang`, `khang` trong toàn bộ `frontend/src`.
+- **Trạng thái**: Completed.
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)

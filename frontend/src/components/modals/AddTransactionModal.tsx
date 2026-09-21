@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
 import type { Account, Category, Transaction, TransactionType } from '../../types';
-import { mockAccounts, mockCategories } from '../../services/mockData';
+import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { DEFAULT_ACCOUNTS } from '../../constants/accounts';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  accounts?: Account[];
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onAddTransaction,
+  accounts,
 }) => {
+  const accountList = accounts && accounts.length > 0 ? accounts : DEFAULT_ACCOUNTS;
   const [type, setType] = useState<TransactionType>('EXPENSE');
-  const [amount, setAmount] = useState<number>(90000);
-  const [selectedCategory, setSelectedCategory] = useState<Category>(mockCategories[0]);
-  const [selectedAccount, setSelectedAccount] = useState<Account>(mockAccounts[0]);
+  const [amount, setAmount] = useState<number>(0);
+  const [selectedCategory, setSelectedCategory] = useState<Category>(DEFAULT_CATEGORIES[0]);
+  const [selectedAccount, setSelectedAccount] = useState<Account>(accountList[0]);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState<string>('');
 
@@ -52,7 +56,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     onClose();
   };
 
-  const filteredCategories = mockCategories.filter((c) =>
+  const filteredCategories = DEFAULT_CATEGORIES.filter((c) =>
     type === 'INCOME' ? c.type === 'INCOME' : c.type === 'EXPENSE'
   );
 
@@ -102,7 +106,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('EXPENSE');
-                  const firstExp = mockCategories.find((c) => c.type === 'EXPENSE');
+                  const firstExp = DEFAULT_CATEGORIES.find((c) => c.type === 'EXPENSE');
                   if (firstExp) setSelectedCategory(firstExp);
                 }}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
@@ -119,7 +123,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('INCOME');
-                  const firstInc = mockCategories.find((c) => c.type === 'INCOME');
+                  const firstInc = DEFAULT_CATEGORIES.find((c) => c.type === 'INCOME');
                   if (firstInc) setSelectedCategory(firstInc);
                 }}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
@@ -253,12 +257,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <select
                   value={selectedAccount.id}
                   onChange={(e) => {
-                    const acc = mockAccounts.find((a) => a.id === Number(e.target.value));
+                    const acc = accountList.find((a) => a.id === Number(e.target.value));
                     if (acc) setSelectedAccount(acc);
                   }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-tertiary/40"
                 >
-                  {mockAccounts.map((a) => (
+                  {accountList.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.currentBalance.toLocaleString('vi-VN')} ₫)
                     </option>

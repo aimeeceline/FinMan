@@ -1,19 +1,53 @@
 import React, { useState } from 'react';
-import { mockStats } from '../../services/mockData';
+import type { Transaction } from '../../types';
 
-export const StatisticsPage: React.FC = () => {
+interface StatisticsPageProps {
+  transactions?: Transaction[];
+}
+
+export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [] }) => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'INCOME_EXPENSE' | 'CASHFLOW'>('OVERVIEW');
-  const [activePeriod, setActivePeriod] = useState<'WEEK' | 'MONTH' | 'YEAR'>('MONTH');
 
-  const expenseCategories = [
-    { name: 'Ăn uống', amount: 550000, percent: 50.5, color: '#dc2626', icon: 'restaurant' },
-    { name: 'Mua sắm', amount: 340000, percent: 31.2, color: '#7c3aed', icon: 'shopping_bag' },
-    { name: 'Giao thông', amount: 200000, percent: 18.3, color: '#d97706', icon: 'directions_car' },
-  ];
+  // Dynamic calculations from actual transactions
+  const totalIncome = transactions
+    .filter((t) => t.type === 'INCOME')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const totalExpense = transactions
+    .filter((t) => t.type === 'EXPENSE')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const surplus = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? Math.round((surplus / totalIncome) * 100) : 0;
+  const expenseRate = totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0;
+
+  // Group expenses by category
+  const expenseTransactions = transactions.filter((t) => t.type === 'EXPENSE');
+  const categoryMap = new Map<string, { amount: number; icon: string; color: string }>();
+
+  expenseTransactions.forEach((t) => {
+    const prev = categoryMap.get(t.category.name) || {
+      amount: 0,
+      icon: t.category.icon || 'category',
+      color: t.category.color || '#3b82f6',
+    };
+    categoryMap.set(t.category.name, {
+      ...prev,
+      amount: prev.amount + t.amount,
+    });
+  });
+
+  const expenseCategories = Array.from(categoryMap.entries()).map(([name, val]) => ({
+    name,
+    amount: val.amount,
+    percent: totalExpense > 0 ? Math.round((val.amount / totalExpense) * 1000) / 10 : 0,
+    color: val.color,
+    icon: val.icon,
+  }));
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
-      {/* 1. Sub-Navigation & Quick Action Filter Bar */}
+      {/* 1. Sub-Navigation */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md mb-space-xl">
         <div className="flex flex-wrap items-center gap-space-xs bg-surface-container-low p-space-2xs rounded-xl shadow-sm">
           <button
@@ -47,217 +81,151 @@ export const StatisticsPage: React.FC = () => {
             Dòng tiền theo thời gian
           </button>
         </div>
-
-        <div className="flex flex-wrap items-center gap-space-sm">
-          <div className="flex items-center bg-surface-container-low p-space-2xs rounded-xl shadow-sm">
-            <button
-              onClick={() => setActivePeriod('WEEK')}
-              className={`px-space-sm py-space-2xs rounded-lg font-label-sm text-label-sm transition-colors cursor-pointer ${
-                activePeriod === 'WEEK'
-                  ? 'bg-primary-container text-on-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              Tuần
-            </button>
-            <button
-              onClick={() => setActivePeriod('MONTH')}
-              className={`px-space-md py-space-2xs rounded-lg font-label-sm text-label-sm transition-all cursor-pointer ${
-                activePeriod === 'MONTH'
-                  ? 'bg-primary-container text-on-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              Tháng này (T09/2026)
-            </button>
-            <button
-              onClick={() => setActivePeriod('YEAR')}
-              className={`px-space-sm py-space-2xs rounded-lg font-label-sm text-label-sm transition-colors cursor-pointer ${
-                activePeriod === 'YEAR'
-                  ? 'bg-primary-container text-on-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              Hàng năm
-            </button>
-          </div>
-
-          <button
-            onClick={() => alert('Đang xuất báo cáo thống kê Excel (.xlsx)...')}
-            className="flex items-center gap-space-2xs px-space-md py-space-xs rounded-xl bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm hover:bg-surface-container transition-all border border-outline-variant/30 cursor-pointer"
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[18px] text-secondary">file_download</span>
-            <span>Xuất Báo cáo Excel (.xlsx)</span>
-          </button>
-        </div>
       </div>
 
-      {/* 2. Financial Health Banner (AI Intelligence Banner) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-secondary-fixed/50 via-surface-container-low to-surface-container-lowest p-space-lg shadow-sm border border-secondary-container/40 mb-space-xl">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg">
-          <div className="flex items-start gap-space-md">
-            <div className="w-14 h-14 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center shadow-md shrink-0">
-              <span className="material-symbols-outlined text-[32px]">verified_user</span>
+      {/* 2. Hero Health Card */}
+      <div className="p-space-lg rounded-2xl bg-gradient-to-r from-emerald-50 via-surface-container-lowest to-surface-container-low border border-emerald-200/60 shadow-sm mb-space-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+        <div className="flex items-center gap-space-md">
+          <div className="w-12 h-12 rounded-2xl bg-secondary/15 flex items-center justify-center text-secondary shadow-sm">
+            <span className="material-symbols-outlined text-3xl">verified_user</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-title-lg text-title-lg font-bold text-on-surface">
+                {transactions.length === 0
+                  ? 'Chưa có giao dịch ghi nhận'
+                  : surplus >= 0
+                  ? 'Tình trạng tài chính: Khả quan'
+                  : 'Cần chú ý kiểm soát chi tiêu'}
+              </h2>
+              {transactions.length > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary text-xs font-bold">
+                  {savingsRate}% tích lũy
+                </span>
+              )}
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-space-xs mb-space-2xs">
-                <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                  Tình trạng tài chính: Rất khả quan
-                </span>
-                <span className="px-space-xs py-0.5 rounded-full bg-secondary text-on-secondary font-label-sm text-label-sm">
-                  81.8% thặng dư dòng tiền
-                </span>
-              </div>
-              <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-                Tuyệt vời! Bạn đang kiểm soát chi tiêu ở mức{' '}
-                <span className="font-label-md text-label-md text-secondary font-bold">18,2%</span>{' '}
-                tổng thu nhập tháng 9. Dòng tiền dự kiến tăng trưởng ổn định theo mục tiêu tích lũy.
-              </p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              {transactions.length === 0
+                ? 'Bắt đầu ghi chép các khoản thu/chi để xem báo cáo thống kê chuyên sâu.'
+                : `Tổng thu: ${totalIncome.toLocaleString('vi-VN')} ₫ | Tổng chi: ${totalExpense.toLocaleString('vi-VN')} ₫`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-outline-variant/30">
+          <div className="text-right">
+            <div className="text-xs text-on-surface-variant font-medium">Dòng tiền thuần</div>
+            <div className={`font-currency-display text-currency-display font-extrabold ${surplus >= 0 ? 'text-secondary' : 'text-primary-container'}`}>
+              {surplus >= 0 ? '+' : ''}{surplus.toLocaleString('vi-VN')} ₫
             </div>
           </div>
-
-          {/* 3 Primary Highlight Pillars */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md shrink-0">
-            <div className="bg-surface-container-lowest/90 backdrop-blur px-space-md py-space-sm rounded-xl shadow-sm border border-outline-variant/20 flex flex-col min-w-[170px]">
-              <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center justify-between">
-                Dòng tiền thuần
-                <span className="material-symbols-outlined text-[16px] text-secondary">north_east</span>
-              </span>
-              <span className="font-currency-display text-xl font-extrabold text-secondary tracking-tight mt-space-2xs">
-                +{mockStats.surplus.toLocaleString('vi-VN')}₫
-              </span>
-            </div>
-
-            <div className="bg-surface-container-lowest/90 backdrop-blur px-space-md py-space-sm rounded-xl shadow-sm border border-outline-variant/20 flex flex-col min-w-[170px]">
-              <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center justify-between">
-                Tỷ lệ tiết kiệm
-                <span className="material-symbols-outlined text-[16px] text-tertiary">savings</span>
-              </span>
-              <span className="font-currency-display text-xl font-extrabold text-tertiary tracking-tight mt-space-2xs">
-                {mockStats.savingsRate}%
-              </span>
-            </div>
-
-            <div className="bg-surface-container-lowest/90 backdrop-blur px-space-md py-space-sm rounded-xl shadow-sm border border-outline-variant/20 flex flex-col min-w-[170px]">
-              <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center justify-between">
-                Điểm số FinScore
-                <span className="material-symbols-outlined text-[16px] text-amber-600">star</span>
-              </span>
-              <span className="font-currency-display text-xl font-extrabold text-amber-600 tracking-tight mt-space-2xs">
-                92 / 100
-              </span>
+          <div className="text-right">
+            <div className="text-xs text-on-surface-variant font-medium">Tỷ lệ tiết kiệm</div>
+            <div className="font-currency-display text-currency-display font-extrabold text-tertiary">
+              {savingsRate}%
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Analytics Charts & Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
-        {/* Income vs Expense Analytical Stage (8 cols) */}
-        <div className="lg:col-span-8 bg-surface-container-lowest p-space-xl rounded-2xl shadow-sm border border-outline-variant/20">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-              So sánh Tổng quan Thu nhập &amp; Chi tiêu
-            </h3>
-            <span className="text-xs text-on-surface-variant">Số liệu đối soát tháng 9</span>
-          </div>
+      {/* 3. Comparison & Breakdown Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+        {/* Left: Summary Bar */}
+        <div className="lg:col-span-7 bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-outline-variant/20">
+          <h3 className="font-title-lg text-title-lg font-bold text-on-surface mb-6">
+            So sánh Tổng quan Thu nhập & Chi tiêu
+          </h3>
 
           <div className="space-y-6">
-            {/* Income Bar */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-label-md text-label-md font-semibold text-secondary flex items-center gap-2">
+              <div className="flex justify-between text-sm font-semibold mb-2">
+                <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-secondary"></span>
-                  Tổng Thu nhập
+                  <span>Tổng Thu nhập</span>
                 </span>
-                <span className="font-currency-display font-bold text-secondary text-lg">
-                  +{mockStats.totalIncome.toLocaleString('vi-VN')} ₫ (100%)
+                <span className="text-secondary font-bold font-currency-row">
+                  +{totalIncome.toLocaleString('vi-VN')} ₫
                 </span>
               </div>
-              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-secondary rounded-full" style={{ width: '100%' }}></div>
+              <div className="w-full h-3 bg-surface-container-low rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-secondary rounded-full transition-all"
+                  style={{ width: `${totalIncome > 0 ? 100 : 0}%` }}
+                ></div>
               </div>
             </div>
 
-            {/* Expense Bar */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-label-md text-label-md font-semibold text-primary flex items-center gap-2">
+              <div className="flex justify-between text-sm font-semibold mb-2">
+                <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-primary"></span>
-                  Tổng Chi tiêu
+                  <span>Tổng Chi tiêu</span>
                 </span>
-                <span className="font-currency-display font-bold text-primary text-lg">
-                  -{mockStats.totalExpense.toLocaleString('vi-VN')} ₫ (18.2%)
+                <span className="text-primary-container font-bold font-currency-row">
+                  -{totalExpense.toLocaleString('vi-VN')} ₫ ({expenseRate}%)
                 </span>
               </div>
-              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: '18.2%' }}></div>
+              <div className="w-full h-3 bg-surface-container-low rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${Math.min(100, expenseRate)}%` }}
+                ></div>
               </div>
             </div>
 
-            {/* Surplus Net Cashflow */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-label-md text-label-md font-semibold text-tertiary flex items-center gap-2">
+              <div className="flex justify-between text-sm font-semibold mb-2">
+                <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-tertiary"></span>
-                  Dòng tiền Thặng dư
+                  <span>Dòng tiền Thặng dư</span>
                 </span>
-                <span className="font-currency-display font-bold text-tertiary text-lg">
-                  +{mockStats.surplus.toLocaleString('vi-VN')} ₫ (81.8%)
+                <span className="text-tertiary font-bold font-currency-row">
+                  {surplus >= 0 ? '+' : ''}{surplus.toLocaleString('vi-VN')} ₫ ({savingsRate}%)
                 </span>
               </div>
-              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-tertiary rounded-full" style={{ width: '81.8%' }}></div>
+              <div className="w-full h-3 bg-surface-container-low rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-tertiary rounded-full transition-all"
+                  style={{ width: `${Math.max(0, Math.min(100, savingsRate))}%` }}
+                ></div>
               </div>
             </div>
-          </div>
-
-          <div className="mt-8 p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-xl">info</span>
-            <span>
-              Tỷ lệ chi tiêu trên thu nhập của bạn hiện đạt 18.2%, nằm trong nhóm 5% người dùng kiểm soát tài chính xuất sắc nhất.
-            </span>
           </div>
         </div>
 
-        {/* Expenses by Category (4 cols) */}
-        <div className="lg:col-span-4 bg-surface-container-lowest p-space-xl rounded-2xl shadow-sm border border-outline-variant/20">
-          <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
+        {/* Right: Categories */}
+        <div className="lg:col-span-5 bg-surface-container-lowest p-space-lg rounded-2xl shadow-sm border border-outline-variant/20">
+          <h3 className="font-title-lg text-title-lg font-bold text-on-surface mb-4">
             Cơ cấu Chi tiêu theo Danh mục
           </h3>
-          <p className="text-xs text-on-surface-variant mb-6">
-            Tỷ trọng các nhóm khoản chi trong tháng
-          </p>
 
-          <div className="space-y-4">
-            {expenseCategories.map((c) => (
-              <div key={c.name} className="p-3.5 rounded-xl bg-surface-container-low">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]" style={{ color: c.color }}>
-                      {c.icon}
-                    </span>
-                    <span className="text-xs font-bold text-on-surface">{c.name}</span>
+          {expenseCategories.length === 0 ? (
+            <div className="p-8 text-center text-on-surface-variant text-sm">
+              Chưa có khoản chi tiêu nào được ghi nhận.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {expenseCategories.map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm"
+                      style={{ backgroundColor: c.color }}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{c.icon}</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-on-surface">{c.name}</div>
+                      <div className="text-xs text-on-surface-variant">{c.percent}% tổng chi</div>
+                    </div>
                   </div>
-                  <span className="font-currency-row text-xs font-bold text-on-surface">
-                    {c.amount.toLocaleString('vi-VN')} ₫ ({c.percent}%)
-                  </span>
+                  <div className="text-sm font-bold text-on-surface">
+                    {c.amount.toLocaleString('vi-VN')} ₫
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${c.percent}%`, backgroundColor: c.color }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-on-surface-variant font-medium">
-            <span>Tổng chi tiêu danh mục</span>
-            <span className="font-bold text-primary">1.090.000 ₫</span>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

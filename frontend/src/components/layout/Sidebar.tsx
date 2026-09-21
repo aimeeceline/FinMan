@@ -106,16 +106,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/40"
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'}
+              src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=0D8ABC&color=fff`}
             />
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-secondary rounded-full ring-2 ring-surface-container-lowest"></div>
           </div>
           <div className="flex flex-col max-w-[130px]">
             <span className="font-label-md text-label-md text-on-surface truncate font-semibold">
-              {user?.fullName || 'Nguyễn Minh Khang'}
+              {user?.fullName || 'Tài khoản FinMan'}
             </span>
             <span className="font-body-sm text-body-sm text-on-surface-variant truncate text-[11px]">
-              {user?.email || 'minhkhang.finance@gmail.com'}
+              {user?.email || ''}
             </span>
           </div>
         </div>
