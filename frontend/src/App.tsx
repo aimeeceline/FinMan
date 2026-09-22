@@ -15,14 +15,79 @@ import { DEFAULT_ACCOUNTS } from './constants/accounts';
 import { accountService } from './services/accountService';
 import type { Account, Transaction } from './types';
 
+const VALID_ROUTES: NavRoute[] = [
+  'giao-dich',
+  'thong-ke-va-bao-cao',
+  'quan-ly-ngan-sach',
+  'tai-khoan-va-tai-san',
+  'tro-ly-finman-ai',
+  'cai-dat-va-danh-muc',
+];
+
+const getInitialRoute = (): NavRoute => {
+  if (typeof window === 'undefined') return 'giao-dich';
+
+  // 1. Check pathname (e.g. /tai-khoan-va-tai-san)
+  const path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  if (VALID_ROUTES.includes(path as NavRoute)) {
+    return path as NavRoute;
+  }
+
+  // 2. Check hash (e.g. #/tai-khoan-va-tai-san or #tai-khoan-va-tai-san)
+  const hash = window.location.hash.replace(/^#[/]?/, '').replace(/\/+$/, '');
+  if (VALID_ROUTES.includes(hash as NavRoute)) {
+    return hash as NavRoute;
+  }
+
+  // 3. Check localStorage
+  const saved = localStorage.getItem('finman_current_route') as NavRoute | null;
+  if (saved && VALID_ROUTES.includes(saved)) {
+    return saved;
+  }
+
+  return 'giao-dich';
+};
+
 const MainApp: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
-  const [currentRoute, setCurrentRoute] = useState<NavRoute>('giao-dich');
+  const [currentRoute, setCurrentRoute] = useState<NavRoute>(getInitialRoute);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleNavigate = useCallback((route: NavRoute) => {
+    setCurrentRoute(route);
+    localStorage.setItem('finman_current_route', route);
+    const targetPath = route === 'giao-dich' ? '/' : `/${route}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  }, []);
+
+  // Listen to browser Back / Forward buttons & Hash changes
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = getInitialRoute();
+      setCurrentRoute(route);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  // Sync browser URL bar with active route on initial load or change
+  useEffect(() => {
+    const targetPath = currentRoute === 'giao-dich' ? '/' : `/${currentRoute}`;
+    if (window.location.pathname !== targetPath && !window.location.hash) {
+      window.history.replaceState(null, '', targetPath);
+    }
+  }, [currentRoute]);
 
   // Fetch accounts from backend when authenticated
   const loadAccounts = useCallback(async () => {
@@ -96,7 +161,7 @@ const MainApp: React.FC = () => {
       {/* 1. Fixed Left Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
-        onNavigate={(route) => setCurrentRoute(route)}
+        onNavigate={handleNavigate}
         onOpenAddModal={() => setIsAddModalOpen(true)}
       />
 
@@ -114,8 +179,8 @@ const MainApp: React.FC = () => {
             transactions={filteredTransactions}
             accounts={accounts}
             onOpenAddModal={() => setIsAddModalOpen(true)}
-            onNavigateToAccounts={() => setCurrentRoute('tai-khoan-va-tai-san')}
-            onNavigateToReports={() => setCurrentRoute('thong-ke-va-bao-cao')}
+            onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
+            onNavigateToReports={() => handleNavigate('thong-ke-va-bao-cao')}
           />
         )}
 
