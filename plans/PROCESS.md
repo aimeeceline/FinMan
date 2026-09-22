@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [███████████████████░] 46.3% (19 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Hoàn thành Phase 3 — Sẵn sàng cho Phase 4
-Phase hiện tại: Phase 3 — Financial Accounts & Categories Fullstack (100% Hoàn Thành)
+Tiến độ dự án: [████████████████████] 48.8% (20 / 41 Tasks hoàn thành)
+Trạng thái:    🟢 Đang triển khai Phase 4 (In Progress)
+Phase hiện tại: Phase 4 — Core Transaction Engine Fullstack (Dashboard, Add Txn & Calendar)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 19 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4 tasks: Task 3.1 -> 3.4) |
-| **Đang thực hiện (In Progress)** | 0 tasks | |
-| **Chưa thực hiện (Pending)** | 22 tasks | Phase 4 đến Phase 9 |
+| **Đã hoàn thành (Done)** | 20 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (1 task: Task 4.1) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 4.2 |
+| **Chưa thực hiện (Pending)** | 21 tasks | Phase 4 (còn 5 tasks) đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -84,7 +84,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 ### Phase 4: Core Transaction Engine Fullstack (Home, Add Txn & Calendar)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Pending` | — | — |
+| **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Completed` | 2026-09-22 | Agent |
 | **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Pending` | — | — |
 | **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Pending` | — | — |
 | **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Pending` | — | — |
@@ -572,6 +572,29 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - `mvn test`: Chạy thành công toàn bộ **61/61 tests** (0 failures, 0 errors, 0 skipped) trong 16.0s (`BUILD SUCCESS`).
   - Frontend `npm run build`: 89 modules transformed thành công trong 1.13s (0 lỗi TypeScript / linting).
 - **Trạng thái**: Completed (Chính thức đóng Phase 3).
+
+### [2026-09-22] Task 4.1: Backend Transaction Service & APIs (@Transactional & Consistency)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Triển khai logic ghi nhận giao dịch: `INCOME` (+ balance ví khả dụng), `EXPENSE` (- balance ví khả dụng).
+  - Thẻ tín dụng (`CREDIT_CARD`): `EXPENSE` làm tăng dư nợ, `INCOME` làm giảm dư nợ.
+  - Chỉnh sửa & Xóa giao dịch: Hoàn tác tác động cũ, áp dụng tác động mới chuẩn xác không sai lệch 1 đồng VNĐ.
+  - Lọc giao dịch linh hoạt theo tháng (`month=YYYY-MM`), khoảng ngày (`startDate`, `endDate`), tài khoản, danh mục, loại thu/chi, từ khóa tìm kiếm (`search`), hỗ trợ phân trang `Pageable`.
+  - Thống kê dòng tiền tóm tắt (`summary`): Tổng thu, tổng chi, thặng dư ròng `netCashFlow`.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/TransactionCreateRequest.java`: DTO tạo giao dịch mới với validation (`@Positive`, `@NotNull`).
+  - `backend/src/main/java/com/finman/dto/request/TransactionUpdateRequest.java`: DTO cập nhật giao dịch.
+  - `backend/src/main/java/com/finman/dto/response/TransactionResponse.java`: DTO trả về thông tin giao dịch kèm snapshot tài khoản và danh mục.
+  - `backend/src/main/java/com/finman/dto/response/TransactionSummaryResponse.java`: DTO thống kê dòng tiền tổng thể.
+  - `backend/src/main/java/com/finman/repository/TransactionRepository.java`: Bổ sung kế thừa `JpaSpecificationExecutor<Transaction>`, query tính tổng theo ví và đếm số lượng.
+  - `backend/src/main/java/com/finman/service/TransactionService.java`: Service nghiệp vụ `@Transactional` quản lý toàn bộ luồng tạo, sửa, xóa, hoàn tác số dư, phân trang và thống kê.
+  - `backend/src/main/java/com/finman/controller/TransactionController.java`: REST controller `/api/v1/transactions` đầy đủ các endpoints (POST, GET, PUT, DELETE, GET /summary).
+  - `backend/src/test/java/com/finman/service/TransactionServiceTest.java`: 9 Unit test cases bao phủ logic tính toán số dư.
+  - `backend/src/test/java/com/finman/controller/TransactionControllerTest.java`: 11 MockMvc integration test cases bao phủ `TC_TXN_01` -> `TC_TXN_09`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `mvn test`: **81/81 tests passed** (0 failures, 0 errors, 0 skipped) trong 23.4s (`BUILD SUCCESS`).
+  - Frontend `npm run build`: 90 modules transformed thành công trong 1.26s.
+- **Trạng thái**: Completed.
 
 ---
 
