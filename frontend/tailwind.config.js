@@ -118,6 +118,7 @@ export default {
       boxShadow: {
         'modal': '0 25px 60px -15px rgba(0, 0, 0, 0.35)',
         'glow-red': '0 4px 20px -2px rgba(220, 38, 38, 0.35)',
+        'glow-emerald': '0 4px 20px -2px rgba(16, 185, 129, 0.35)',
       }
     },
   },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 
 interface DashboardPageProps {
@@ -10,9 +10,54 @@ interface DashboardPageProps {
   onNavigateToReports: () => void;
   onDeleteTransaction?: (id: number) => void;
   onApplyAiTransaction?: (tx: Omit<Transaction, 'id'>) => void;
+  selectedYearMonth?: string;
+  onSelectYearMonth?: (ym: string) => void;
+  onMonthPrev?: () => void;
+  onMonthNext?: () => void;
 }
 
-type TimeFilterTab = 'TODAY' | 'YESTERDAY' | 'WEEK' | 'MONTH' | 'ALL';
+type TimeRangeOption = 'ALL' | '1_MONTH' | '3_MONTHS' | '6_MONTHS' | 'CUSTOM';
+
+const PASTEL_PALETTES = [
+  'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
+  'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+  'bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300',
+  'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+  'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
+  'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300',
+  'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300',
+  'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
+  'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300',
+];
+
+const getCategoryPastelBg = (id?: number, name?: string): string => {
+  if (typeof id === 'number' && id > 0) {
+    return PASTEL_PALETTES[id % PASTEL_PALETTES.length];
+  }
+  const str = name || 'category';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return PASTEL_PALETTES[Math.abs(hash) % PASTEL_PALETTES.length];
+};
+
+const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE') => {
+  if (!icon) {
+    return (
+      <span className="material-symbols-outlined text-[18px]">
+        {type === 'INCOME' ? 'savings' : 'payments'}
+      </span>
+    );
+  }
+  const isEmoji = /\p{Extended_Pictographic}/u.test(icon) || icon.length <= 2;
+  if (isEmoji) {
+    return <span className="text-base leading-none">{icon}</span>;
+  }
+  return <span className="material-symbols-outlined text-[18px]">{icon}</span>;
+};
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   transactions,
@@ -37,11 +82,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
   };
 
-  // Filter States
-  const [timeFilter, setTimeFilter] = useState<TimeFilterTab>('ALL');
+  // Filter States (Dropdown based)
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [timeRangeFilter, setTimeRangeFilter] = useState<TimeRangeOption>('ALL');
   const [accountFilter, setAccountFilter] = useState<string>('ALL');
-  const [showAdvancedFilter, setShowAdvancedFilter] = useState<boolean>(true);
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+
+  // Dynamic Date Range Helpers
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  // Helper to calculate date N months ago in YYYY-MM-DD format
+  const getPastDateStr = (monthsAgo: number) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthsAgo);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const day = Math.min(new Date().getDate(), lastDay);
+    d.setDate(day);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dayStr}`;
+  };
 
   // AI Prompt State
   const [aiText, setAiText] = useState<string>('');
@@ -59,21 +128,93 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // Real accounts from backend
   const displayAccounts = accounts || [];
 
-  // Overall Financial Calculations
-  const totalIncome = useMemo(() => {
-    return transactions
+  // Filter transactions based on active dropdown filters
+  const filteredTransactions = useMemo(() => {
+    const oneMonthAgo = getPastDateStr(1);
+    const threeMonthsAgo = getPastDateStr(3);
+    const sixMonthsAgo = getPastDateStr(6);
+
+    return transactions.filter((t) => {
+      const txDate = t.date; // format YYYY-MM-DD
+      if (!txDate) return false;
+
+      // 1. Phân loại (Thu / Chi)
+      if (typeFilter !== 'ALL' && t.type !== typeFilter) {
+        return false;
+      }
+
+      // 2. Danh mục
+      if (categoryFilter !== 'ALL' && t.category?.name !== categoryFilter) {
+        return false;
+      }
+
+      // 3. Thời gian (1 tháng, 3 tháng, 6 tháng, tự chọn)
+      if (timeRangeFilter === '1_MONTH') {
+        if (txDate < oneMonthAgo) return false;
+      } else if (timeRangeFilter === '3_MONTHS') {
+        if (txDate < threeMonthsAgo) return false;
+      } else if (timeRangeFilter === '6_MONTHS') {
+        if (txDate < sixMonthsAgo) return false;
+      } else if (timeRangeFilter === 'CUSTOM') {
+        if (customStartDate && txDate < customStartDate) return false;
+        if (customEndDate && txDate > customEndDate) return false;
+      }
+
+      // 4. Nguồn tiền
+      if (accountFilter !== 'ALL' && t.account?.name !== accountFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    transactions,
+    typeFilter,
+    categoryFilter,
+    timeRangeFilter,
+    accountFilter,
+    customStartDate,
+    customEndDate,
+  ]);
+
+  // Financial Calculations for the active filtered period
+  const periodIncome = useMemo(() => {
+    return filteredTransactions
       .filter((t) => t.type === 'INCOME')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
+  }, [filteredTransactions]);
 
-  const totalExpense = useMemo(() => {
-    return transactions
+  const periodExpense = useMemo(() => {
+    return filteredTransactions
       .filter((t) => t.type === 'EXPENSE')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
+  }, [filteredTransactions]);
 
+  const periodSurplus = periodIncome - periodExpense;
+
+  const periodSavingsRate = useMemo(() => {
+    if (periodIncome <= 0) return 0;
+    return Math.max(0, Math.round((periodSurplus / periodIncome) * 100));
+  }, [periodIncome, periodSurplus]);
+
+  // Dynamic Period Label
+  const periodLabel = useMemo(() => {
+    if (timeRangeFilter === '1_MONTH') return '1 tháng';
+    if (timeRangeFilter === '3_MONTHS') return '3 tháng';
+    if (timeRangeFilter === '6_MONTHS') return '6 tháng';
+    if (timeRangeFilter === 'CUSTOM') {
+      if (customStartDate && customEndDate) {
+        return `${customStartDate} → ${customEndDate}`;
+      }
+      if (customStartDate) return `Từ ${customStartDate}`;
+      if (customEndDate) return `Đến ${customEndDate}`;
+      return 'Tự chọn';
+    }
+    return 'Toàn bộ';
+  }, [timeRangeFilter, customStartDate, customEndDate]);
+
+  // Overall Total Balance from Accounts
   const netBalance = useMemo(() => {
-    // If accounts have balances, sum them up
     if (displayAccounts.length > 0) {
       return displayAccounts.reduce((sum, acc) => {
         if (acc.type === 'CREDIT_CARD') {
@@ -82,50 +223,96 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         return sum + acc.currentBalance;
       }, 0);
     }
-    return totalIncome - totalExpense;
-  }, [displayAccounts, totalIncome, totalExpense]);
+    return periodIncome - periodExpense;
+  }, [displayAccounts, periodIncome, periodExpense]);
 
-  const savingsRate = useMemo(() => {
-    if (totalIncome <= 0) return 0;
-    const surplus = totalIncome - totalExpense;
-    return Math.max(0, Math.round((surplus / totalIncome) * 100));
-  }, [totalIncome, totalExpense]);
+  // Determine whether any filter is actively applied
+  const isFiltered = useMemo(() => {
+    return (
+      typeFilter !== 'ALL' ||
+      categoryFilter !== 'ALL' ||
+      timeRangeFilter !== 'ALL' ||
+      accountFilter !== 'ALL' ||
+      Boolean(customStartDate) ||
+      Boolean(customEndDate)
+    );
+  }, [typeFilter, categoryFilter, timeRangeFilter, accountFilter, customStartDate, customEndDate]);
 
-  // Filter transactions based on active filters
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      // 1. Time Frame Filter
-      const txDate = t.date; // format YYYY-MM-DD
-      if (timeFilter === 'TODAY') {
-        if (txDate !== '2026-09-16') return false;
-      } else if (timeFilter === 'YESTERDAY') {
-        if (txDate !== '2026-09-15') return false;
-      } else if (timeFilter === 'WEEK') {
-        if (txDate < '2026-09-14' || txDate > '2026-09-20') return false;
-      } else if (timeFilter === 'MONTH') {
-        if (!txDate.startsWith('2026-09')) return false;
+  // Custom Category Dropdown State
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
+  const [categorySearchText, setCategorySearchText] = useState<string>('');
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click or Escape key
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setIsCategoryDropdownOpen(false);
       }
-
-      // 2. Category Filter
-      if (categoryFilter !== 'ALL' && t.category.name !== categoryFilter) {
-        return false;
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCategoryDropdownOpen(false);
       }
+    };
+    if (isCategoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCategoryDropdownOpen]);
 
-      // 3. Account Filter
-      if (accountFilter !== 'ALL' && t.account.name !== accountFilter) {
-        return false;
+  // Reset all filters to default
+  const handleResetFilters = () => {
+    setTypeFilter('ALL');
+    setCategoryFilter('ALL');
+    setTimeRangeFilter('ALL');
+    setAccountFilter('ALL');
+    setCustomStartDate('');
+    setCustomEndDate('');
+    setCategorySearchText('');
+    setIsCategoryDropdownOpen(false);
+  };
+
+  // Dynamic categories directly from database (via categories prop & active transactions)
+  const { expenseCategories, incomeCategories } = useMemo(() => {
+    const expMap = new Map<string, Category>();
+    const incMap = new Map<string, Category>();
+
+    // 1. From database categories prop
+    if (categories && categories.length > 0) {
+      categories.forEach((c) => {
+        if (c.type === 'EXPENSE') {
+          expMap.set(c.name, c);
+        } else {
+          incMap.set(c.name, c);
+        }
+      });
+    }
+
+    // 2. From actual transactions in database (in case any transaction has a category not in the initial list)
+    transactions.forEach((t) => {
+      if (t.category?.name) {
+        if (t.type === 'EXPENSE' && !expMap.has(t.category.name)) {
+          expMap.set(t.category.name, t.category);
+        } else if (t.type === 'INCOME' && !incMap.has(t.category.name)) {
+          incMap.set(t.category.name, t.category);
+        }
       }
-
-      return true;
     });
-  }, [transactions, timeFilter, categoryFilter, accountFilter]);
 
-  // Distinct categories available in all transactions for filter pills
-  const availableCategories = useMemo(() => {
-    const set = new Set<string>();
-    transactions.forEach((t) => set.add(t.category.name));
-    return Array.from(set);
-  }, [transactions]);
+    // Filter by search query in realtime
+    const q = categorySearchText.toLowerCase().trim();
+    const filterFn = (cat: Category) => !q || cat.name.toLowerCase().includes(q);
+
+    return {
+      expenseCategories: Array.from(expMap.values()).filter(filterFn),
+      incomeCategories: Array.from(incMap.values()).filter(filterFn),
+    };
+  }, [categories, transactions, categorySearchText]);
 
   // Group transactions by date chronologically (latest first)
   const groupedTransactions = useMemo(() => {
@@ -152,26 +339,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (!group) {
         // Parse date for title
         let formattedDate = tx.date;
-        let dayOfWeek = 'Thứ Tư';
+        let dayOfWeek = 'Giao dịch';
 
-        if (tx.date === '2026-09-16') {
-          formattedDate = '16 Tháng 09, 2026';
-          dayOfWeek = 'Thứ Tư';
-        } else if (tx.date === '2026-09-15') {
-          formattedDate = '15 Tháng 09, 2026';
-          dayOfWeek = 'Thứ Ba';
-        } else if (tx.date === '2026-09-14') {
-          formattedDate = '14 Tháng 09, 2026';
-          dayOfWeek = 'Thứ Hai';
-        } else {
-          try {
-            const d = new Date(tx.date);
-            formattedDate = `${d.getDate()} Tháng ${d.getMonth() + 1}, ${d.getFullYear()}`;
-            const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-            dayOfWeek = days[d.getDay()] || 'Giao dịch';
-          } catch {
-            formattedDate = tx.date;
+        try {
+          const [y, m, d] = tx.date.split('-').map(Number);
+          const dObj = new Date(y, m - 1, d);
+          const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+          const dayName = days[dObj.getDay()] || 'Giao dịch';
+          
+          if (tx.date === todayStr) {
+            dayOfWeek = `${dayName} (Hôm nay)`;
+          } else if (tx.date === yesterdayStr) {
+            dayOfWeek = `${dayName} (Hôm qua)`;
+          } else {
+            dayOfWeek = dayName;
           }
+
+          formattedDate = `${d} Tháng ${m < 10 ? '0' + m : m}, ${y}`;
+        } catch {
+          formattedDate = tx.date;
         }
 
         group = {
@@ -396,6 +582,78 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }, 2000);
   };
 
+  // Dynamic 7-Point Cashflow Trajectory Chart
+  const chartData = useMemo(() => {
+    const days: string[] = [];
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+    // 7 active days ending today
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+
+    const points = days.map((dayStr) => {
+      const dayTxs = transactions.filter((t) => t.date === dayStr);
+      const inc = dayTxs
+        .filter((t) => t.type === 'INCOME')
+        .reduce((s, t) => s + t.amount, 0);
+      const exp = dayTxs
+        .filter((t) => t.type === 'EXPENSE')
+        .reduce((s, t) => s + t.amount, 0);
+
+      const [y, m, d] = dayStr.split('-').map(Number);
+      const dObj = new Date(y, m - 1, d);
+      const label = `${dayNames[dObj.getDay()]} (${d}/${m})`;
+
+      return {
+        date: dayStr,
+        label,
+        isToday: dayStr === todayStr,
+        income: inc,
+        expense: exp,
+      };
+    });
+
+    const maxVal = Math.max(
+      ...points.map((p) => Math.max(p.income, p.expense)),
+      500000
+    );
+
+    const xCoords = [20, 130, 240, 350, 460, 570, 680];
+
+    const incomeCoords = points.map((p, idx) => ({
+      x: xCoords[idx],
+      y: 140 - Math.round((p.income / maxVal) * 115),
+      val: p.income,
+    }));
+
+    const expenseCoords = points.map((p, idx) => ({
+      x: xCoords[idx],
+      y: 140 - Math.round((p.expense / maxVal) * 115),
+      val: p.expense,
+    }));
+
+    const incomePath = incomeCoords
+      .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x},${c.y}`)
+      .join(' ');
+    const expensePath = expenseCoords
+      .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x},${c.y}`)
+      .join(' ');
+    const incomeAreaPath = `${incomePath} L680,140 L20,140 Z`;
+
+    return {
+      points,
+      incomePath,
+      expensePath,
+      incomeAreaPath,
+      incomeCoords,
+      expenseCoords,
+    };
+  }, [todayStr, transactions]);
+
   return (
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
       {/* 1. TOP LEVEL KPI METRICS STRIP */}
@@ -450,7 +708,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-              Tổng Thu nhập T9
+              Tổng Thu nhập ({periodLabel})
             </span>
             <div className="w-8 h-8 rounded-lg bg-secondary-fixed/40 flex items-center justify-center text-secondary">
               <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
@@ -459,7 +717,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="mt-space-sm mb-space-md">
             <div className="flex items-baseline gap-space-2xs text-secondary">
               <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                +{totalIncome.toLocaleString('vi-VN')}
+                +{periodIncome.toLocaleString('vi-VN')}
               </span>
               <span className="font-title-md text-title-md font-bold">₫</span>
             </div>
@@ -476,7 +734,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-              Tổng Chi tiêu T9
+              Tổng Chi tiêu ({periodLabel})
             </span>
             <div className="w-8 h-8 rounded-lg bg-error-container/60 flex items-center justify-center text-primary-container">
               <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
@@ -485,7 +743,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="mt-space-sm mb-space-md">
             <div className="flex items-baseline gap-space-2xs text-primary-container">
               <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                -{totalExpense.toLocaleString('vi-VN')}
+                -{periodExpense.toLocaleString('vi-VN')}
               </span>
               <span className="font-title-md text-title-md font-bold">₫</span>
             </div>
@@ -511,13 +769,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="mt-space-sm mb-space-md">
             <div className="flex items-baseline gap-space-2xs text-tertiary">
               <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                {savingsRate}%
+                {periodSavingsRate}%
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-secondary font-medium flex items-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-[15px]">verified</span>{' '}
-              Dòng tiền ròng: {totalIncome - totalExpense >= 0 ? '+' : ''}
-              {(totalIncome - totalExpense).toLocaleString('vi-VN')} ₫
+              Dòng tiền ròng: {periodSurplus >= 0 ? '+' : ''}
+              {periodSurplus.toLocaleString('vi-VN')} ₫
             </p>
           </div>
           <div className="pt-space-xs border-t border-surface-container-high/60 flex items-center justify-between text-xs text-on-surface-variant">
@@ -666,125 +924,271 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="lg:col-span-8 flex flex-col gap-space-lg">
           {/* Main Transaction Card */}
           <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
-            {/* Filter Controls Bar */}
-            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-space-md pb-space-md border-b border-surface-container-high/60">
-              {/* Time Frame Filter Tabs */}
-              <div className="flex items-center p-1 rounded-xl bg-surface-container-low overflow-x-auto max-w-full">
-                <button
-                  onClick={() => setTimeFilter('TODAY')}
-                  className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
-                    timeFilter === 'TODAY'
-                      ? 'bg-surface-container-lowest text-on-surface font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Hôm nay (16/09)
-                </button>
-                <button
-                  onClick={() => setTimeFilter('YESTERDAY')}
-                  className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
-                    timeFilter === 'YESTERDAY'
-                      ? 'bg-surface-container-lowest text-on-surface font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Hôm qua
-                </button>
-                <button
-                  onClick={() => setTimeFilter('WEEK')}
-                  className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
-                    timeFilter === 'WEEK'
-                      ? 'bg-surface-container-lowest text-on-surface font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Tuần này
-                </button>
-                <button
-                  onClick={() => setTimeFilter('MONTH')}
-                  className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
-                    timeFilter === 'MONTH'
-                      ? 'bg-surface-container-lowest text-on-surface font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Tháng 9/2026
-                </button>
-                <button
-                  onClick={() => setTimeFilter('ALL')}
-                  className={`px-space-md py-space-xs rounded-lg font-label-md text-label-md transition-all whitespace-nowrap cursor-pointer ${
-                    timeFilter === 'ALL'
-                      ? 'bg-surface-container-lowest text-on-surface font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Tất cả ({transactions.length})
-                </button>
-              </div>
+            {/* Filter Toolbar with Dropdowns */}
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-sm pb-space-md border-b border-surface-container-high/60">
+              {/* Dropdown Filters Group */}
+              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                {/* 1. Dropdown Phân loại (Thu, Chi) */}
+                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
+                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">swap_vert</span>
+                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Phân loại:</span>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => {
+                      setTypeFilter(e.target.value as 'ALL' | 'EXPENSE' | 'INCOME');
+                      setCategoryFilter('ALL');
+                    }}
+                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+                  >
+                    <option value="ALL">Tất cả (Thu & Chi)</option>
+                    <option value="EXPENSE">Chi tiêu (-)</option>
+                    <option value="INCOME">Thu nhập (+)</option>
+                  </select>
+                </div>
 
-              {/* Quick Actions */}
-              <div className="flex items-center gap-space-xs w-full xl:w-auto justify-end">
-                <button
-                  onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-                  className={`flex items-center gap-1 px-space-sm py-space-xs rounded-xl font-label-md text-label-md transition-colors cursor-pointer ${
-                    showAdvancedFilter
-                      ? 'bg-surface-container text-on-surface font-semibold'
-                      : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
-                  }`}
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">tune</span>
-                  <span>Lọc nâng cao</span>
-                </button>
-                <button
-                  onClick={() => alert('Đang trích xuất dữ liệu giao dịch định dạng Excel (.xlsx)...')}
-                  className="flex items-center gap-1 px-space-md py-space-xs rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors cursor-pointer"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[18px]">file_download</span>
-                  <span>Xuất XLSX</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-row: Category pills & Account dropdown */}
-            {showAdvancedFilter && (
-              <div className="flex flex-wrap items-center gap-space-xs py-space-sm bg-surface/50 -mx-space-lg px-space-lg border-b border-surface-container-high/40">
-                <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mr-space-xs">
-                  Danh mục:
-                </span>
-                <button
-                  onClick={() => setCategoryFilter('ALL')}
-                  className={`px-space-xs py-1 rounded-lg font-label-sm text-label-sm transition-all cursor-pointer ${
-                    categoryFilter === 'ALL'
-                      ? 'bg-surface-container-high text-on-surface font-semibold'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
-                  }`}
-                >
-                  Tất cả ({availableCategories.length})
-                </button>
-                {availableCategories.map((cat) => (
+                {/* 2. Custom Styled Dropdown Danh mục (Khớp giao diện Stitch/Screenshot) */}
+                <div className="relative" ref={categoryDropdownRef}>
                   <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
-                    className={`px-space-xs py-1 rounded-lg font-label-sm text-label-sm transition-all cursor-pointer ${
-                      categoryFilter === cat
-                        ? 'bg-primary-container text-white font-semibold'
-                        : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs text-on-surface transition-all cursor-pointer shadow-2xs ${
+                      isCategoryDropdownOpen || categoryFilter !== 'ALL'
+                        ? 'bg-surface-container border-purple-400 dark:border-purple-500/50 text-on-surface font-semibold ring-2 ring-purple-500/15'
+                        : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/30'
                     }`}
                   >
-                    {cat}
+                    <span className="material-symbols-outlined text-[17px] text-on-surface-variant">category</span>
+                    <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Danh mục:</span>
+                    <span className="font-semibold max-w-[140px] truncate">
+                      {categoryFilter === 'ALL' ? 'Tất cả danh mục' : categoryFilter}
+                    </span>
+                    <span
+                      className={`material-symbols-outlined text-[18px] text-on-surface-variant transition-transform duration-200 ${
+                        isCategoryDropdownOpen ? 'rotate-180 text-purple-600 dark:text-purple-400' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
                   </button>
-                ))}
 
-                <div className="ml-auto flex items-center gap-space-xs">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    Nguồn tiền:
-                  </span>
+                  {/* Dropdown Menu Modal Card */}
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute top-full mt-2 left-0 z-50 w-[320px] sm:w-[340px] bg-white dark:bg-surface-container-lowest rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-outline-variant/25 p-4 animate-fadeIn select-none">
+                      {/* Top Header: Purple Badge + "Danh Mục" */}
+                      <div className="flex items-center gap-2.5 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-purple-600 dark:text-purple-300 shadow-2xs">
+                          <span className="material-symbols-outlined text-[19px]">segment</span>
+                        </div>
+                        <h3 className="font-bold text-base text-slate-800 dark:text-on-surface tracking-tight">
+                          Danh Mục
+                        </h3>
+                      </div>
+
+                      {/* Search Input */}
+                      <div className="relative mb-3">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
+                          search
+                        </span>
+                        <input
+                          type="text"
+                          value={categorySearchText}
+                          onChange={(e) => setCategorySearchText(e.target.value)}
+                          placeholder="Tìm danh mục (Ăn uống, Lương...)"
+                          className="w-full bg-slate-50/80 dark:bg-surface-container-low text-slate-800 dark:text-on-surface text-xs font-medium pl-9 pr-8 py-2.5 rounded-xl border border-slate-200/80 dark:border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-purple-400/25 focus:border-purple-500 transition-all placeholder:text-slate-400"
+                          autoFocus
+                        />
+                        {categorySearchText && (
+                          <button
+                            type="button"
+                            onClick={() => setCategorySearchText('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">close</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Options Container */}
+                      <div className="max-h-[300px] overflow-y-auto custom-scroll pr-1 space-y-3">
+                        {/* Section: TẤT CẢ */}
+                        {(!categorySearchText.trim() || 'tất cả danh mục'.includes(categorySearchText.toLowerCase().trim())) && (
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                              TẤT CẢ
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCategoryFilter('ALL');
+                                setIsCategoryDropdownOpen(false);
+                                setCategorySearchText('');
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all cursor-pointer ${
+                                categoryFilter === 'ALL'
+                                  ? 'bg-red-50/90 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold border border-red-100 dark:border-red-900/40 shadow-2xs'
+                                  : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container font-medium'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-amber-500 text-base">✨</span>
+                                <span className="text-sm font-semibold">Tất cả danh mục</span>
+                              </div>
+                              {categoryFilter === 'ALL' && (
+                                <span className="material-symbols-outlined text-[18px] text-red-500 font-bold">
+                                  check
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Section: CHI TIÊU */}
+                        {(typeFilter === 'ALL' || typeFilter === 'EXPENSE') && expenseCategories.length > 0 && (
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                              CHI TIÊU
+                            </div>
+                            <div className="space-y-1">
+                              {expenseCategories.map((cat) => {
+                                const isSelected = categoryFilter === cat.name;
+                                const pastelBg = getCategoryPastelBg(cat.id, cat.name);
+                                return (
+                                  <button
+                                    key={cat.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setCategoryFilter(cat.name);
+                                      setIsCategoryDropdownOpen(false);
+                                      setCategorySearchText('');
+                                    }}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-2xl text-xs transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-red-50/90 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold border border-red-100 dark:border-red-900/40 shadow-2xs'
+                                        : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container font-medium'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3 truncate">
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}>
+                                        {renderCategoryIcon(cat.icon, 'EXPENSE')}
+                                      </div>
+                                      <span className="text-sm truncate font-medium text-slate-800 dark:text-on-surface">
+                                        {cat.name}
+                                      </span>
+                                    </div>
+                                    {isSelected && (
+                                      <span className="material-symbols-outlined text-[18px] text-red-500 font-bold ml-2">
+                                        check
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Section: THU NHẬP */}
+                        {(typeFilter === 'ALL' || typeFilter === 'INCOME') && incomeCategories.length > 0 && (
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                              THU NHẬP
+                            </div>
+                            <div className="space-y-1">
+                              {incomeCategories.map((cat) => {
+                                const isSelected = categoryFilter === cat.name;
+                                const pastelBg = getCategoryPastelBg(cat.id, cat.name);
+                                return (
+                                  <button
+                                    key={cat.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setCategoryFilter(cat.name);
+                                      setIsCategoryDropdownOpen(false);
+                                      setCategorySearchText('');
+                                    }}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-2xl text-xs transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-900/40 shadow-2xs'
+                                        : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container font-medium'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3 truncate">
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}>
+                                        {renderCategoryIcon(cat.icon, 'INCOME')}
+                                      </div>
+                                      <span className="text-sm truncate font-medium text-slate-800 dark:text-on-surface">
+                                        {cat.name}
+                                      </span>
+                                    </div>
+                                    {isSelected && (
+                                      <span className="material-symbols-outlined text-[18px] text-emerald-600 font-bold ml-2">
+                                        check
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Empty search results */}
+                        {expenseCategories.length === 0 && incomeCategories.length === 0 && (
+                          <div className="py-6 text-center text-slate-400 text-xs font-medium">
+                            Không tìm thấy danh mục nào khớp với "{categorySearchText}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Dropdown Thời gian (1 tháng, 3 tháng, 6 tháng, tự chọn) */}
+                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
+                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">calendar_today</span>
+                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Thời gian:</span>
+                  <select
+                    value={timeRangeFilter}
+                    onChange={(e) => setTimeRangeFilter(e.target.value as any)}
+                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+                  >
+                    <option value="ALL">Tất cả</option>
+                    <option value="1_MONTH">1 tháng</option>
+                    <option value="3_MONTHS">3 tháng</option>
+                    <option value="6_MONTHS">6 tháng</option>
+                    <option value="CUSTOM">Tự chọn</option>
+                  </select>
+                </div>
+
+                {/* Tự chọn khoảng ngày (chỉ hiện khi chọn Tự chọn) */}
+                {timeRangeFilter === 'CUSTOM' && (
+                  <div className="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-xl border border-outline-variant/30 text-xs shadow-2xs animate-fadeIn">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="bg-transparent text-on-surface font-medium focus:outline-none cursor-pointer text-xs"
+                      title="Từ ngày"
+                    />
+                    <span className="text-on-surface-variant font-bold">-</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="bg-transparent text-on-surface font-medium focus:outline-none cursor-pointer text-xs"
+                      title="Đến ngày"
+                    />
+                  </div>
+                )}
+
+                {/* 4. Dropdown Nguồn tiền */}
+                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
+                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">account_balance_wallet</span>
+                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Nguồn tiền:</span>
                   <select
                     value={accountFilter}
                     onChange={(e) => setAccountFilter(e.target.value)}
-                    className="bg-surface-container-low text-on-surface font-label-sm text-label-sm rounded-lg px-space-xs py-1 focus:outline-none cursor-pointer border border-outline-variant/30"
+                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1 max-w-[150px] truncate"
                   >
                     <option value="ALL">Tất cả tài khoản</option>
                     {displayAccounts.map((acc) => (
@@ -794,8 +1198,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     ))}
                   </select>
                 </div>
+
+                {/* 5. Nút Xóa bộ lọc */}
+                {isFiltered && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-label-sm text-label-sm font-semibold transition-colors cursor-pointer border border-red-200 shadow-2xs animate-fadeIn"
+                    title="Xóa toàn bộ bộ lọc về mặc định"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                    <span>Xóa bộ lọc</span>
+                  </button>
+                )}
               </div>
-            )}
+
+              {/* Quick Action: Xuất XLSX */}
+              <div className="flex items-center gap-space-xs ml-auto shrink-0">
+                <button
+                  onClick={() => alert('Đang trích xuất dữ liệu giao dịch định dạng Excel (.xlsx)...')}
+                  className="flex items-center gap-1 px-space-md py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors cursor-pointer shadow-2xs"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">file_download</span>
+                  <span>Xuất XLSX</span>
+                </button>
+              </div>
+            </div>
 
             {/* Empty State */}
             {groupedTransactions.length === 0 ? (
@@ -809,12 +1238,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mb-4">
                   Không có bản ghi phù hợp với bộ lọc hiện tại. Thử đổi bộ lọc hoặc thêm giao dịch mới.
                 </p>
-                <button
-                  onClick={onOpenAddModal}
-                  className="px-4 py-2 rounded-xl bg-primary text-white font-label-md text-label-md font-bold shadow-sm hover:bg-primary-container transition-all cursor-pointer"
-                >
-                  + Thêm giao dịch mới
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {isFiltered && (
+                    <button
+                      onClick={handleResetFilters}
+                      className="px-4 py-2 rounded-xl bg-surface-container text-on-surface font-label-md text-label-md font-bold shadow-sm hover:bg-surface-container-high transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+                      <span>Xóa bộ lọc ({transactions.length} giao dịch)</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={onOpenAddModal}
+                    className="px-4 py-2 rounded-xl bg-primary text-white font-label-md text-label-md font-bold shadow-sm hover:bg-primary-container transition-all cursor-pointer"
+                  >
+                    + Thêm giao dịch mới
+                  </button>
+                </div>
               </div>
             ) : (
               /* Chronological Grouped Transaction Ledger */
@@ -1014,7 +1454,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
                 <div>
                   <h4 className="font-title-md text-title-md text-on-surface font-bold">
-                    Biểu đồ Dòng tiền Tuần 3 - Tháng 9
+                    Biểu đồ Dòng tiền ({periodLabel})
                   </h4>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
                     Tương quan thu nhập vs chi tiêu thực tế
@@ -1025,13 +1465,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="flex items-center gap-1">
                   <span className="w-3 h-3 rounded-full bg-secondary"></span>
                   <span className="text-on-surface font-medium">
-                    Thu (+{(totalIncome / 1000000).toFixed(1)}M)
+                    Thu (+{(periodIncome / 1000000).toFixed(1)}M)
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="w-3 h-3 rounded-full bg-primary-container"></span>
                   <span className="text-on-surface font-medium">
-                    Chi (-{(totalExpense / 1000000).toFixed(2)}M)
+                    Chi (-{(periodExpense / 1000000).toFixed(2)}M)
                   </span>
                 </div>
               </div>
@@ -1080,43 +1520,50 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </linearGradient>
                 </defs>
                 <path
-                  d="M0,140 L100,140 L200,135 L350,130 L500,25 L650,25 L700,25 L700,140 Z"
+                  d={chartData.incomeAreaPath}
                   fill="url(#incomeGrad)"
                 />
 
                 {/* Income Line */}
                 <path
-                  d="M0,140 L100,140 L200,135 L350,130 L500,25 L650,25 L700,25"
+                  d={chartData.incomePath}
                   fill="none"
                   stroke="#006c4a"
                   strokeLinecap="round"
                   strokeWidth="3"
                 />
-                <circle cx="500" cy="25" fill="#006c4a" r="5" className="ring-4 ring-white" />
+                {chartData.incomeCoords.map((c, i) => (
+                  <circle key={`inc-${i}`} cx={c.x} cy={c.y} fill="#006c4a" r="4" className="ring-2 ring-white" />
+                ))}
 
                 {/* Expense Line */}
                 <path
-                  d="M0,140 L100,130 L200,110 L350,105 L500,85 L650,92 L700,95"
+                  d={chartData.expensePath}
                   fill="none"
                   stroke="#dc2626"
                   strokeDasharray="5,5"
                   strokeWidth="2.5"
                 />
-                <circle cx="500" cy="85" fill="#dc2626" r="4.5" />
+                {chartData.expenseCoords.map((c, i) => (
+                  <circle key={`exp-${i}`} cx={c.x} cy={c.y} fill="#dc2626" r="3.5" />
+                ))}
               </svg>
             </div>
 
             {/* X-axis Days */}
             <div className="flex justify-between items-center text-label-sm font-label-sm text-on-surface-variant pt-space-xs">
-              <span>Thứ 6 (11/09)</span>
-              <span>Thứ 7 (12/09)</span>
-              <span>CN (13/09)</span>
-              <span>Thứ 2 (14/09)</span>
-              <span className="font-bold text-on-surface bg-surface-container px-2 py-0.5 rounded">
-                Hôm nay (16/09)
-              </span>
-              <span>Thứ 5 (17/09)</span>
-              <span>Thứ 6 (18/09)</span>
+              {chartData.points.map((p, idx) => (
+                <span
+                  key={idx}
+                  className={`text-xs ${
+                    p.isToday
+                      ? 'font-bold text-on-surface bg-surface-container px-2 py-0.5 rounded'
+                      : ''
+                  }`}
+                >
+                  {p.label}
+                </span>
+              ))}
             </div>
           </div>
         </div>

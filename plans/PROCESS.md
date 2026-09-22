@@ -86,8 +86,8 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 |---|---|---|---|---|
 | **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Completed` | 2026-09-22 | Agent |
 | **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Completed` | 2026-09-22 | Agent |
-| **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Pending` | — | — |
-| **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Pending` | — | — |
+| **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Completed` | 2026-09-22 | Agent |
+| **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Completed` | 2026-09-22 | Agent |
 | **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Pending` | — | — |
 | **Task 4.6** | Tests cho Core Transaction Engine & Balance Consistency | `Pending` | — | — |
 
