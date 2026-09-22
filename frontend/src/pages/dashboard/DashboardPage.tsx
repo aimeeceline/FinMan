@@ -10,10 +10,6 @@ interface DashboardPageProps {
   onNavigateToReports: () => void;
   onDeleteTransaction?: (id: number) => void;
   onApplyAiTransaction?: (tx: Omit<Transaction, 'id'>) => void;
-  selectedYearMonth?: string;
-  onSelectYearMonth?: (ym: string) => void;
-  onMonthPrev?: () => void;
-  onMonthNext?: () => void;
 }
 
 type TimeRangeOption = 'ALL' | '1_MONTH' | '3_MONTHS' | '6_MONTHS' | 'CUSTOM';
@@ -59,6 +55,14 @@ const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE') => {
   return <span className="material-symbols-outlined text-[18px]">{icon}</span>;
 };
 
+// Format YYYY-MM-DD to DD/MM/YYYY
+const formatVNDate = (isoDate?: string): string => {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+};
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   transactions,
   accounts,
@@ -89,6 +93,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [accountFilter, setAccountFilter] = useState<string>('ALL');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+
+  // Pagination State (100 giao dịch/trang)
+  const PAGE_SIZE = 100;
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Dynamic Date Range Helpers
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -204,10 +212,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     if (timeRangeFilter === '6_MONTHS') return '6 tháng';
     if (timeRangeFilter === 'CUSTOM') {
       if (customStartDate && customEndDate) {
-        return `${customStartDate} → ${customEndDate}`;
+        return `${formatVNDate(customStartDate)} – ${formatVNDate(customEndDate)}`;
       }
-      if (customStartDate) return `Từ ${customStartDate}`;
-      if (customEndDate) return `Đến ${customEndDate}`;
+      if (customStartDate) return `Từ ${formatVNDate(customStartDate)}`;
+      if (customEndDate) return `Đến ${formatVNDate(customEndDate)}`;
       return 'Tự chọn';
     }
     return 'Toàn bộ';
@@ -238,32 +246,165 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     );
   }, [typeFilter, categoryFilter, timeRangeFilter, accountFilter, customStartDate, customEndDate]);
 
+  // Type Dropdown State (Phân loại: Tất cả, Chi tiêu, Thu nhập)
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState<boolean>(false);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
+
   // Custom Category Dropdown State
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
   const [categorySearchText, setCategorySearchText] = useState<string>('');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click or Escape key
+  // Custom Date Picker Modal State (Tự chọn khoảng thời gian popup)
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState<boolean>(false);
+  const [showCalendarView, setShowCalendarView] = useState<boolean>(false);
+  const [calendarYear, setCalendarYear] = useState<number>(2026);
+  const [calendarMonth, setCalendarMonth] = useState<number>(9);
+  const [tempStartDate, setTempStartDate] = useState<string>('2026-09-01');
+  const [tempEndDate, setTempEndDate] = useState<string>('2026-09-16');
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Account Dropdown State (Nguồn tiền)
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState<boolean>(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close all dropdowns on outside click or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target as Node)) {
+        setIsTypeDropdownOpen(false);
+      }
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
         setIsCategoryDropdownOpen(false);
+      }
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setIsDatePickerOpen(false);
+        setShowCalendarView(false);
+      }
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
+        setIsAccountDropdownOpen(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        setIsTypeDropdownOpen(false);
         setIsCategoryDropdownOpen(false);
+        setIsDatePickerOpen(false);
+        setShowCalendarView(false);
+        setIsAccountDropdownOpen(false);
       }
     };
-    if (isCategoryDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isCategoryDropdownOpen]);
+  }, []);
+
+  // Calendar Days Computation for current month & year
+  const calendarDays = useMemo(() => {
+    const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+    const prevMonthDays = new Date(calendarYear, calendarMonth - 1, 0).getDate();
+    const firstDayDow = new Date(calendarYear, calendarMonth - 1, 1).getDay(); // 0 is Sun, 1 is Mon...
+    const mondayOffset = firstDayDow === 0 ? 6 : firstDayDow - 1;
+
+    const cells: {
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      dayOfWeekIndex: number;
+    }[] = [];
+
+    // 1. Previous month padding days
+    const prevMonth = calendarMonth === 1 ? 12 : calendarMonth - 1;
+    const prevYear = calendarMonth === 1 ? calendarYear - 1 : calendarYear;
+    for (let i = mondayOffset - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const dateStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: false,
+        dayOfWeekIndex: cells.length % 7,
+      });
+    }
+
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: true,
+        dayOfWeekIndex: cells.length % 7,
+      });
+    }
+
+    // 3. Next month padding days to reach full weeks (target 35 cells)
+    const remaining = (7 - (cells.length % 7)) % 7;
+    const targetTotal = cells.length + remaining < 35 ? 35 : cells.length + remaining;
+    const nextPadCount = targetTotal - cells.length;
+    const nextMonth = calendarMonth === 12 ? 1 : calendarMonth + 1;
+    const nextYear = calendarMonth === 12 ? calendarYear + 1 : calendarYear;
+    for (let d = 1; d <= nextPadCount; d++) {
+      const dateStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: false,
+        dayOfWeekIndex: cells.length % 7,
+      });
+    }
+
+    return cells;
+  }, [calendarYear, calendarMonth]);
+
+  const handlePrevMonth = () => {
+    setCalendarMonth((prev) => {
+      if (prev === 1) {
+        setCalendarYear((y) => y - 1);
+        return 12;
+      }
+      return prev - 1;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCalendarMonth((prev) => {
+      if (prev === 12) {
+        setCalendarYear((y) => y + 1);
+        return 1;
+      }
+      return prev + 1;
+    });
+  };
+
+  const handleDayClick = (dateStr: string) => {
+    if (!tempStartDate || (tempStartDate && tempEndDate)) {
+      setTempStartDate(dateStr);
+      setTempEndDate('');
+    } else {
+      if (dateStr < tempStartDate) {
+        setTempStartDate(dateStr);
+      } else {
+        setTempEndDate(dateStr);
+      }
+    }
+  };
+
+  const handleApplyDateRange = () => {
+    if (tempStartDate && tempEndDate) {
+      setCustomStartDate(tempStartDate);
+      setCustomEndDate(tempEndDate);
+    } else if (tempStartDate) {
+      setCustomStartDate(tempStartDate);
+      setCustomEndDate(tempStartDate);
+    }
+    setTimeRangeFilter('CUSTOM');
+    setIsDatePickerOpen(false);
+    setShowCalendarView(false);
+  };
 
   // Reset all filters to default
   const handleResetFilters = () => {
@@ -273,8 +414,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setAccountFilter('ALL');
     setCustomStartDate('');
     setCustomEndDate('');
-    setCategorySearchText('');
+    setTempStartDate('2026-09-01');
+    setTempEndDate('2026-09-16');
+    setIsTypeDropdownOpen(false);
     setIsCategoryDropdownOpen(false);
+    setIsDatePickerOpen(false);
+    setShowCalendarView(false);
+    setIsAccountDropdownOpen(false);
+    setCurrentPage(1);
   };
 
   // Dynamic categories directly from database (via categories prop & active transactions)
@@ -314,7 +461,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     };
   }, [categories, transactions, categorySearchText]);
 
-  // Group transactions by date chronologically (latest first)
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [typeFilter, categoryFilter, timeRangeFilter, accountFilter, customStartDate, customEndDate]);
+
+  // Sort transactions latest first
+  const sortedFilteredTransactions = useMemo(() => {
+    return [...filteredTransactions].sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return (b.time || '').localeCompare(a.time || '');
+    });
+  }, [filteredTransactions]);
+
+  // Total pages (100 transactions/page)
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(sortedFilteredTransactions.length / PAGE_SIZE));
+  }, [sortedFilteredTransactions.length, PAGE_SIZE]);
+
+  // Paginated slice for current page
+  const currentPageTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return sortedFilteredTransactions.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [sortedFilteredTransactions, currentPage, PAGE_SIZE]);
+
+  // Group current page transactions by date chronologically (latest first)
   const groupedTransactions = useMemo(() => {
     const map = new Map<
       string,
@@ -328,13 +499,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
     >();
 
-    // Sort transactions latest first
-    const sorted = [...filteredTransactions].sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date);
-      return (b.time || '').localeCompare(a.time || '');
-    });
-
-    sorted.forEach((tx) => {
+    currentPageTransactions.forEach((tx) => {
       let group = map.get(tx.date);
       if (!group) {
         // Parse date for title
@@ -380,37 +545,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
 
     return Array.from(map.values());
-  }, [filteredTransactions]);
-
-  // Spending Breakdown for Right Rail
-  const spendingBreakdown = useMemo(() => {
-    const expenseTx = transactions.filter((t) => t.type === 'EXPENSE');
-    const totalExp = expenseTx.reduce((sum, t) => sum + t.amount, 0);
-    const catMap = new Map<string, { amount: number; color: string; icon: string }>();
-
-    expenseTx.forEach((t) => {
-      const prev = catMap.get(t.category.name) || {
-        amount: 0,
-        color: t.category.color || '#dc2626',
-        icon: t.category.icon || 'payments',
-      };
-      catMap.set(t.category.name, {
-        ...prev,
-        amount: prev.amount + t.amount,
-      });
-    });
-
-    return Array.from(catMap.entries())
-      .map(([name, val]) => ({
-        name,
-        amount: val.amount,
-        percentage: totalExp > 0 ? Math.round((val.amount / totalExp) * 100) : 0,
-        color: val.color,
-        icon: val.icon,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 4);
-  }, [transactions]);
+  }, [currentPageTransactions, todayStr, yesterdayStr]);
 
   // AI Parser Logic
   const handleAiParse = () => {
@@ -581,78 +716,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setAiText('');
     }, 2000);
   };
-
-  // Dynamic 7-Point Cashflow Trajectory Chart
-  const chartData = useMemo(() => {
-    const days: string[] = [];
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
-    // 7 active days ending today
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      days.push(d.toISOString().split('T')[0]);
-    }
-
-    const points = days.map((dayStr) => {
-      const dayTxs = transactions.filter((t) => t.date === dayStr);
-      const inc = dayTxs
-        .filter((t) => t.type === 'INCOME')
-        .reduce((s, t) => s + t.amount, 0);
-      const exp = dayTxs
-        .filter((t) => t.type === 'EXPENSE')
-        .reduce((s, t) => s + t.amount, 0);
-
-      const [y, m, d] = dayStr.split('-').map(Number);
-      const dObj = new Date(y, m - 1, d);
-      const label = `${dayNames[dObj.getDay()]} (${d}/${m})`;
-
-      return {
-        date: dayStr,
-        label,
-        isToday: dayStr === todayStr,
-        income: inc,
-        expense: exp,
-      };
-    });
-
-    const maxVal = Math.max(
-      ...points.map((p) => Math.max(p.income, p.expense)),
-      500000
-    );
-
-    const xCoords = [20, 130, 240, 350, 460, 570, 680];
-
-    const incomeCoords = points.map((p, idx) => ({
-      x: xCoords[idx],
-      y: 140 - Math.round((p.income / maxVal) * 115),
-      val: p.income,
-    }));
-
-    const expenseCoords = points.map((p, idx) => ({
-      x: xCoords[idx],
-      y: 140 - Math.round((p.expense / maxVal) * 115),
-      val: p.expense,
-    }));
-
-    const incomePath = incomeCoords
-      .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x},${c.y}`)
-      .join(' ');
-    const expensePath = expenseCoords
-      .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x},${c.y}`)
-      .join(' ');
-    const incomeAreaPath = `${incomePath} L680,140 L20,140 Z`;
-
-    return {
-      points,
-      incomePath,
-      expensePath,
-      incomeAreaPath,
-      incomeCoords,
-      expenseCoords,
-    };
-  }, [todayStr, transactions]);
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
@@ -918,32 +981,149 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
       </div>
 
-      {/* 3. MAIN CONTENT SPLIT WORKSPACE (Desktop 65% / 35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop">
-        {/* LEFT COLUMN: Transaction Ledger Stage (65% -> 8 cols) */}
-        <div className="lg:col-span-8 flex flex-col gap-space-lg">
-          {/* Main Transaction Card */}
+      {/* 3. MAIN TRANSACTION LEDGER WORKSPACE */}
+      <div className="w-full flex flex-col gap-space-lg">
+        {/* Main Transaction Card */}
           <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
             {/* Filter Toolbar with Dropdowns */}
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-sm pb-space-md border-b border-surface-container-high/60">
               {/* Dropdown Filters Group */}
               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                {/* 1. Dropdown Phân loại (Thu, Chi) */}
-                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
-                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">swap_vert</span>
-                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Phân loại:</span>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => {
-                      setTypeFilter(e.target.value as 'ALL' | 'EXPENSE' | 'INCOME');
-                      setCategoryFilter('ALL');
-                    }}
-                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+                {/* 1. Custom Styled Dropdown Phân loại (Thu, Chi) */}
+                <div className="relative" ref={typeDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsTypeDropdownOpen((prev) => !prev)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all cursor-pointer select-none shadow-2xs ${
+                      isTypeDropdownOpen || typeFilter !== 'ALL'
+                        ? 'border-2 border-blue-400 dark:border-blue-500/50 bg-surface-container text-on-surface font-semibold ring-2 ring-blue-500/15'
+                        : 'border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                   >
-                    <option value="ALL">Tất cả (Thu & Chi)</option>
-                    <option value="EXPENSE">Chi tiêu (-)</option>
-                    <option value="INCOME">Thu nhập (+)</option>
-                  </select>
+                    <div className="w-5 h-5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                      <span className="material-symbols-outlined text-[14px]">swap_vert</span>
+                    </div>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold text-[11px] uppercase tracking-wider">
+                      PHÂN LOẠI:
+                    </span>
+                    <span className="font-bold text-xs text-slate-800 dark:text-on-surface">
+                      {typeFilter === 'ALL' && 'Tất cả (Thu & Chi)'}
+                      {typeFilter === 'EXPENSE' && 'Chi tiêu (-)'}
+                      {typeFilter === 'INCOME' && 'Thu nhập (+)'}
+                    </span>
+                    <span
+                      className={`material-symbols-outlined text-[18px] text-slate-600 dark:text-on-surface-variant transition-transform duration-200 ${
+                        isTypeDropdownOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </button>
+
+                  {/* Dropdown Menu Modal Card Phân loại */}
+                  {isTypeDropdownOpen && (
+                    <div className="absolute top-full mt-2 left-0 z-50 w-64 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-xl border border-slate-100 dark:border-outline-variant/30 p-2.5 animate-fadeIn select-none">
+                      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 dark:border-outline-variant/20 mb-1.5">
+                        <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-2xs">
+                          <span className="material-symbols-outlined text-[15px]">swap_vert</span>
+                        </div>
+                        <span className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
+                          Phân loại giao dịch
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        {/* Tất cả */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTypeFilter('ALL');
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                            typeFilter === 'ALL'
+                              ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-bold border border-blue-100 dark:border-blue-900/40 shadow-2xs'
+                              : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                              <span className="material-symbols-outlined text-[17px]">sync_alt</span>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-slate-800 dark:text-on-surface">Tất cả</div>
+                              <div className="text-[10px] text-slate-400 dark:text-on-surface-variant font-medium">Bao gồm cả Thu & Chi</div>
+                            </div>
+                          </div>
+                          {typeFilter === 'ALL' && (
+                            <span className="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400 font-bold">
+                              check
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Chi tiêu (-) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTypeFilter('EXPENSE');
+                            setCategoryFilter('ALL');
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                            typeFilter === 'EXPENSE'
+                              ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 font-bold border border-red-100 dark:border-red-900/40 shadow-2xs'
+                              : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-2xs">
+                              <span className="material-symbols-outlined text-[17px]">arrow_downward</span>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-slate-800 dark:text-on-surface">Chi tiêu (-)</div>
+                              <div className="text-[10px] text-red-500/80 dark:text-red-400 font-medium">Chỉ xem khoản chi ra</div>
+                            </div>
+                          </div>
+                          {typeFilter === 'EXPENSE' && (
+                            <span className="material-symbols-outlined text-[18px] text-red-600 dark:text-red-400 font-bold">
+                              check
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Thu nhập (+) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTypeFilter('INCOME');
+                            setCategoryFilter('ALL');
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                            typeFilter === 'INCOME'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold border border-emerald-100 dark:border-emerald-900/40 shadow-2xs'
+                              : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+                              <span className="material-symbols-outlined text-[17px]">arrow_upward</span>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-slate-800 dark:text-on-surface">Thu nhập (+)</div>
+                              <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400 font-medium">Chỉ xem khoản thu vào</div>
+                            </div>
+                          </div>
+                          {typeFilter === 'INCOME' && (
+                            <span className="material-symbols-outlined text-[18px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              check
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Custom Styled Dropdown Danh mục (Khớp giao diện Stitch/Screenshot) */}
@@ -951,19 +1131,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs text-on-surface transition-all cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border text-xs text-on-surface transition-all cursor-pointer select-none shadow-2xs ${
                       isCategoryDropdownOpen || categoryFilter !== 'ALL'
-                        ? 'bg-surface-container border-purple-400 dark:border-purple-500/50 text-on-surface font-semibold ring-2 ring-purple-500/15'
-                        : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/30'
+                        ? 'border-2 border-purple-400 dark:border-purple-500/50 bg-surface-container text-on-surface font-semibold ring-2 ring-purple-500/15'
+                        : 'border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[17px] text-on-surface-variant">category</span>
-                    <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Danh mục:</span>
-                    <span className="font-semibold max-w-[140px] truncate">
-                      {categoryFilter === 'ALL' ? 'Tất cả danh mục' : categoryFilter}
+                    <div className="w-5 h-5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
+                      <span className="material-symbols-outlined text-[14px]">category</span>
+                    </div>
+                    <span className="text-purple-600 dark:text-purple-400 font-bold text-[11px] uppercase tracking-wider">
+                      DANH MỤC:
+                    </span>
+                    <span className="font-bold text-xs max-w-[140px] truncate text-slate-800 dark:text-on-surface">
+                      {categoryFilter === 'ALL' ? 'Tất cả' : categoryFilter}
                     </span>
                     <span
-                      className={`material-symbols-outlined text-[18px] text-on-surface-variant transition-transform duration-200 ${
+                      className={`material-symbols-outlined text-[18px] text-slate-600 dark:text-on-surface-variant transition-transform duration-200 ${
                         isCategoryDropdownOpen ? 'rotate-180 text-purple-600 dark:text-purple-400' : ''
                       }`}
                     >
@@ -1143,60 +1327,445 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   )}
                 </div>
 
-                {/* 3. Dropdown Thời gian (1 tháng, 3 tháng, 6 tháng, tự chọn) */}
-                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
-                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">calendar_today</span>
-                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Thời gian:</span>
-                  <select
-                    value={timeRangeFilter}
-                    onChange={(e) => setTimeRangeFilter(e.target.value as any)}
-                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1"
+                {/* 3. Dropdown Thời gian duy nhất (Gộp mốc thời gian & Lịch tự chọn) */}
+                <div className="relative" ref={datePickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDatePickerOpen((prev) => !prev);
+                      setShowCalendarView(false);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all cursor-pointer select-none shadow-2xs ${
+                      timeRangeFilter === 'CUSTOM'
+                        ? 'border-2 border-red-500 bg-white dark:bg-surface-container-lowest text-slate-800 dark:text-on-surface hover:bg-red-50/40'
+                        : isDatePickerOpen || timeRangeFilter !== 'ALL'
+                        ? 'border-2 border-red-400 dark:border-red-500/50 bg-surface-container text-on-surface font-semibold ring-2 ring-red-500/15'
+                        : 'border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                   >
-                    <option value="ALL">Tất cả</option>
-                    <option value="1_MONTH">1 tháng</option>
-                    <option value="3_MONTHS">3 tháng</option>
-                    <option value="6_MONTHS">6 tháng</option>
-                    <option value="CUSTOM">Tự chọn</option>
-                  </select>
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 shadow-2xs ${
+                        timeRangeFilter === 'CUSTOM'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                    </div>
+                    <span className="text-red-600 dark:text-red-400 font-bold text-[11px] uppercase tracking-wider">
+                      THỜI GIAN:
+                    </span>
+                    <span className="font-bold text-xs text-slate-800 dark:text-on-surface">
+                      {timeRangeFilter === 'ALL' && 'Tất cả'}
+                      {timeRangeFilter === '1_MONTH' && '1 tháng'}
+                      {timeRangeFilter === '3_MONTHS' && '3 tháng'}
+                      {timeRangeFilter === '6_MONTHS' && '6 tháng'}
+                      {timeRangeFilter === 'CUSTOM' &&
+                        `${formatVNDate(customStartDate || '2026-09-01')} – ${formatVNDate(
+                          customEndDate || '2026-09-16'
+                        )}`}
+                    </span>
+                    <span
+                      className={`material-symbols-outlined text-[18px] text-slate-600 dark:text-on-surface-variant transition-transform duration-200 ${
+                        isDatePickerOpen ? 'rotate-180 text-red-600' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </button>
+
+                  {/* Dropdown Menu hoặc Popover Lịch */}
+                  {isDatePickerOpen && (
+                    !showCalendarView ? (
+                      /* 1. MENU CHỌN MỐC THỜI GIAN (Hiển thị đầu tiên khi bấm vào dropbox) */
+                      <div className="absolute top-full mt-2 left-0 z-50 w-56 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-xl border border-slate-100 dark:border-outline-variant/30 p-2 animate-fadeIn select-none">
+                        <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 dark:border-outline-variant/20 mb-1">
+                          <span className="material-symbols-outlined text-[17px] text-red-600">calendar_today</span>
+                          <span className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
+                            Thời gian
+                          </span>
+                        </div>
+                        <div className="space-y-0.5">
+                          {[
+                            { id: 'ALL', label: 'Tất cả' },
+                            { id: '1_MONTH', label: '1 tháng' },
+                            { id: '3_MONTHS', label: '3 tháng' },
+                            { id: '6_MONTHS', label: '6 tháng' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setTimeRangeFilter(opt.id as TimeRangeOption);
+                                setIsDatePickerOpen(false);
+                                setShowCalendarView(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                timeRangeFilter === opt.id
+                                  ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 font-bold'
+                                  : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                              }`}
+                            >
+                              <span>{opt.label}</span>
+                              {timeRangeFilter === opt.id && (
+                                <span className="material-symbols-outlined text-[18px] text-red-600">check</span>
+                              )}
+                            </button>
+                          ))}
+
+                          <div className="my-1 border-t border-slate-100 dark:border-outline-variant/20" />
+
+                          {/* Bấm vào "Tự chọn" -> MỚI HIỆN LỊCH */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!tempStartDate) setTempStartDate(customStartDate || '2026-09-01');
+                              if (!tempEndDate) setTempEndDate(customEndDate || '2026-09-16');
+                              setShowCalendarView(true);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              timeRangeFilter === 'CUSTOM'
+                                ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 font-bold'
+                                : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-[18px] text-red-600">date_range</span>
+                              <span>Tự chọn</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {timeRangeFilter === 'CUSTOM' && (
+                                <span className="material-symbols-outlined text-[18px] text-red-600">check</span>
+                              )}
+                              <span className="material-symbols-outlined text-[16px] text-slate-400">chevron_right</span>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 2. CARD LỊCH CHỌN KHOẢNG THỜI GIAN TRA CỨU (Chỉ hiện khi bấm vào Tự chọn) */
+                      <div className="absolute top-full mt-2.5 left-0 sm:left-auto sm:right-0 md:left-0 z-50 w-[350px] sm:w-[440px] bg-white dark:bg-surface-container-lowest rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] border border-slate-100 dark:border-outline-variant/30 p-5 sm:p-6 animate-fadeIn select-none">
+                        {/* Tiêu đề & Năm tài chính & Nút quay lại */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-outline-variant/20">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowCalendarView(false)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors flex items-center"
+                              title="Quay lại danh sách mốc thời gian"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                            </button>
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
+                            <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-on-surface uppercase tracking-wide">
+                              CHỌN KHOẢNG THỜI GIAN TRA CỨU
+                            </h4>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400 dark:text-on-surface-variant font-medium">
+                              Năm tài chính {calendarYear}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsDatePickerOpen(false);
+                                setShowCalendarView(false);
+                              }}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors"
+                              title="Đóng"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2 Khối hiển thị: Từ ngày bắt đầu - Đến ngày kết thúc */}
+                        <div className="grid grid-cols-2 gap-2.5 my-3.5">
+                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-2xl p-2.5 sm:p-3">
+                            <div className="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-1">
+                              TỪ NGÀY BẮT ĐẦU
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-[18px] text-slate-400 dark:text-on-surface-variant">
+                                calendar_today
+                              </span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-on-surface">
+                                {tempStartDate ? formatVNDate(tempStartDate) : '01/09/2026'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-2xl p-2.5 sm:p-3">
+                            <div className="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-1">
+                              ĐẾN NGÀY KẾT THÚC
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-[18px] text-slate-400 dark:text-on-surface-variant">
+                                calendar_today
+                              </span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-on-surface">
+                                {tempEndDate ? formatVNDate(tempEndDate) : '16/09/2026'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Thanh chuyển tháng: < Tháng 9, 2026 > */}
+                        <div className="flex items-center justify-between py-1 px-1 mb-2">
+                          <button
+                            type="button"
+                            onClick={handlePrevMonth}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
+                            title="Tháng trước"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                          </button>
+                          <span className="font-bold text-sm text-slate-800 dark:text-on-surface">
+                            Tháng {calendarMonth}, {calendarYear}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNextMonth}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
+                            title="Tháng sau"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                          </button>
+                        </div>
+
+                        {/* Header các ngày trong tuần: T2 -> CN */}
+                        <div className="grid grid-cols-7 mb-1 text-center">
+                          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
+                            <div
+                              key={d}
+                              className="text-xs font-semibold text-slate-400 dark:text-on-surface-variant py-1"
+                            >
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Lưới lịch các ngày với dải hồng pastel range & nút tròn đỏ */}
+                        <div className="grid grid-cols-7 gap-y-1">
+                          {calendarDays.map((cell, idx) => {
+                            const isStart = tempStartDate === cell.dateStr;
+                            const isEnd = tempEndDate === cell.dateStr;
+                            const isRangeActive = Boolean(
+                              tempStartDate && tempEndDate && tempStartDate < tempEndDate
+                            );
+                            const isInRange =
+                              isRangeActive &&
+                              cell.dateStr > tempStartDate &&
+                              cell.dateStr < tempEndDate;
+
+                            return (
+                              <div key={idx} className="relative h-9 sm:h-10 flex items-center justify-center">
+                                {/* Dải nền đỏ nhạt peach kết nối các ngày trong khoảng */}
+                                {isInRange && (
+                                  <div
+                                    className={`absolute inset-y-1 inset-x-0 bg-red-50/90 dark:bg-red-950/40 ${
+                                      cell.dayOfWeekIndex === 0 ? 'rounded-l-full' : ''
+                                    } ${cell.dayOfWeekIndex === 6 ? 'rounded-r-full' : ''}`}
+                                  />
+                                )}
+                                {/* Nửa dải bên phải nối từ ngày bắt đầu sang ngày kế tiếp */}
+                                {isStart && isRangeActive && (
+                                  <div className="absolute inset-y-1 right-0 left-1/2 bg-red-50/90 dark:bg-red-950/40" />
+                                )}
+                                {/* Nửa dải bên trái nối từ ngày trước đến ngày kết thúc */}
+                                {isEnd && isRangeActive && (
+                                  <div className="absolute inset-y-1 left-0 right-1/2 bg-red-50/90 dark:bg-red-950/40" />
+                                )}
+
+                                {/* Nút bấm ngày */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDayClick(cell.dateStr)}
+                                  className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all cursor-pointer ${
+                                    isStart || isEnd
+                                      ? 'bg-red-600 text-white font-extrabold shadow-md hover:bg-red-700 active:scale-95'
+                                      : isInRange
+                                      ? 'text-slate-800 dark:text-on-surface font-semibold hover:bg-red-100/60'
+                                      : cell.isCurrentMonth
+                                      ? 'text-slate-700 dark:text-on-surface hover:bg-slate-100 dark:hover:bg-surface-container'
+                                      : 'text-slate-300 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-surface-container-low'
+                                  }`}
+                                >
+                                  {cell.dayNumber}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Nút hành động "Áp dụng khoảng ngày" */}
+                        <div className="pt-4 mt-2 border-t border-slate-100 dark:border-outline-variant/20 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleApplyDateRange();
+                              setShowCalendarView(false);
+                            }}
+                            className="bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm px-6 py-2.5 rounded-2xl shadow-lg shadow-red-500/25 transition-all cursor-pointer"
+                          >
+                            Áp dụng khoảng ngày
+                          </button>
+                          {(tempStartDate || tempEndDate) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTempStartDate('');
+                                setTempEndDate('');
+                              }}
+                              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-on-surface font-medium transition-colors cursor-pointer px-2 py-1"
+                            >
+                              Đặt lại
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
 
-                {/* Tự chọn khoảng ngày (chỉ hiện khi chọn Tự chọn) */}
-                {timeRangeFilter === 'CUSTOM' && (
-                  <div className="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-xl border border-outline-variant/30 text-xs shadow-2xs animate-fadeIn">
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="bg-transparent text-on-surface font-medium focus:outline-none cursor-pointer text-xs"
-                      title="Từ ngày"
-                    />
-                    <span className="text-on-surface-variant font-bold">-</span>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="bg-transparent text-on-surface font-medium focus:outline-none cursor-pointer text-xs"
-                      title="Đến ngày"
-                    />
-                  </div>
-                )}
-
-                {/* 4. Dropdown Nguồn tiền */}
-                <div className="flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container px-2.5 py-1.5 rounded-xl border border-outline-variant/30 text-xs text-on-surface transition-colors shadow-2xs">
-                  <span className="material-symbols-outlined text-[17px] text-on-surface-variant">account_balance_wallet</span>
-                  <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Nguồn tiền:</span>
-                  <select
-                    value={accountFilter}
-                    onChange={(e) => setAccountFilter(e.target.value)}
-                    className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer text-xs pr-1 max-w-[150px] truncate"
+                {/* 4. Custom Styled Dropdown Nguồn tiền */}
+                <div className="relative" ref={accountDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all cursor-pointer select-none shadow-2xs ${
+                      isAccountDropdownOpen || accountFilter !== 'ALL'
+                        ? 'border-2 border-amber-400 dark:border-amber-500/50 bg-surface-container text-on-surface font-semibold ring-2 ring-amber-500/15'
+                        : 'border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                   >
-                    <option value="ALL">Tất cả tài khoản</option>
-                    {displayAccounts.map((acc) => (
-                      <option key={acc.id} value={acc.name}>
-                        {acc.name}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                      <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
+                    </div>
+                    <span className="text-amber-700 dark:text-amber-400 font-bold text-[11px] uppercase tracking-wider">
+                      NGUỒN TIỀN:
+                    </span>
+                    <span className="font-bold text-xs max-w-[150px] truncate text-slate-800 dark:text-on-surface">
+                      {accountFilter === 'ALL' ? 'Tất cả tài khoản' : accountFilter}
+                    </span>
+                    <span
+                      className={`material-symbols-outlined text-[18px] text-slate-600 dark:text-on-surface-variant transition-transform duration-200 ${
+                        isAccountDropdownOpen ? 'rotate-180 text-amber-600 dark:text-amber-400' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </button>
+
+                  {/* Dropdown Menu Modal Card Nguồn tiền */}
+                  {isAccountDropdownOpen && (
+                    <div className="absolute top-full mt-2 left-0 sm:left-auto sm:right-0 md:left-0 z-50 w-72 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-xl border border-slate-100 dark:border-outline-variant/30 p-2.5 animate-fadeIn select-none">
+                      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 dark:border-outline-variant/20 mb-1.5">
+                        <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center text-amber-700 dark:text-amber-400 shadow-2xs">
+                          <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
+                        </div>
+                        <span className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
+                          Nguồn tiền & Tài khoản
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scroll pr-0.5">
+                        {/* Tất cả tài khoản */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountFilter('ALL');
+                            setIsAccountDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                            accountFilter === 'ALL'
+                              ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold border border-amber-100 dark:border-amber-900/40 shadow-2xs'
+                              : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-2xs">
+                              <span className="material-symbols-outlined text-[17px]">account_balance_wallet</span>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-slate-800 dark:text-on-surface">Tất cả tài khoản</div>
+                              <div className="text-[10px] text-slate-400 dark:text-on-surface-variant font-medium">Toàn bộ các ví & tài khoản</div>
+                            </div>
+                          </div>
+                          {accountFilter === 'ALL' && (
+                            <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 font-bold">
+                              check
+                            </span>
+                          )}
+                        </button>
+
+                        {displayAccounts.length > 0 && (
+                          <div className="my-1 border-t border-slate-100 dark:border-outline-variant/20" />
+                        )}
+
+                        {/* Danh sách từng tài khoản */}
+                        {displayAccounts.map((acc) => {
+                          const isSelected = accountFilter === acc.name;
+                          let iconName = 'account_balance_wallet';
+                          let iconBg = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                          let typeLabel = 'Tài khoản';
+
+                          if (acc.type === 'CASH') {
+                            iconName = 'payments';
+                            iconBg = 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400';
+                            typeLabel = 'Tiền mặt ví';
+                          } else if (acc.type === 'BANK') {
+                            iconName = 'account_balance';
+                            iconBg = 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400';
+                            typeLabel = acc.bankName || 'Ngân hàng';
+                          } else if (acc.type === 'CREDIT_CARD') {
+                            iconName = 'credit_card';
+                            iconBg = 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-400';
+                            typeLabel = 'Thẻ tín dụng';
+                          }
+
+                          return (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() => {
+                                setAccountFilter(acc.name);
+                                setIsAccountDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold border border-amber-100 dark:border-amber-900/40 shadow-2xs'
+                                  : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 truncate">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${iconBg}`}>
+                                  <span className="material-symbols-outlined text-[17px]">{iconName}</span>
+                                </div>
+                                <div className="text-left truncate">
+                                  <div className="text-xs font-semibold text-slate-800 dark:text-on-surface truncate">
+                                    {acc.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 dark:text-on-surface-variant flex items-center gap-1 font-medium">
+                                    <span>{typeLabel}</span>
+                                    <span>•</span>
+                                    <span className="font-semibold text-slate-600 dark:text-on-surface">
+                                      {acc.currentBalance.toLocaleString('vi-VN')} ₫
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 font-bold ml-2">
+                                  check
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 5. Nút Xóa bộ lọc */}
@@ -1211,18 +1780,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <span>Xóa bộ lọc</span>
                   </button>
                 )}
-              </div>
-
-              {/* Quick Action: Xuất XLSX */}
-              <div className="flex items-center gap-space-xs ml-auto shrink-0">
-                <button
-                  onClick={() => alert('Đang trích xuất dữ liệu giao dịch định dạng Excel (.xlsx)...')}
-                  className="flex items-center gap-1 px-space-md py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors cursor-pointer shadow-2xs"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[18px]">file_download</span>
-                  <span>Xuất XLSX</span>
-                </button>
               </div>
             </div>
 
@@ -1427,342 +1984,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               })
             )}
 
-            {/* Ledger Footer Summary */}
-            <div className="mt-space-lg pt-space-md flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant bg-surface-container-low/40 rounded-xl px-space-md py-space-sm border border-outline-variant/15">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[18px] text-secondary">info</span>
-                <span>
-                  Hiển thị {filteredTransactions.length} trên {transactions.length} giao dịch ghi nhận
-                </span>
-              </div>
-              <button
-                onClick={onNavigateToReports}
-                className="font-label-md text-label-md text-tertiary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-              >
-                <span>Xem sao kê đầy đủ</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Financial Visual Flow: Cashflow Trajectory Chart */}
-          <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-space-md">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface">
-                  <span className="material-symbols-outlined text-[18px]">stacked_line_chart</span>
+            {/* Pagination Controls (100 giao dịch/trang) */}
+            {totalPages > 1 && (
+              <div className="mt-space-lg flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-outline-variant/15 select-none">
+                <div className="text-xs font-medium text-on-surface-variant">
+                  Trang <span className="font-bold text-on-surface">{currentPage}</span> /{' '}
+                  <span className="font-bold text-on-surface">{totalPages}</span> ({sortedFilteredTransactions.length} giao dịch)
                 </div>
-                <div>
-                  <h4 className="font-title-md text-title-md text-on-surface font-bold">
-                    Biểu đồ Dòng tiền ({periodLabel})
-                  </h4>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Tương quan thu nhập vs chi tiêu thực tế
-                  </p>
+
+                <div className="flex items-center gap-1.5">
+                  {/* Trang trước */}
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-xl border border-outline-variant/30 text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                    <span>Trước</span>
+                  </button>
+
+                  {/* Danh sách trang */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      if (totalPages <= 7) return true;
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                      );
+                    })
+                    .map((page, idx, arr) => {
+                      const prevPage = arr[idx - 1];
+                      const hasGap = prevPage && page - prevPage > 1;
+
+                      return (
+                        <React.Fragment key={page}>
+                          {hasGap && <span className="px-1 text-slate-400 text-xs">...</span>}
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                              currentPage === page
+                                ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                                : 'bg-surface-container-low hover:bg-surface-container text-on-surface border border-outline-variant/30'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+
+                  {/* Trang sau */}
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="px-3 py-1.5 rounded-xl border border-outline-variant/30 text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Sau</span>
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
                 </div>
-              </div>
-              <div className="flex items-center gap-space-md text-label-sm font-label-sm">
-                <div className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-secondary"></span>
-                  <span className="text-on-surface font-medium">
-                    Thu (+{(periodIncome / 1000000).toFixed(1)}M)
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-primary-container"></span>
-                  <span className="text-on-surface font-medium">
-                    Chi (-{(periodExpense / 1000000).toFixed(2)}M)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Inline Vector Chart matching Stitch design */}
-            <div className="w-full h-44 flex items-end">
-              <svg
-                className="w-full h-full overflow-visible"
-                preserveAspectRatio="none"
-                viewBox="0 0 700 160"
-              >
-                {/* Grid Lines */}
-                <line
-                  className="text-surface-container-highest stroke-current"
-                  strokeWidth="1"
-                  x1="0"
-                  x2="700"
-                  y1="140"
-                  y2="140"
-                />
-                <line
-                  className="text-surface-container-highest stroke-current"
-                  strokeDasharray="4,4"
-                  strokeWidth="1"
-                  x1="0"
-                  x2="700"
-                  y1="80"
-                  y2="80"
-                />
-                <line
-                  className="text-surface-container-highest stroke-current"
-                  strokeDasharray="4,4"
-                  strokeWidth="1"
-                  x1="0"
-                  x2="700"
-                  y1="20"
-                  y2="20"
-                />
-
-                {/* Income Area Gradient Fill */}
-                <defs>
-                  <linearGradient id="incomeGrad" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#006c4a" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#006c4a" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d={chartData.incomeAreaPath}
-                  fill="url(#incomeGrad)"
-                />
-
-                {/* Income Line */}
-                <path
-                  d={chartData.incomePath}
-                  fill="none"
-                  stroke="#006c4a"
-                  strokeLinecap="round"
-                  strokeWidth="3"
-                />
-                {chartData.incomeCoords.map((c, i) => (
-                  <circle key={`inc-${i}`} cx={c.x} cy={c.y} fill="#006c4a" r="4" className="ring-2 ring-white" />
-                ))}
-
-                {/* Expense Line */}
-                <path
-                  d={chartData.expensePath}
-                  fill="none"
-                  stroke="#dc2626"
-                  strokeDasharray="5,5"
-                  strokeWidth="2.5"
-                />
-                {chartData.expenseCoords.map((c, i) => (
-                  <circle key={`exp-${i}`} cx={c.x} cy={c.y} fill="#dc2626" r="3.5" />
-                ))}
-              </svg>
-            </div>
-
-            {/* X-axis Days */}
-            <div className="flex justify-between items-center text-label-sm font-label-sm text-on-surface-variant pt-space-xs">
-              {chartData.points.map((p, idx) => (
-                <span
-                  key={idx}
-                  className={`text-xs ${
-                    p.isToday
-                      ? 'font-bold text-on-surface bg-surface-container px-2 py-0.5 rounded'
-                      : ''
-                  }`}
-                >
-                  {p.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: AI Intelligence, Goal Savings, & Fast Form (35% -> 4 cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-space-lg">
-          {/* Card: Quick Accounts Breakdown */}
-          <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[20px] text-tertiary">
-                  account_balance_wallet
-                </span>
-                <h4 className="font-title-md text-title-md font-bold text-on-surface">
-                  Tài khoản của bạn
-                </h4>
-              </div>
-              <button
-                onClick={onNavigateToAccounts}
-                className="text-xs text-primary font-semibold hover:underline cursor-pointer"
-              >
-                Xem tất cả
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {displayAccounts.length === 0 ? (
-                <div className="text-center py-6 text-on-surface-variant text-xs">
-                  Chưa có tài khoản nào trong cơ sở dữ liệu.
-                </div>
-              ) : (
-                displayAccounts.map((acc) => (
-                <div
-                  key={acc.id}
-                  className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/20 hover:bg-surface-container transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
-                      <span className="material-symbols-outlined text-[20px]">
-                        {acc.type === 'BANK'
-                          ? 'account_balance'
-                          : acc.type === 'CREDIT_CARD'
-                          ? 'credit_card'
-                          : 'payments'}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-on-surface truncate max-w-[130px]">
-                        {acc.name}
-                      </div>
-                      <div className="text-[11px] text-on-surface-variant">
-                        {acc.accountNumber || 'Mặc định'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-on-surface font-currency-row">
-                      {showBalance ? `${acc.currentBalance.toLocaleString('vi-VN')} ₫` : '••••••••'}
-                    </div>
-                    <div className="text-[10px] text-secondary font-semibold">Hoạt động</div>
-                  </div>
-                </div>
-              )))}
-            </div>
-          </div>
-
-          {/* Card: Goal Piggy Banks (Hũ tích lũy mục tiêu) */}
-          <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-space-md">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[20px] text-tertiary">savings</span>
-                <h4 className="font-title-md text-title-md text-on-surface font-bold">
-                  Hũ tích lũy mục tiêu
-                </h4>
-              </div>
-              <button
-                onClick={() => alert('Tính năng tạo Hũ tích lũy mục tiêu mới đang được phát triển!')}
-                className="font-label-sm text-label-sm text-tertiary hover:underline font-semibold cursor-pointer"
-              >
-                + Thêm hũ
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-space-md">
-              {/* Goal 1: Macbook M3 */}
-              <div className="flex flex-col gap-space-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-space-xs">
-                    <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface">
-                      <span className="material-symbols-outlined text-[18px]">laptop_mac</span>
-                    </div>
-                    <div>
-                      <span className="font-label-md text-label-md text-on-surface font-bold">
-                        MacBook Pro M3
-                      </span>
-                      <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">
-                        Hạn chót: 31/12/2026
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-label-sm text-label-sm font-bold text-secondary">66%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
-                  <div className="h-full bg-secondary rounded-full" style={{ width: '66%' }}></div>
-                </div>
-                <div className="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
-                  <span>
-                    Đạt: <strong className="text-on-surface">16.500.000 ₫</strong>
-                  </span>
-                  <span>Mục tiêu: 25.000.000 ₫</span>
-                </div>
-              </div>
-
-              {/* Goal 2: Emergency Fund */}
-              <div className="flex flex-col gap-space-2xs pt-space-xs border-t border-surface-container-high/40">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-space-xs">
-                    <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface">
-                      <span className="material-symbols-outlined text-[18px]">
-                        health_and_safety
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-label-md text-label-md text-on-surface font-bold">
-                        Quỹ khẩn cấp 3 tháng
-                      </span>
-                      <p className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">
-                        Dự phòng tài chính an sinh
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-label-sm text-label-sm font-bold text-on-surface">25%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-surface-container overflow-hidden">
-                  <div className="h-full bg-tertiary rounded-full" style={{ width: '25%' }}></div>
-                </div>
-                <div className="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
-                  <span>
-                    Đạt: <strong className="text-on-surface">2.500.000 ₫</strong>
-                  </span>
-                  <span>Mục tiêu: 10.000.000 ₫</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card: Phân bổ Chi tiêu nhanh */}
-          <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[20px] text-primary">pie_chart</span>
-                <h4 className="font-title-md text-title-md font-bold text-on-surface">
-                  Phân bổ Chi tiêu
-                </h4>
-              </div>
-              <button
-                onClick={onNavigateToReports}
-                className="text-xs text-primary font-semibold hover:underline cursor-pointer"
-              >
-                Chi tiết
-              </button>
-            </div>
-
-            {spendingBreakdown.length === 0 ? (
-              <div className="text-center py-6 text-on-surface-variant text-xs">
-                Chưa có dữ liệu chi tiêu để phân bổ.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {spendingBreakdown.map((item) => (
-                  <div key={item.name} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold text-on-surface flex items-center gap-1">
-                        <span
-                          className="material-symbols-outlined text-[14px]"
-                          style={{ color: item.color }}
-                        >
-                          {item.icon}
-                        </span>
-                        {item.name}
-                      </span>
-                      <span className="font-bold text-on-surface">
-                        {item.amount.toLocaleString('vi-VN')} ₫ ({item.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-surface-container overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };

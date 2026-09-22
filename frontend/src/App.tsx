@@ -177,30 +177,6 @@ const MainApp: React.FC = () => {
     );
   });
 
-  // Month & Time Filter State
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(() => {
-    return '2026-09';
-  });
-
-  const handleMonthPrev = () => {
-    const [y, m] = selectedYearMonth.split('-').map(Number);
-    const d = new Date(y, m - 2, 1);
-    const prevY = d.getFullYear();
-    const prevM = String(d.getMonth() + 1).padStart(2, '0');
-    setSelectedYearMonth(`${prevY}-${prevM}`);
-  };
-
-  const handleMonthNext = () => {
-    const [y, m] = selectedYearMonth.split('-').map(Number);
-    const d = new Date(y, m, 1);
-    const nextY = d.getFullYear();
-    const nextM = String(d.getMonth() + 1).padStart(2, '0');
-    setSelectedYearMonth(`${nextY}-${nextM}`);
-  };
-
-  const handleSelectYearMonth = (ym: string) => {
-    setSelectedYearMonth(ym);
-  };
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -215,10 +191,6 @@ const MainApp: React.FC = () => {
       <TopHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        selectedYearMonth={selectedYearMonth}
-        onMonthPrev={handleMonthPrev}
-        onMonthNext={handleMonthNext}
-        onSelectYearMonth={handleSelectYearMonth}
         onExportExcel={() => alert('Đang trích xuất file Excel lịch sử giao dịch (.xlsx)...')}
       />
 
@@ -229,10 +201,6 @@ const MainApp: React.FC = () => {
             transactions={filteredTransactions}
             accounts={accounts}
             categories={categories}
-            selectedYearMonth={selectedYearMonth}
-            onSelectYearMonth={handleSelectYearMonth}
-            onMonthPrev={handleMonthPrev}
-            onMonthNext={handleMonthNext}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
             onNavigateToReports={() => handleNavigate('thong-ke-va-bao-cao')}
