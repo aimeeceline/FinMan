@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████░░░░] 39.0% (16 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Đang triển khai (In Progress)
-Phase hiện tại: Phase 3 — Financial Accounts & Categories Fullstack
+Tiến độ dự án: [███████████████████░] 46.3% (19 / 41 Tasks hoàn thành)
+Trạng thái:    🟢 Hoàn thành Phase 3 — Sẵn sàng cho Phase 4
+Phase hiện tại: Phase 3 — Financial Accounts & Categories Fullstack (100% Hoàn Thành)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 16 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (1 task: Task 3.1) |
+| **Đã hoàn thành (Done)** | 19 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4 tasks: Task 3.1 -> 3.4) |
 | **Đang thực hiện (In Progress)** | 0 tasks | |
-| **Chưa thực hiện (Pending)** | 25 tasks | |
+| **Chưa thực hiện (Pending)** | 22 tasks | Phase 4 đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -79,7 +79,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 3.1** | Backend Accounts & Categories APIs (CRUD, Net Worth) | `Completed` | 2026-09-21 | Agent |
 | **Task 3.2** | Frontend Accounts Screen: Bóc tách từ `design/finman_web_t_i_kho_n_t_i_s_n_r_ng/code.html` | `Completed` | 2026-09-21 | Agent |
 | **Task 3.3** | Kết nối Frontend Accounts với Backend API | `Completed` | 2026-09-21 | Agent |
-| **Task 3.4** | Tests cho Accounts & Net Worth | `Pending` | — | — |
+| **Task 3.4** | Tests cho Accounts & Net Worth | `Completed` | 2026-09-22 | Agent |
 
 ### Phase 4: Core Transaction Engine Fullstack (Home, Add Txn & Calendar)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
@@ -545,6 +545,34 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - `mvn test`: Toàn bộ 47 unit/integration test cases backend chạy thành công 100%.
 - **Trạng thái**: Completed.
 
+### [2026-09-22] Task 3.4: Tests Toàn Diện Cho Accounts, Categories & Net Worth (DoD 100%)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**: Xây dựng trọn bộ kiểm thử cho Module 2 (Financial Accounts & Net Worth `TC_ACC_01` -> `TC_ACC_05`) và Module 3 (Categories `TC_CAT_01` -> `TC_CAT_03`), kiểm tra phân quyền multi-tenant, bảo đảm số dư không dùng float, kiểm tra tính toàn vẹn soft delete (`isArchived`).
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/pom.xml`: Bổ sung dependency `com.h2database:h2` với scope `test` phục vụ môi trường kiểm thử tự động độc lập, không phụ thuộc Docker cục bộ.
+  - `backend/src/test/resources/application.yml`: Tạo cấu hình kiểm thử với H2 Database (PostgreSQL mode, `NON_KEYWORDS=MONTH,YEAR`), JPA Hibernate `create-drop`.
+  - `backend/src/test/java/com/finman/controller/AccountControllerTest.java`: Bộ Integration Test MockMvc 8 test cases:
+    - `TC_ACC_01`: Tạo ví Tiền mặt / Ngân hàng thành công (`POST /api/v1/accounts`, 201 Created).
+    - `TC_ACC_02`: Tạo Thẻ tín dụng thành công với hạn mức và dư nợ ban đầu (`POST /api/v1/accounts`, 201 Created).
+    - `TC_ACC_03`: Tính toán Tài sản ròng chính xác (`Net Worth = Assets - Liabilities`) qua `GET /api/v1/accounts`.
+    - `TC_ACC_04`: Xóa tài khoản (Soft Delete chuyển `isArchived = true`, bảo toàn sổ cái) qua `DELETE /api/v1/accounts/{id}`.
+    - `TC_ACC_05`: Multi-tenant Isolation (User B không thể truy cập hoặc xóa tài khoản của User A, trả về 404 Not Found).
+    - Cập nhật thông tin tài khoản thành công (`PUT /api/v1/accounts/{id}`).
+    - Chặn tạo tài khoản trùng tên trong cùng một User (400 Bad Request kèm `BUSINESS_VALIDATION_ERROR`).
+    - Chặn truy cập khi không có Bearer token (401 Unauthorized).
+  - `backend/src/test/java/com/finman/controller/CategoryControllerTest.java`: Bộ Integration Test MockMvc 6 test cases:
+    - `TC_CAT_01`: Lấy danh sách danh mục có sẵn của hệ thống (`GET /api/v1/categories`, 200 OK, >= 14 danh mục).
+    - `TC_CAT_02`: Tạo danh mục cá nhân mới thành công (`POST /api/v1/categories`, 201 Created, `isDefault = false`).
+    - `TC_CAT_03`: Ngăn chặn xóa danh mục mặc định của hệ thống (`DELETE /api/v1/categories/{id}`, 400 Bad Request).
+    - Xóa danh mục cá nhân thành công (`DELETE /api/v1/categories/{id}`, 200 OK).
+    - Lọc danh mục theo loại `?type=INCOME` hoặc `?type=EXPENSE`.
+    - Chặn truy cập khi không có Bearer token (401 Unauthorized).
+- **Nội dung công việc**: Hoàn tất 100% yêu cầu kiểm thử và nghiệm thu (DoD) của Phase 3, thiết lập hạ tầng test H2 in-memory độc lập cho backend, bảo đảm 100% test cases đạt chuẩn kiến trúc bảo mật Multi-tenant.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `mvn test`: Chạy thành công toàn bộ **61/61 tests** (0 failures, 0 errors, 0 skipped) trong 16.0s (`BUILD SUCCESS`).
+  - Frontend `npm run build`: 89 modules transformed thành công trong 1.13s (0 lỗi TypeScript / linting).
+- **Trạng thái**: Completed (Chính thức đóng Phase 3).
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)
@@ -552,4 +580,5 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Bug ID | Task liên quan | Mô tả sự cố / Lỗi | Mức độ (Severity) | Trạng thái | Giải pháp khắc phục |
 |---|---|---|---|---|---|
 | **BUG-01** | Task 2.10 / 2.12 | Nhập ký tự vào input form đăng ký làm nhấp nháy / tải lại nút Google | Medium | `Closed` | Chuyển callbacks sang `useRef`, bọc `useCallback` & `React.memo`, dùng `isRenderedRef` chặn hủy / tạo lại iframe Google. |
+| **BUG-02** | Task 3.2 / 3.3 | Không lưu được tài khoản khi thêm mới do thiếu báo lỗi nhập tên / payload thừa; ô nhập tiền thiếu định dạng dấu chấm (`.`) phân tách hàng nghìn | Medium | `Closed` | Bổ sung `@JsonIgnoreProperties` ở DTO backend; thêm banner `modalError` cảnh báo trực tiếp trong modal; tạo bộ tiện ích `formatCurrencyInput` & `parseCurrencyInput` cho toàn bộ các ô nhập tiền tệ (`AccountsPage`, `AddTransactionModal`, `BudgetPage`). |
 

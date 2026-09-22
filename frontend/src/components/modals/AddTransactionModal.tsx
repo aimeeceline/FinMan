@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Account, Category, Transaction, TransactionType } from '../../types';
 import { DEFAULT_CATEGORIES } from '../../constants/categories';
 import { DEFAULT_ACCOUNTS } from '../../constants/accounts';
+import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -167,9 +168,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     ? 'text-primary border-red-300 focus:border-red-600'
                     : 'text-secondary border-emerald-300 focus:border-emerald-600'
                 }`}
-                type="number"
-                value={amount || ''}
-                onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                type="text"
+                inputMode="numeric"
+                value={amount > 0 ? formatCurrencyInput(amount) : ''}
+                onChange={(e) => setAmount(parseCurrencyInput(e.target.value))}
                 placeholder="0"
               />
               <span

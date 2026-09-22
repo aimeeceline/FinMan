@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Account, AccountType, AccountSummary, AccountCreatePayload } from '../../types';
 import { accountService } from '../../services/accountService';
+import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 
 interface AccountsPageProps {
   accounts?: Account[];
@@ -27,9 +28,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<AccountType>('CASH');
   const [modalName, setModalName] = useState('');
-  const [modalBalance, setModalBalance] = useState<string>('0');
-  const [modalCreditLimit, setModalCreditLimit] = useState<string>('0');
+  const [modalBalance, setModalBalance] = useState<string>('');
+  const [modalCreditLimit, setModalCreditLimit] = useState<string>('');
   const [modalAccountNumber, setModalAccountNumber] = useState('');
+  const [modalError, setModalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Export Modal state
@@ -112,27 +114,46 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const handleOpenAddModal = (defaultType: AccountType = 'CASH') => {
     setModalType(defaultType);
     setModalName('');
-    setModalBalance('0');
-    setModalCreditLimit('0');
+    setModalBalance('');
+    setModalCreditLimit('');
     setModalAccountNumber('');
+    setModalError(null);
     setIsModalOpen(true);
   };
 
   // Handle Create Account Submit
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!modalName.trim()) return;
+    setModalError(null);
 
-    const initialBal = Math.max(0, parseInt(modalBalance.replace(/\D/g, '') || '0', 10));
-    const creditLim = modalType === 'CREDIT_CARD' ? Math.max(0, parseInt(modalCreditLimit.replace(/\D/g, '') || '0', 10)) : undefined;
+    const trimmedName = modalName.trim();
+    if (!trimmedName) {
+      setModalError(
+        `Vui lòng nhập tên tài khoản (Ví dụ: ${
+          modalType === 'CASH'
+            ? 'Tiền mặt tiêu dùng'
+            : modalType === 'BANK'
+            ? 'Techcombank Priority'
+            : 'VPBank Visa StepUp'
+        })`
+      );
+      return;
+    }
+
+    const initialBal = parseCurrencyInput(modalBalance);
+    const creditLim = modalType === 'CREDIT_CARD' ? parseCurrencyInput(modalCreditLimit) : 0;
+
+    // Gắn 4 số cuối vào tên nếu người dùng có nhập để hiển thị trực quan
+    const accNum = modalAccountNumber.trim();
+    const finalName = accNum && !trimmedName.includes(accNum)
+      ? `${trimmedName} (*${accNum})`
+      : trimmedName;
 
     const payload: AccountCreatePayload = {
-      name: modalName.trim(),
+      name: finalName,
       type: modalType,
       initialBalance: initialBal,
       creditLimit: creditLim,
-      accountNumber: modalAccountNumber.trim() ? modalAccountNumber.trim() : undefined,
-      bankName: modalType === 'BANK' ? modalName.trim() : undefined,
     };
 
     setIsSubmitting(true);
@@ -142,24 +163,52 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
       showToast(`Đã thêm tài khoản "${created.name}" thành công!`);
       if (onAddAccount) onAddAccount(created);
       await fetchAccounts();
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Error creating account:', err);
-      // Fallback local addition if backend endpoint has network issue
-      const mockCreated: Account = {
+      const backendMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error?.details?.name ||
+        err?.response?.data?.error?.message;
+
+      // Nếu là lỗi validation hoặc trùng tên từ backend, giữ modal và báo lỗi cụ thể
+      if (err?.response?.status === 400 || err?.response?.status === 409) {
+        setModalError(backendMsg || 'Dữ liệu không hợp lệ hoặc tên tài khoản đã tồn tại. Vui lòng kiểm tra lại.');
+        return;
+      }
+
+      // Trường hợp offline / mất kết nối mạng, fallback lưu cục bộ
+      const fallbackCreated: Account = {
         id: Date.now(),
         name: payload.name,
         type: payload.type,
         currentBalance: payload.initialBalance,
         initialBalance: payload.initialBalance,
         creditLimit: payload.creditLimit,
-        accountNumber: payload.accountNumber,
-        bankName: payload.bankName,
+        accountNumber: accNum || undefined,
+        bankName: modalType === 'BANK' ? trimmedName : undefined,
         napasLinked: payload.type === 'BANK',
       };
-      if (onAddAccount) onAddAccount(mockCreated);
+
+      if (onAddAccount) onAddAccount(fallbackCreated);
+
+      setSummary((prev) => {
+        const list = [...(prev?.accounts || propAccounts || []), fallbackCreated];
+        const totalAssets = list
+          .filter((a) => a.type !== 'CREDIT_CARD')
+          .reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+        const totalLiabilities = list
+          .filter((a) => a.type === 'CREDIT_CARD')
+          .reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+        return {
+          totalAssets,
+          totalLiabilities,
+          netWorth: totalAssets - totalLiabilities,
+          accounts: list,
+        };
+      });
+
       setIsModalOpen(false);
-      showToast(`Đã lưu tài khoản "${payload.name}" vào hệ thống!`);
-      await fetchAccounts();
+      showToast(`Đã lưu tài khoản "${payload.name}" thành công!`);
     } finally {
       setIsSubmitting(false);
     }
@@ -910,6 +959,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             </div>
 
             <form onSubmit={handleAccountSubmit} className="flex flex-col gap-space-md">
+              {modalError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium">
+                  <span className="material-symbols-outlined text-base text-red-600 shrink-0">error</span>
+                  <span>{modalError}</span>
+                </div>
+              )}
+
               {/* Account Type Switcher */}
               <div className="flex flex-col gap-space-2xs">
                 <label className="font-label-md text-label-md text-on-surface font-semibold">
@@ -992,8 +1048,15 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                       : 'Ví dụ: Thẻ VPBank StepUp, TPBank 2in1, HSBC Visa...'
                   }
                   value={modalName}
-                  onChange={(e) => setModalName(e.target.value)}
-                  className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
+                  onChange={(e) => {
+                    setModalName(e.target.value);
+                    if (modalError) setModalError(null);
+                  }}
+                  className={`w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 border transition-all ${
+                    modalError && !modalName.trim()
+                      ? 'border-red-400 focus:ring-red-300 ring-1 ring-red-300'
+                      : 'border-outline-variant/30 focus:ring-secondary/50'
+                  }`}
                 />
               </div>
 
@@ -1006,12 +1069,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                   <div className="relative">
                     <input
                       id="accBalance"
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      min="0"
+                      placeholder="0"
                       value={modalBalance}
-                      onChange={(e) => setModalBalance(e.target.value)}
-                      className="w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
+                      onChange={(e) => setModalBalance(formatCurrencyInput(e.target.value))}
+                      className="w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md font-bold">
                       ₫
@@ -1026,13 +1090,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                   <div className="relative">
                     <input
                       id="accLimit"
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       disabled={modalType !== 'CREDIT_CARD'}
                       value={modalCreditLimit}
-                      onChange={(e) => setModalCreditLimit(e.target.value)}
+                      onChange={(e) => setModalCreditLimit(formatCurrencyInput(e.target.value))}
                       placeholder="0"
-                      className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 ${
+                      className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row ${
                         modalType !== 'CREDIT_CARD' ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     />

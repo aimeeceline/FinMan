@@ -1,11 +1,13 @@
 package com.finman.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.finman.entity.enums.AccountType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AccountCreateRequest {
 
     @NotBlank(message = "Tên tài khoản không được để trống")
