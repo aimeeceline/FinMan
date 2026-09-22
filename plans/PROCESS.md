@@ -85,7 +85,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Completed` | 2026-09-22 | Agent |
-| **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Pending` | — | — |
+| **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Completed` | 2026-09-22 | Agent |
 | **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Pending` | — | — |
 | **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Pending` | — | — |
 | **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Pending` | — | — |
@@ -594,6 +594,41 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% —
   - `mvn test`: **81/81 tests passed** (0 failures, 0 errors, 0 skipped) trong 23.4s (`BUILD SUCCESS`).
   - Frontend `npm run build`: 90 modules transformed thành công trong 1.26s.
+- **Trạng thái**: Completed.
+
+### [2026-09-22] Task 4.2: Frontend Transactions Home Dashboard (Bóc tách từ Stitch Design)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Bóc tách toàn diện desktop layout từ `design/finman_web_giao_d_ch_dashboard/code.html` sang `frontend/src/pages/dashboard/DashboardPage.tsx`.
+  - Bộ 4 thẻ KPI tài chính cấp cao (Top-level KPI metrics strip):
+    - Tổng số dư khả dụng (Net Available Balance) kèm nút ẩn/hiện số dư (eye toggle) đồng bộ với `localStorage`.
+    - Tổng Thu nhập T9 (Total Income T9) hiển thị số tiền định dạng dấu chấm `+X.XXX.XXX ₫`.
+    - Tổng Chi tiêu T9 (Total Expenses T9) hiển thị số tiền `-X.XXX.XXX ₫`.
+    - Tỷ lệ tích lũy / Dòng tiền ròng (Savings Rate / Net Cash Flow) kèm đường dẫn tới báo cáo tài chính.
+  - Thanh nhập liệu tự nhiên AI (Smart AI Natural Language prompt bar - PRD 32.1):
+    - Nhập câu văn tiếng Việt tự nhiên hoặc bấm mic mô phỏng giọng nói.
+    - Nút "Bóc tách" tự động trích xuất số tiền, phân loại thu/chi, danh mục, tài khoản và ghi chú.
+    - Khay xem trước kết quả bóc tách (AI Parsed Drawer) với nút "Chỉnh sửa" và "Áp dụng & Lưu" chuyển hiệu ứng "Đã ghi nhận!".
+  - Bố cục chia đôi màn hình chuẩn thiết kế (Desktop 65% / 35% Split Workspace):
+    - **Cột trái (65%)**:
+      - Bộ lọc thời gian: Hôm nay (16/09), Hôm qua, Tuần này, Tháng 9/2026, Tất cả.
+      - Nút hành động nhanh: "Lọc nâng cao" và "Xuất XLSX".
+      - Hàng lọc chi tiết: Pills danh mục và dropdown chọn tài khoản nguồn tiền.
+      - Sổ nhật ký giao dịch nhóm theo ngày (Chronologically Grouped Ledger) kèm banner thống kê tổng thu/chi/dòng tiền ròng từng ngày.
+      - Hàng giao dịch trực quan với icon danh mục, huy hiệu, thời gian, tài khoản, số tiền màu sắc, trạng thái "Hoàn tất" và nút sửa/xóa khi hover.
+      - Tóm tắt footer: "Hiển thị X trên Y giao dịch" kèm liên kết "Xem sao kê đầy đủ".
+      - Biểu đồ Dòng tiền Tuần 3 - Tháng 9 (Cashflow Trajectory Vector Chart) dựng bằng SVG inline với gradient vùng thu nhập và đường nét đứt chi tiêu.
+    - **Cột phải (35%)**:
+      - Danh sách nhanh tài khoản nguồn tiền (Quick Accounts list) với số dư định dạng dấu chấm phân cách hàng nghìn.
+      - Hũ tích lũy mục tiêu (Goal Piggy Banks): Tiến độ MacBook Pro M3 (66%) và Quỹ khẩn cấp (25%).
+      - Phân bổ Chi tiêu nhanh theo danh mục dạng thanh tiến trình trực quan.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/constants/transactions.ts`: Tạo mới danh sách giao dịch mẫu chuẩn thiết kế Stitch (Lương T9 +6M VCB, Quần Uniqlo -1M, Cà phê Highlands -90k, v.v.).
+  - `frontend/src/constants/accounts.ts`: Cập nhật danh sách tài khoản mặc định đồng bộ số dư với Stitch dashboard (Vietcombank 4.910.000 ₫, Tiền mặt 1.500.000 ₫, Thẻ tín dụng Techcombank).
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Viết lại toàn diện theo đúng thiết kế Stitch Web Dashboard chuẩn Fintech Prestige.
+  - `frontend/src/App.tsx`: Tích hợp `DEFAULT_TRANSACTIONS`, bổ sung hàm xóa giao dịch `handleDeleteTransaction` hoàn tác số dư và kết nối `onApplyAiTransaction`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - Frontend `npm run build`: **91 modules transformed** thành công trong 1.25s (0 lỗi TypeScript, 0 cảnh báo lint).
 - **Trạng thái**: Completed.
 
 ---

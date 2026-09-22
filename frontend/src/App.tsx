@@ -12,6 +12,7 @@ import { StatisticsPage } from './pages/statistics/StatisticsPage';
 import { AIAssistantPage } from './pages/ai/AIAssistantPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { DEFAULT_ACCOUNTS } from './constants/accounts';
+import { DEFAULT_TRANSACTIONS } from './constants/transactions';
 import { accountService } from './services/accountService';
 import type { Account, Transaction } from './types';
 
@@ -53,7 +54,7 @@ const MainApp: React.FC = () => {
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const [currentRoute, setCurrentRoute] = useState<NavRoute>(getInitialRoute);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(DEFAULT_TRANSACTIONS);
   const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -112,13 +113,31 @@ const MainApp: React.FC = () => {
       ...newTx,
       id: Date.now(),
     };
-    setTransactions([tx, ...transactions]);
+    setTransactions((prev) => [tx, ...prev]);
 
     // Update account balance dynamically
     setAccounts((prevAccounts) =>
       prevAccounts.map((acc) => {
         if (acc.id === newTx.account.id) {
           const change = newTx.type === 'INCOME' ? newTx.amount : -newTx.amount;
+          return { ...acc, currentBalance: acc.currentBalance + change };
+        }
+        return acc;
+      })
+    );
+  };
+
+  // Handle deleting transaction
+  const handleDeleteTransaction = (id: number) => {
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return;
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+
+    // Revert account balance dynamically
+    setAccounts((prevAccounts) =>
+      prevAccounts.map((acc) => {
+        if (acc.id === tx.account.id) {
+          const change = tx.type === 'INCOME' ? -tx.amount : tx.amount;
           return { ...acc, currentBalance: acc.currentBalance + change };
         }
         return acc;
@@ -181,6 +200,8 @@ const MainApp: React.FC = () => {
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
             onNavigateToReports={() => handleNavigate('thong-ke-va-bao-cao')}
+            onDeleteTransaction={handleDeleteTransaction}
+            onApplyAiTransaction={handleAddTransaction}
           />
         )}
 
