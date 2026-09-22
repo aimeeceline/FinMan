@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Account, Category, Transaction, TransactionType } from '../../types';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
-import { DEFAULT_ACCOUNTS } from '../../constants/accounts';
+import { categoryService } from '../../services/categoryService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 
 interface AddTransactionModalProps {
@@ -9,21 +8,61 @@ interface AddTransactionModalProps {
   onClose: () => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   accounts?: Account[];
+  categories?: Category[];
 }
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onAddTransaction,
-  accounts,
+  accounts = [],
+  categories,
 }) => {
-  const accountList = accounts && accounts.length > 0 ? accounts : DEFAULT_ACCOUNTS;
+  const [categoriesList, setCategoriesList] = useState<Category[]>(categories || []);
   const [type, setType] = useState<TransactionType>('EXPENSE');
   const [amount, setAmount] = useState<number>(0);
-  const [selectedCategory, setSelectedCategory] = useState<Category>(DEFAULT_CATEGORIES[0]);
-  const [selectedAccount, setSelectedAccount] = useState<Account>(accountList[0]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState<string>('');
+
+  // Load categories from database if not provided
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      setCategoriesList(categories);
+    } else if (isOpen) {
+      categoryService
+        .getCategories()
+        .then(setCategoriesList)
+        .catch((err) => console.error('Error fetching categories in modal:', err));
+    }
+  }, [categories, isOpen]);
+
+  const filteredCategories = categoriesList.filter((c) =>
+    type === 'INCOME' ? c.type === 'INCOME' : c.type === 'EXPENSE'
+  );
+
+  // Sync selectedCategory when type or filteredCategories change
+  useEffect(() => {
+    if (filteredCategories.length > 0) {
+      if (!selectedCategory || selectedCategory.type !== type || !filteredCategories.some(c => c.id === selectedCategory.id)) {
+        setSelectedCategory(filteredCategories[0]);
+      }
+    } else {
+      setSelectedCategory(null);
+    }
+  }, [filteredCategories, type]);
+
+  // Sync selectedAccount when accounts change
+  useEffect(() => {
+    if (accounts.length > 0) {
+      if (!selectedAccount || !accounts.some(a => a.id === selectedAccount.id)) {
+        setSelectedAccount(accounts[0]);
+      }
+    } else {
+      setSelectedAccount(null);
+    }
+  }, [accounts]);
 
   if (!isOpen) return null;
 
@@ -39,7 +78,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (amount <= 0) return;
+    if (amount <= 0 || !selectedCategory || !selectedAccount) return;
 
     onAddTransaction({
       amount,
@@ -57,76 +96,59 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     onClose();
   };
 
-  const filteredCategories = DEFAULT_CATEGORIES.filter((c) =>
-    type === 'INCOME' ? c.type === 'INCOME' : c.type === 'EXPENSE'
-  );
+  const hasNoAccounts = accounts.length === 0;
 
   return (
     <div className="fixed inset-0 bg-slate-950/65 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-6 transition-all duration-300 select-none">
-      <section className="bg-white w-full max-w-4xl rounded-3xl shadow-modal border border-slate-100 flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Modal Header */}
-        <header className="relative px-7 pt-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/70 via-white to-amber-50/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-11 h-11 rounded-full border border-amber-300/40 p-0.5 bg-amber-50 flex items-center justify-center shadow-md">
-                <span className="material-symbols-outlined text-amber-600 text-2xl">
-                  add_card
-                </span>
-              </div>
-              <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-primary border-2 border-white"></span>
-              </span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                Thêm giao dịch mới
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">
-                Ghi nhận thu chi nhanh chóng vào sổ cái tài chính
-              </p>
-            </div>
+      <section
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-fadeIn border border-slate-100"
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header Bar */}
+        <header className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+            <h2 className="text-base font-bold text-slate-900">Ghi nhận Giao dịch Mới</h2>
           </div>
-
           <button
             onClick={onClose}
-            aria-label="Đóng cửa sổ"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
+            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
             type="button"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </header>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto custom-scroll px-7 py-5 space-y-6">
-          {/* Transaction Type Tabs */}
-          <div className="flex justify-center">
-            <nav className="inline-flex p-1.5 bg-slate-100/90 rounded-2xl gap-1 border border-slate-200/80 shadow-inner">
+        {/* Modal Form */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6">
+          {hasNoAccounts && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-amber-600 text-lg">warning</span>
+              <span>
+                Bạn chưa có tài khoản/ví nào trong cơ sở dữ liệu. Vui lòng vào trang <strong>Tài khoản & Tài sản</strong> để tạo tài khoản trước khi ghi nhận giao dịch.
+              </span>
+            </div>
+          )}
+
+          {/* Type Toggle: Chi tiêu vs Thu nhập */}
+          <div className="flex items-center justify-center">
+            <nav className="flex p-1 bg-slate-100 rounded-2xl w-full max-w-sm justify-between shadow-inner">
               <button
                 type="button"
-                onClick={() => {
-                  setType('EXPENSE');
-                  const firstExp = DEFAULT_CATEGORIES.find((c) => c.type === 'EXPENSE');
-                  if (firstExp) setSelectedCategory(firstExp);
-                }}
+                onClick={() => setType('EXPENSE')}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
                   type === 'EXPENSE'
-                    ? 'bg-primary text-white shadow-glow-red'
-                    : 'text-slate-600 hover:text-red-600 hover:bg-white/80'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-slate-600 hover:text-red-700 hover:bg-white/80'
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
                 <span>Khoản Chi tiêu</span>
               </button>
-
               <button
                 type="button"
-                onClick={() => {
-                  setType('INCOME');
-                  const firstInc = DEFAULT_CATEGORIES.find((c) => c.type === 'INCOME');
-                  if (firstInc) setSelectedCategory(firstInc);
-                }}
+                onClick={() => setType('INCOME')}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
                   type === 'INCOME'
                     ? 'bg-secondary text-white shadow-md'
@@ -220,31 +242,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 ></span>
                 Chọn Danh mục
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {filteredCategories.map((c) => {
-                  const isSelected = selectedCategory.id === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(c)}
-                      className={`p-3 rounded-xl border flex items-center gap-2.5 text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 text-on-surface font-semibold shadow-sm'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: c.bgColor || '#fee2e2', color: c.color || '#dc2626' }}
+
+              {filteredCategories.length === 0 ? (
+                <div className="text-xs text-slate-500 py-3 text-center bg-slate-50 rounded-xl">
+                  Chưa có danh mục nào trong cơ sở dữ liệu.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                  {filteredCategories.map((c) => {
+                    const isSelected = selectedCategory?.id === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(c)}
+                        className={`p-3 rounded-xl border flex items-center gap-2.5 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 text-on-surface font-semibold shadow-sm'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
+                        }`}
                       >
-                        <span className="material-symbols-outlined text-[18px]">{c.icon}</span>
-                      </div>
-                      <span className="text-xs truncate">{c.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: c.bgColor || '#fee2e2', color: c.color || '#dc2626' }}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">{c.icon}</span>
+                        </div>
+                        <span className="text-xs truncate">{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Account & Details (5 cols) */}
@@ -256,20 +285,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   </span>
                   Tài khoản giao dịch
                 </label>
-                <select
-                  value={selectedAccount.id}
-                  onChange={(e) => {
-                    const acc = accountList.find((a) => a.id === Number(e.target.value));
-                    if (acc) setSelectedAccount(acc);
-                  }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-tertiary/40"
-                >
-                  {accountList.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.currentBalance.toLocaleString('vi-VN')} ₫)
-                    </option>
-                  ))}
-                </select>
+                {hasNoAccounts ? (
+                  <div className="text-xs text-red-500 font-medium">Chưa có tài khoản</div>
+                ) : (
+                  <select
+                    value={selectedAccount?.id || ''}
+                    onChange={(e) => {
+                      const acc = accounts.find((a) => a.id === Number(e.target.value));
+                      if (acc) setSelectedAccount(acc);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-tertiary/40"
+                  >
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.currentBalance.toLocaleString('vi-VN')} ₫)
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -316,7 +349,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={amount <= 0}
+              disabled={amount <= 0 || hasNoAccounts || !selectedCategory || !selectedAccount}
               className={`px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer ${
                 type === 'EXPENSE'
                   ? 'bg-primary hover:bg-primary-container'

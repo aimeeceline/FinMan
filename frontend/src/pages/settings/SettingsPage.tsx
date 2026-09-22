@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { categoryService } from '../../services/categoryService';
+import type { Category } from '../../types';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    categoryService.getCategories()
+      .then(setCategories)
+      .catch((err) => console.error('Error loading categories:', err));
+  }, []);
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-gutter-desktop py-space-lg select-none">
@@ -98,7 +106,7 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {DEFAULT_CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <div
                 key={c.id}
                 className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between"

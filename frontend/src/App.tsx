@@ -11,10 +11,10 @@ import { AccountsPage } from './pages/accounts/AccountsPage';
 import { StatisticsPage } from './pages/statistics/StatisticsPage';
 import { AIAssistantPage } from './pages/ai/AIAssistantPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
-import { DEFAULT_ACCOUNTS } from './constants/accounts';
-import { DEFAULT_TRANSACTIONS } from './constants/transactions';
 import { accountService } from './services/accountService';
-import type { Account, Transaction } from './types';
+import { categoryService } from './services/categoryService';
+import { transactionService } from './services/transactionService';
+import type { Account, Category, Transaction } from './types';
 
 const VALID_ROUTES: NavRoute[] = [
   'giao-dich',
@@ -54,8 +54,9 @@ const MainApp: React.FC = () => {
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const [currentRoute, setCurrentRoute] = useState<NavRoute>(getInitialRoute);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>(DEFAULT_TRANSACTIONS);
-  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleNavigate = useCallback((route: NavRoute) => {
@@ -90,59 +91,60 @@ const MainApp: React.FC = () => {
     }
   }, [currentRoute]);
 
-  // Fetch accounts from backend when authenticated
-  const loadAccounts = useCallback(async () => {
+  // Fetch real data from backend when authenticated
+  const loadData = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const summary = await accountService.getAccountsSummary();
-      if (summary && summary.accounts && summary.accounts.length > 0) {
-        setAccounts(summary.accounts);
+      const [accountsSummary, txs, cats] = await Promise.all([
+        accountService.getAccountsSummary().catch(() => null),
+        transactionService.getTransactions().catch(() => []),
+        categoryService.getCategories().catch(() => []),
+      ]);
+      if (accountsSummary && accountsSummary.accounts) {
+        setAccounts(accountsSummary.accounts);
+      }
+      if (txs) {
+        setTransactions(txs);
+      }
+      if (cats) {
+        setCategories(cats);
       }
     } catch (err) {
-      console.warn('Could not load accounts from backend in App.tsx:', err);
+      console.warn('Could not load data from backend in App.tsx:', err);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+    loadData();
+  }, [loadData]);
 
-  // Handle adding new transaction
-  const handleAddTransaction = (newTx: Omit<Transaction, 'id'>) => {
-    const tx: Transaction = {
-      ...newTx,
-      id: Date.now(),
-    };
-    setTransactions((prev) => [tx, ...prev]);
-
-    // Update account balance dynamically
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((acc) => {
-        if (acc.id === newTx.account.id) {
-          const change = newTx.type === 'INCOME' ? newTx.amount : -newTx.amount;
-          return { ...acc, currentBalance: acc.currentBalance + change };
-        }
-        return acc;
-      })
-    );
+  // Handle adding new transaction into database
+  const handleAddTransaction = async (newTx: Omit<Transaction, 'id'>) => {
+    try {
+      await transactionService.createTransaction({
+        accountId: newTx.account.id,
+        categoryId: newTx.category.id,
+        type: newTx.type,
+        amount: newTx.amount,
+        transactionDate: newTx.date,
+        note: newTx.note,
+      });
+      await loadData();
+    } catch (err: any) {
+      console.error('Error saving transaction to database:', err);
+      alert(err.response?.data?.message || 'Không thể lưu giao dịch vào cơ sở dữ liệu');
+    }
   };
 
-  // Handle deleting transaction
-  const handleDeleteTransaction = (id: number) => {
-    const tx = transactions.find((t) => t.id === id);
-    if (!tx) return;
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-
-    // Revert account balance dynamically
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((acc) => {
-        if (acc.id === tx.account.id) {
-          const change = tx.type === 'INCOME' ? -tx.amount : tx.amount;
-          return { ...acc, currentBalance: acc.currentBalance + change };
-        }
-        return acc;
-      })
-    );
+  // Handle deleting transaction from database
+  const handleDeleteTransaction = async (id: number) => {
+    try {
+      await transactionService.deleteTransaction(id);
+      await loadData();
+    } catch (err: any) {
+      console.error('Error deleting transaction from database:', err);
+      alert(err.response?.data?.message || 'Không thể xóa giao dịch khỏi cơ sở dữ liệu');
+    }
   };
 
   const handleAddAccount = (newAcc: Account) => {
@@ -211,7 +213,7 @@ const MainApp: React.FC = () => {
           <AccountsPage
             accounts={accounts}
             onAddAccount={handleAddAccount}
-            onRefresh={loadAccounts}
+            onRefresh={loadData}
           />
         )}
 
@@ -230,6 +232,7 @@ const MainApp: React.FC = () => {
         onClose={() => setIsAddModalOpen(false)}
         onAddTransaction={handleAddTransaction}
         accounts={accounts}
+        categories={categories}
       />
     </div>
   );

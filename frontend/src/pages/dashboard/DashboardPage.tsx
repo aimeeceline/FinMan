@@ -42,9 +42,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [showAdvancedFilter, setShowAdvancedFilter] = useState<boolean>(true);
 
   // AI Prompt State
-  const [aiText, setAiText] = useState<string>(
-    'Hôm nay tôi ăn trưa 50 nghìn ở Highland tiền mặt'
-  );
+  const [aiText, setAiText] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [aiParsed, setAiParsed] = useState<{
     amount: number;
@@ -53,39 +51,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     categoryIcon: string;
     accountName: string;
     note: string;
-  } | null>({
-    amount: 50000,
-    type: 'EXPENSE',
-    categoryName: 'Ăn uống',
-    categoryIcon: 'restaurant',
-    accountName: 'Tiền mặt ví',
-    note: 'Ăn trưa Highlands',
-  });
+  } | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
 
-  // Fallback default accounts if none provided
-  const displayAccounts = useMemo(() => {
-    if (accounts && accounts.length > 0) return accounts;
-    return [
-      {
-        id: 1,
-        name: 'Vietcombank Digital',
-        type: 'BANK' as const,
-        currentBalance: 4910000,
-        accountNumber: '1023456789',
-        bankName: 'Vietcombank',
-        napasLinked: true,
-      },
-      {
-        id: 2,
-        name: 'Tiền mặt ví',
-        type: 'CASH' as const,
-        currentBalance: 1500000,
-        accountNumber: 'Ví tiền mặt',
-        napasLinked: false,
-      },
-    ];
-  }, [accounts]);
+  // Real accounts from backend
+  const displayAccounts = accounts || [];
 
   // Overall Financial Calculations
   const totalIncome = useMemo(() => {
@@ -1130,7 +1100,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             <div className="space-y-3">
-              {displayAccounts.map((acc) => (
+              {displayAccounts.length === 0 ? (
+                <div className="text-center py-6 text-on-surface-variant text-xs">
+                  Chưa có tài khoản nào trong cơ sở dữ liệu.
+                </div>
+              ) : (
+                displayAccounts.map((acc) => (
                 <div
                   key={acc.id}
                   className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/20 hover:bg-surface-container transition-all"
@@ -1162,7 +1137,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="text-[10px] text-secondary font-semibold">Hoạt động</div>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
 

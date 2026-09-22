@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
-import type { Budget } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { categoryService } from '../../services/categoryService';
+import type { Budget, Category } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 
 export const BudgetPage: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isAddingBudget, setIsAddingBudget] = useState(false);
-  const [newCategoryId, setNewCategoryId] = useState<number>(DEFAULT_CATEGORIES[0].id);
+  const [newCategoryId, setNewCategoryId] = useState<number>(0);
   const [newAmount, setNewAmount] = useState<string>('');
+
+  useEffect(() => {
+    categoryService.getCategories('EXPENSE')
+      .then((cats) => {
+        setCategories(cats);
+        if (cats.length > 0) {
+          setNewCategoryId(cats[0].id);
+        }
+      })
+      .catch((err) => console.error('Error loading budget categories:', err));
+  }, []);
 
   const totalAllocated = budgets.reduce((acc, b) => acc + b.allocatedAmount, 0);
   const totalSpent = budgets.reduce((acc, b) => acc + b.spentAmount, 0);
@@ -17,7 +29,7 @@ export const BudgetPage: React.FC = () => {
 
   const handleCreateBudget = (e: React.FormEvent) => {
     e.preventDefault();
-    const category = DEFAULT_CATEGORIES.find((c) => c.id === newCategoryId);
+    const category = categories.find((c) => c.id === newCategoryId);
     const parsedAmount = parseCurrencyInput(newAmount);
     if (!category || parsedAmount <= 0) return;
 
@@ -96,13 +108,11 @@ export const BudgetPage: React.FC = () => {
                 onChange={(e) => setNewCategoryId(Number(e.target.value))}
                 className="w-full bg-surface-container-low rounded-xl px-3 py-2 text-sm border border-outline-variant/40"
               >
-                {DEFAULT_CATEGORIES
-                  .filter((c) => c.type === 'EXPENSE')
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
