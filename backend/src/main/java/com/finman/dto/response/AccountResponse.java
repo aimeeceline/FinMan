@@ -14,6 +14,7 @@ public class AccountResponse {
     private Long currentBalance;
     private Long creditLimit;
     private Boolean isArchived;
+    private String accountNumber;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -36,7 +37,7 @@ public class AccountResponse {
         if (account == null) {
             return null;
         }
-        return new AccountResponse(
+        AccountResponse response = new AccountResponse(
                 account.getId(),
                 account.getName(),
                 account.getType(),
@@ -47,6 +48,8 @@ public class AccountResponse {
                 account.getCreatedAt(),
                 account.getUpdatedAt()
         );
+        response.setAccountNumber(account.getAccountNumber());
+        return response;
     }
 
     public Long getId() {
@@ -119,5 +122,13 @@ public class AccountResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
     }
 }

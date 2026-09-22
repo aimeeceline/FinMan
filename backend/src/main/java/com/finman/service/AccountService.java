@@ -72,6 +72,9 @@ public class AccountService {
         }
 
         Account account = new Account(user, name, request.getType(), initialBalance);
+        if (request.getAccountNumber() != null && !request.getAccountNumber().isBlank()) {
+            account.setAccountNumber(request.getAccountNumber().trim());
+        }
         if (request.getType() == AccountType.CREDIT_CARD && request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());
         }
@@ -91,6 +94,10 @@ public class AccountService {
         }
 
         account.setName(newName);
+
+        if (request.getAccountNumber() != null) {
+            account.setAccountNumber(request.getAccountNumber().trim());
+        }
 
         if (request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());

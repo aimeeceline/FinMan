@@ -110,6 +110,23 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
     return amount.toLocaleString('vi-VN');
   };
 
+  // Helper to extract clean display name and masked account number (supports new accountNumber field and legacy (*xxxx) format)
+  const getAccountMeta = (acc: Account) => {
+    let digits = acc.accountNumber ? acc.accountNumber.trim().slice(-4) : '';
+    if (!digits) {
+      const match = acc.name.match(/\(\*?(\d+)\)/);
+      if (match) {
+        digits = match[1].slice(-4);
+      }
+    }
+    const cleanName = acc.name.replace(/\s*\(\*?\d+\)\s*$/, '').trim();
+    return {
+      displayName: cleanName || acc.name,
+      maskedNumber: digits ? `•••• ${digits}` : `•••• ${String(acc.id).padStart(4, '0').slice(-4)}`,
+      digits,
+    };
+  };
+
   // Open modal with specific type
   const handleOpenAddModal = (defaultType: AccountType = 'CASH') => {
     setModalType(defaultType);
@@ -142,18 +159,14 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
 
     const initialBal = parseCurrencyInput(modalBalance);
     const creditLim = modalType === 'CREDIT_CARD' ? parseCurrencyInput(modalCreditLimit) : 0;
-
-    // Gắn 4 số cuối vào tên nếu người dùng có nhập để hiển thị trực quan
     const accNum = modalAccountNumber.trim();
-    const finalName = accNum && !trimmedName.includes(accNum)
-      ? `${trimmedName} (*${accNum})`
-      : trimmedName;
 
     const payload: AccountCreatePayload = {
-      name: finalName,
+      name: trimmedName,
       type: modalType,
       initialBalance: initialBal,
       creditLimit: creditLim,
+      accountNumber: accNum || undefined,
     };
 
     setIsSubmitting(true);
@@ -531,7 +544,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               </div>
 
               {/* Cash Card Items */}
-              {cashAccounts.map((acc) => (
+              {cashAccounts.map((acc, index) => {
+                const meta = getAccountMeta(acc);
+                return (
                 <div
                   key={acc.id}
                   className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-space-md group border border-outline-variant/10 relative"
@@ -543,10 +558,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                       </div>
                       <div className="flex flex-col">
                         <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                          {acc.name}
+                          {meta.displayName}
                         </span>
                         <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          {acc.accountNumber || 'Ví tiêu dùng hàng ngày'}
+                          {acc.accountNumber || (index === 0 ? 'Ví tiêu dùng hàng ngày' : 'Ví tiền mặt phụ')}
                         </span>
                       </div>
                     </div>
@@ -578,7 +593,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Add Cash Button */}
               <button
@@ -607,7 +623,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               </div>
 
               {/* Bank Card Items */}
-              {bankAccounts.map((acc) => (
+              {bankAccounts.map((acc, index) => {
+                const meta = getAccountMeta(acc);
+                return (
                 <div
                   key={acc.id}
                   className="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-space-md group border border-outline-variant/10 relative"
@@ -620,19 +638,23 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                       <div className="flex flex-col">
                         <div className="flex items-center gap-space-xs">
                           <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                            {acc.name}
+                            {meta.displayName}
                           </span>
                         </div>
                         <div className="inline-flex mt-0.5">
-                          <span className="px-space-xs py-0.5 rounded bg-rose-50 text-primary font-label-sm text-label-sm font-semibold">
-                            Tài khoản nhận lương chính
+                          <span
+                            className={`px-space-xs py-0.5 rounded font-label-sm text-label-sm font-semibold ${
+                              index === 0 ? 'bg-rose-50 text-primary' : 'bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {index === 0 ? 'Tài khoản chính' : 'Tài khoản thanh toán'}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="font-label-sm text-label-sm text-on-surface-variant font-mono">
-                        {acc.napasLinked ? 'VCB - 24/7' : 'Napas 24/7'}
+                        {acc.napasLinked || meta.displayName.toUpperCase().includes('VCB') || meta.displayName.toUpperCase().includes('VIETCOMBANK') ? 'VCB - 24/7' : 'Napas 24/7'}
                       </span>
                       <button
                         onClick={() => setAccountToArchive(acc)}
@@ -648,7 +670,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                   <div className="flex items-center justify-between pt-space-xs border-t border-surface-container/60">
                     <div className="flex flex-col">
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        Số TK: {acc.accountNumber ? `•••• ${acc.accountNumber.slice(-4)}` : '•••• 4821'}
+                        Số TK: {meta.maskedNumber}
                       </span>
                       <div className="flex items-baseline gap-1 mt-space-2xs">
                         <span className="font-currency-display text-2xl font-extrabold text-tertiary">
@@ -663,7 +685,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Add Bank CTA */}
               <button
@@ -694,6 +717,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               {/* Credit Card Items */}
               {creditAccounts.length > 0 ? (
                 creditAccounts.map((acc) => {
+                  const meta = getAccountMeta(acc);
                   const limit = acc.creditLimit || 15000000;
                   const used = acc.currentBalance;
                   const available = Math.max(0, limit - used);
@@ -713,7 +737,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                           <div className="flex flex-col">
                             <div className="flex items-center gap-space-xs">
                               <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                                {acc.name}
+                                {meta.displayName}
                               </span>
                               {isFullyPaid ? (
                                 <span className="px-space-xs py-0.5 rounded bg-emerald-100 text-emerald-800 font-label-sm text-label-sm font-semibold">
@@ -726,7 +750,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                               )}
                             </div>
                             <span className="font-body-sm text-body-sm text-on-surface-variant">
-                              Hạn mức khả dụng: {formatCurrency(available)} ₫
+                              {meta.digits ? `Thẻ: ${meta.maskedNumber} • ` : ''}Hạn mức khả dụng: {formatCurrency(available)} ₫
                             </span>
                           </div>
                         </div>

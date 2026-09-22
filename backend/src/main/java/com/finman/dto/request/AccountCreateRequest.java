@@ -23,6 +23,9 @@ public class AccountCreateRequest {
     @Min(value = 0, message = "Hạn mức tín dụng không được âm")
     private Long creditLimit = 0L;
 
+    @Size(max = 50, message = "Số tài khoản tối đa 50 ký tự")
+    private String accountNumber;
+
     public AccountCreateRequest() {
     }
 
@@ -31,6 +34,22 @@ public class AccountCreateRequest {
         this.type = type;
         this.initialBalance = initialBalance != null ? initialBalance : 0L;
         this.creditLimit = creditLimit != null ? creditLimit : 0L;
+    }
+
+    public AccountCreateRequest(String name, AccountType type, Long initialBalance, Long creditLimit, String accountNumber) {
+        this.name = name;
+        this.type = type;
+        this.initialBalance = initialBalance != null ? initialBalance : 0L;
+        this.creditLimit = creditLimit != null ? creditLimit : 0L;
+        this.accountNumber = accountNumber;
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
     }
 
     public String getName() {

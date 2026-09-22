@@ -68,6 +68,9 @@ public class Account {
     @Column(name = "is_archived", nullable = false)
     private Boolean isArchived = false;
 
+    @Column(name = "account_number", length = 50)
+    private String accountNumber;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -184,6 +187,14 @@ public class Account {
 
     public void setIsArchived(Boolean archived) {
         isArchived = archived;
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
     }
 
     public Instant getCreatedAt() {
