@@ -199,6 +199,7 @@ const MainApp: React.FC = () => {
           <DashboardPage
             transactions={filteredTransactions}
             accounts={accounts}
+            categories={categories}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
             onNavigateToReports={() => handleNavigate('thong-ke-va-bao-cao')}

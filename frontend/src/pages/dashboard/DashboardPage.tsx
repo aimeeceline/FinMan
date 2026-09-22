@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import type { Account, Transaction } from '../../types';
+import type { Account, Category, Transaction } from '../../types';
 
 interface DashboardPageProps {
   transactions: Transaction[];
   accounts?: Account[];
+  categories?: Category[];
   onOpenAddModal: () => void;
   onNavigateToAccounts: () => void;
   onNavigateToReports: () => void;
@@ -16,6 +17,7 @@ type TimeFilterTab = 'TODAY' | 'YESTERDAY' | 'WEEK' | 'MONTH' | 'ALL';
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   transactions,
   accounts,
+  categories = [],
   onOpenAddModal,
   onNavigateToAccounts,
   onNavigateToReports,
@@ -256,21 +258,50 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       type = 'INCOME';
     }
 
-    // Determine category
-    let categoryName = 'Ăn uống';
-    let categoryIcon = 'restaurant';
-    if (lower.includes('xăng') || lower.includes('xe') || lower.includes('grab') || lower.includes('taxi')) {
-      categoryName = 'Giao thông';
-      categoryIcon = 'local_gas_station';
-    } else if (lower.includes('áo') || lower.includes('quần') || lower.includes('mua sắm') || lower.includes('giày')) {
-      categoryName = 'Áo quần';
-      categoryIcon = 'checkroom';
-    } else if (lower.includes('lương') || lower.includes('thưởng')) {
-      categoryName = 'Lương thưởng';
-      categoryIcon = 'account_balance';
-    } else if (lower.includes('cà phê') || lower.includes('cafe') || lower.includes('ăn') || lower.includes('highland')) {
-      categoryName = 'Ăn uống';
-      categoryIcon = 'coffee';
+    // Determine category with intelligent keyword mapping & fallback to "Khác"
+    let categoryName = type === 'INCOME' ? 'Thu nhập khác' : 'Chi tiêu khác';
+    let categoryIcon = type === 'INCOME' ? 'savings' : 'more_horiz';
+
+    if (type === 'EXPENSE') {
+      if (lower.includes('y tế') || lower.includes('thuốc') || lower.includes('bệnh') || lower.includes('khám') || lower.includes('viện') || lower.includes('sức khỏe')) {
+        categoryName = 'Sức khỏe';
+        categoryIcon = 'favorite';
+      } else if (lower.includes('học') || lower.includes('sách') || lower.includes('học phí') || lower.includes('khóa học') || lower.includes('trường') || lower.includes('giáo dục')) {
+        categoryName = 'Giáo dục';
+        categoryIcon = 'school';
+      } else if (lower.includes('phim') || lower.includes('game') || lower.includes('chơi') || lower.includes('du lịch') || lower.includes('karaoke') || lower.includes('giải trí')) {
+        categoryName = 'Giải trí';
+        categoryIcon = 'sports_esports';
+      } else if (lower.includes('điện') || lower.includes('nước') || lower.includes('wifi') || lower.includes('internet') || lower.includes('nhà') || lower.includes('thuê') || lower.includes('phòng') || lower.includes('sinh hoạt')) {
+        categoryName = 'Sinh hoạt';
+        categoryIcon = 'home';
+      } else if (lower.includes('áo') || lower.includes('quần') || lower.includes('giày') || lower.includes('dép') || lower.includes('váy') || lower.includes('túi')) {
+        categoryName = 'Áo quần';
+        categoryIcon = 'apparel';
+      } else if (lower.includes('mua') || lower.includes('shopee') || lower.includes('tiki') || lower.includes('lazada') || lower.includes('siêu thị')) {
+        categoryName = 'Mua sắm';
+        categoryIcon = 'shopping_bag';
+      } else if (lower.includes('xăng') || lower.includes('xe') || lower.includes('grab') || lower.includes('taxi') || lower.includes('giao thông') || lower.includes('vé') || lower.includes('gửi xe')) {
+        categoryName = 'Giao thông';
+        categoryIcon = 'directions_car';
+      } else if (lower.includes('cà phê') || lower.includes('cafe') || lower.includes('ăn') || lower.includes('highland') || lower.includes('cơm') || lower.includes('phở') || lower.includes('trà') || lower.includes('bánh') || lower.includes('lẩu')) {
+        categoryName = 'Ăn uống';
+        categoryIcon = 'restaurant';
+      }
+    } else {
+      if (lower.includes('lương')) {
+        categoryName = 'Lương';
+        categoryIcon = 'payments';
+      } else if (lower.includes('thưởng') || lower.includes('quà')) {
+        categoryName = 'Thưởng';
+        categoryIcon = 'featured_seasonal_and_gifts';
+      } else if (lower.includes('cổ phiếu') || lower.includes('lãi') || lower.includes('đầu tư') || lower.includes('crypto') || lower.includes('chứng khoán')) {
+        categoryName = 'Đầu tư';
+        categoryIcon = 'trending_up';
+      } else if (lower.includes('freelance') || lower.includes('dự án') || lower.includes('part-time')) {
+        categoryName = 'Freelance';
+        categoryIcon = 'laptop_mac';
+      }
     }
 
     // Determine account
@@ -306,7 +337,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           amount: 65000,
           type: 'EXPENSE',
           categoryName: 'Ăn uống',
-          categoryIcon: 'coffee',
+          categoryIcon: 'restaurant',
           accountName: 'Tiền mặt ví',
           note: 'Cà phê sáng cùng đồng nghiệp',
         });
@@ -320,23 +351,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleApplyAi = () => {
     if (!aiParsed) return;
 
+    if (displayAccounts.length === 0) {
+      alert('Bạn chưa có tài khoản nào. Vui lòng tạo tài khoản trước khi ghi nhận giao dịch.');
+      return;
+    }
+
     const matchedAccount = displayAccounts.find((a) =>
       a.name.toLowerCase().includes(aiParsed.accountName.toLowerCase())
     ) || displayAccounts[0];
 
+    // Find category from real database categories
+    const matchedCategory = categories.find((c) =>
+      c.name.toLowerCase() === aiParsed.categoryName.toLowerCase() && c.type === aiParsed.type
+    ) || categories.find((c) =>
+      c.name.toLowerCase().includes('khác') && c.type === aiParsed.type
+    ) || categories.find((c) => c.type === aiParsed.type) || {
+      id: 1,
+      name: aiParsed.categoryName,
+      type: aiParsed.type,
+      icon: aiParsed.categoryIcon,
+      color: aiParsed.type === 'INCOME' ? '#006c4a' : '#dc2626',
+      bgColor: aiParsed.type === 'INCOME' ? '#85f8c4' : '#ffdad6',
+    };
+
     const newTx: Omit<Transaction, 'id'> = {
       amount: aiParsed.amount,
       type: aiParsed.type,
-      category: {
-        id: Date.now(),
-        name: aiParsed.categoryName,
-        type: aiParsed.type,
-        icon: aiParsed.categoryIcon,
-        color: aiParsed.type === 'INCOME' ? '#006c4a' : '#dc2626',
-        bgColor: aiParsed.type === 'INCOME' ? '#85f8c4' : '#ffdad6',
-      },
+      category: matchedCategory,
       account: matchedAccount,
-      date: '2026-09-16',
+      date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       note: aiParsed.note,
     };
