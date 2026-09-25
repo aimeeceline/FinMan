@@ -80,7 +80,7 @@ export const transactionService = {
         name: item.account?.name,
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
-        currentBalance: 0,
+        currentBalance: item.account?.currentBalance ?? 0,
       },
       category: {
         id: item.category?.id,
@@ -124,7 +124,7 @@ export const transactionService = {
         name: item.account?.name,
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
-        currentBalance: 0,
+        currentBalance: item.account?.currentBalance ?? 0,
       },
       category: {
         id: item.category?.id,
@@ -155,7 +155,7 @@ export const transactionService = {
         name: item.account?.name,
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
-        currentBalance: 0,
+        currentBalance: item.account?.currentBalance ?? 0,
       },
       category: {
         id: item.category?.id,

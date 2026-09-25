@@ -54,6 +54,7 @@ const MainApp: React.FC = () => {
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const [currentRoute, setCurrentRoute] = useState<NavRoute>(getInitialRoute);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -136,6 +137,24 @@ const MainApp: React.FC = () => {
     }
   };
 
+  // Handle updating transaction in database
+  const handleUpdateTransaction = async (id: number, updatedTx: Omit<Transaction, 'id'>) => {
+    try {
+      await transactionService.updateTransaction(id, {
+        accountId: updatedTx.account.id,
+        categoryId: updatedTx.category.id,
+        type: updatedTx.type,
+        amount: updatedTx.amount,
+        transactionDate: updatedTx.date,
+        note: updatedTx.note,
+      });
+      await loadData();
+    } catch (err: any) {
+      console.error('Error updating transaction in database:', err);
+      alert(err.response?.data?.message || 'Không thể cập nhật giao dịch');
+    }
+  };
+
   // Handle deleting transaction from database
   const handleDeleteTransaction = async (id: number) => {
     try {
@@ -145,6 +164,21 @@ const MainApp: React.FC = () => {
       console.error('Error deleting transaction from database:', err);
       alert(err.response?.data?.message || 'Không thể xóa giao dịch khỏi cơ sở dữ liệu');
     }
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingTransaction(null);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenEditModal = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsAddModalOpen(false);
+    setEditingTransaction(null);
   };
 
   const handleAddAccount = (newAcc: Account) => {
@@ -184,7 +218,7 @@ const MainApp: React.FC = () => {
       <Sidebar
         currentRoute={currentRoute}
         onNavigate={handleNavigate}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
+        onOpenAddModal={handleOpenAddModal}
       />
 
       {/* 2. Fixed Top Header */}
@@ -201,10 +235,11 @@ const MainApp: React.FC = () => {
             transactions={filteredTransactions}
             accounts={accounts}
             categories={categories}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onOpenAddModal={handleOpenAddModal}
             onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
             onNavigateToReports={() => handleNavigate('thong-ke-va-bao-cao')}
             onDeleteTransaction={handleDeleteTransaction}
+            onEditTransaction={handleOpenEditModal}
             onApplyAiTransaction={handleAddTransaction}
           />
         )}
@@ -228,11 +263,13 @@ const MainApp: React.FC = () => {
         {currentRoute === 'cai-dat-va-danh-muc' && <SettingsPage />}
       </main>
 
-      {/* 4. Global Add Transaction Modal */}
+      {/* 4. Global Add/Edit Transaction Modal */}
       <AddTransactionModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={handleCloseModal}
         onAddTransaction={handleAddTransaction}
+        onUpdateTransaction={handleUpdateTransaction}
+        editingTransaction={editingTransaction}
         accounts={accounts}
         categories={categories}
         transactions={transactions}

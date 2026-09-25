@@ -259,4 +259,20 @@ class TransactionServiceTest {
         assertThrows(BusinessValidationException.class, () ->
                 transactionService.createTransaction(1L, requestMismatch));
     }
+
+    @Test
+    @DisplayName("TC_TXN_08: Tính toàn vẹn Database Transaction (Rollback khi gặp RuntimeException)")
+    void testCreateTransaction_RollbackOnException() {
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, 100L, TransactionType.EXPENSE, 500_000L, LocalDate.now(), "Lỗi hệ thống");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(testCashAccount));
+        when(categoryRepository.findAccessibleCategory(100L, 1L)).thenReturn(Optional.of(testExpenseCategory));
+        when(transactionRepository.save(any(Transaction.class)))
+                .thenThrow(new RuntimeException("Lỗi kết nối cơ sở dữ liệu ngẫu nhiên"));
+
+        assertThrows(RuntimeException.class, () ->
+                transactionService.createTransaction(1L, request));
+    }
 }

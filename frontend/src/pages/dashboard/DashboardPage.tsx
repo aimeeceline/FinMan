@@ -9,6 +9,7 @@ interface DashboardPageProps {
   onNavigateToAccounts: () => void;
   onNavigateToReports: () => void;
   onDeleteTransaction?: (id: number) => void;
+  onEditTransaction?: (tx: Transaction) => void;
   onApplyAiTransaction?: (tx: Omit<Transaction, 'id'>) => void;
 }
 
@@ -71,6 +72,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateToAccounts,
   onNavigateToReports,
   onDeleteTransaction,
+  onEditTransaction,
   onApplyAiTransaction,
 }) => {
   // Sync hide balance state with localStorage
@@ -1950,7 +1952,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               {/* Hover Action Buttons */}
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                  onClick={onOpenAddModal}
+                                  onClick={() => {
+                                    if (onEditTransaction) {
+                                      onEditTransaction(tx);
+                                    } else {
+                                      onOpenAddModal();
+                                    }
+                                  }}
                                   className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer"
                                   title="Chỉnh sửa giao dịch"
                                 >

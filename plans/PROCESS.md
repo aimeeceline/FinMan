@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████████] 48.8% (20 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Đang triển khai Phase 4 (In Progress)
-Phase hiện tại: Phase 4 — Core Transaction Engine Fullstack (Dashboard, Add Txn & Calendar)
+Tiến độ dự án: [████████████████████] 61.0% (25 / 41 Tasks hoàn thành)
+Trạng thái:    🟢 Hoàn thành Phase 4 — Sẵn sàng cho Phase 5 (Ready for Phase 5)
+Phase hiện tại: Phase 5 — Budgeting System Fullstack (APIs + Stitch Budget Screen)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 20 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (1 task: Task 4.1) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 4.2 |
-| **Chưa thực hiện (Pending)** | 21 tasks | Phase 4 (còn 5 tasks) đến Phase 9 |
+| **Đã hoàn thành (Done)** | 25 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.1 (Backend Budget APIs) |
+| **Chưa thực hiện (Pending)** | 16 tasks | Phase 5 (4 tasks) đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -88,8 +88,8 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Completed` | 2026-09-22 | Agent |
 | **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Completed` | 2026-09-22 | Agent |
 | **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Completed` | 2026-09-22 | Agent |
-| **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Pending` | — | — |
-| **Task 4.6** | Tests cho Core Transaction Engine & Balance Consistency | `Pending` | — | — |
+| **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Completed` | 2026-09-23 | Agent |
+| **Task 4.6** | Tests cho Core Transaction Engine & Balance Consistency | `Completed` | 2026-09-23 | Agent |
 
 ### Phase 5: Budgeting System Fullstack (APIs + Stitch Budget Screen)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
@@ -630,6 +630,73 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% —
   - Frontend `npm run build`: **91 modules transformed** thành công trong 1.25s (0 lỗi TypeScript, 0 cảnh báo lint).
 - **Trạng thái**: Completed.
+
+### [2026-09-22] Task 4.3: Frontend Add Transaction Modal (Bóc tách từ Stitch Design)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Bóc tách toàn diện modal thêm giao dịch từ mã nguồn Stitch Web Desktop [design/finman_web_popup_th_m_giao_d_ch_m_i/code.html](file:///d:/FinMan/design/finman_web_popup_th_m_giao_d_ch_m_i/code.html) sang `frontend/src/components/modals/AddTransactionModal.tsx`.
+  - Hỗ trợ chuyển đổi tab Chi tiêu / Thu nhập mượt mà (đổi màu chủ đạo Red sang Emerald).
+  - Quick amount chips: 10k, 50k, 100k, 500k, 1M, 2M.
+  - Phân loại danh mục theo icon trực quan, tự động tải danh mục thực tế từ backend.
+  - Hỗ trợ tạo nhanh danh mục mới ngay trong modal qua `categoryService.createCategory`.
+  - Phím tắt bàn phím: Enter để lưu, Escape để đóng.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Component modal glassmorphism hoàn chỉnh.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` không lỗi, modal hiển thị đúng pixel theo Stitch.
+- **Trạng thái**: Completed.
+
+### [2026-09-22] Task 4.4: Frontend Calendar & Time Filtering (Lọc Thời Gian & Đồng Bộ Sổ Cái)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Tích hợp bộ lọc thời gian trực quan: 1 tháng, 3 tháng, 6 tháng, Tự chọn (Custom date range), và Toàn bộ (All).
+  - Dropdown phân loại Thu/Chi, lọc theo Danh mục chi tiêu, và lọc theo Nguồn tiền (Tài khoản).
+  - Đồng bộ số liệu KPI Header (Tổng số dư, Tổng thu, Tổng chi, Tỷ lệ tích lũy) và biểu đồ SVG Trajectory Chart theo thời gian thực tương ứng với khoảng lọc được chọn.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Tích hợp các bộ lọc và logic tính toán động theo kỳ.
+  - `frontend/src/components/layout/TopHeader.tsx`: Cung cấp thanh tìm kiếm toàn cục đồng bộ tức thì.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` không lỗi, bộ lọc hoạt động mượt mà.
+- **Trạng thái**: Completed.
+
+### [2026-09-23] Task 4.5: Kết Nối Frontend Transactions Với Backend API (Full CRUD & Real-time Balance)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Kết nối luồng dữ liệu 2 chiều giữa Frontend React và Backend REST APIs `/api/v1/transactions`.
+  - Hỗ trợ toàn bộ chu trình CRUD giao dịch:
+    - **Tạo mới**: `POST /api/v1/transactions` qua `AddTransactionModal` và qua AI Prompt bar (`onApplyAiTransaction`).
+    - **Chỉnh sửa**: `PUT /api/v1/transactions/{id}`, tái sử dụng `AddTransactionModal` với chế độ pre-fill form ("Chỉnh sửa giao dịch" & "Lưu thay đổi"), hoàn tác số dư cũ và áp dụng số dư mới chính xác.
+    - **Xóa**: `DELETE /api/v1/transactions/{id}` kèm hộp thoại xác nhận an toàn, hoàn trả số dư ví tức thì.
+    - **Tải & Xem**: `GET /api/v1/transactions` với phân trang và mapping đầy đủ dữ liệu tài khoản (`currentBalance`), danh mục (`icon`, `color`), thời gian.
+  - Tự động gọi `loadData()` re-fetch số dư ví và sổ cái tức thì sau mỗi thao tác thêm/sửa/xóa.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/services/transactionService.ts`: Tinh chỉnh mapping fallback `account.currentBalance` và các methods CRUD.
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Bổ sung props `editingTransaction`, `onUpdateTransaction`, effect đồng bộ form khi mở/sửa và nhãn nút cập nhật.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Bổ sung prop `onEditTransaction` và kết nối nút Edit trên từng hàng giao dịch.
+  - `frontend/src/App.tsx`: Tích hợp state `editingTransaction`, handlers `handleUpdateTransaction`, `handleOpenEditModal`, `handleCloseModal` và đồng bộ realtime toàn ứng dụng.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `npm run build`: 90 modules transformed thành công trong 1.45s (0 TypeScript errors, 0 linter warnings).
+- **Trạng thái**: Completed.
+
+### [2026-09-23] Task 4.6: Tests Cho Core Transaction Engine & Balance Consistency (DoD 100%)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Kiểm thử toàn diện module Core Transaction Engine theo ma trận [TEST_PLAN.md](file:///d:/FinMan/plans/TEST_PLAN.md):
+    - `TC_TXN_01`: Thêm giao dịch Thu nhập (INCOME) tăng balance ví.
+    - `TC_TXN_02`: Thêm giao dịch Chi tiêu (EXPENSE) giảm balance ví và tăng nợ Thẻ tín dụng.
+    - `TC_TXN_03`: Chỉnh sửa số tiền giao dịch hoàn tác số tiền cũ và áp dụng số tiền mới.
+    - `TC_TXN_04`: Chỉnh sửa đổi ví phát sinh giao dịch hoàn tác ví cũ và trừ ví mới.
+    - `TC_TXN_05`: Xóa giao dịch Chi tiêu hoàn trả số dư ví.
+    - `TC_TXN_06`: Xóa giao dịch Thu nhập khấu trừ lại số dư ví.
+    - `TC_TXN_07`: Chặn số tiền không hợp lệ (số tiền <= 0, lệch loại danh mục).
+    - `TC_TXN_08`: Tính toàn vẹn Database Transaction (Rollback khi gặp RuntimeException, bảo toàn số dư).
+    - `TC_TXN_09`: Lọc giao dịch theo tháng & ngày kèm phân trang.
+    - `TC_TXN_SUMMARY`, `TC_TXN_MULTI_TENANT`, `TC_TXN_SECURITY`.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/test/java/com/finman/service/TransactionServiceTest.java`: Bổ sung test case `TC_TXN_08` mô phỏng ngoại lệ runtime và kích hoạt rollback.
+  - `backend/src/test/java/com/finman/controller/TransactionControllerTest.java`: Bổ sung MockMvc test case `TC_TXN_08` xác nhận số dư ví không đổi khi giao dịch lỗi.
+- **Kết quả kiểm thử**: PASS 100% —
+  - Backend `mvn test`: **83/83 tests passed** (0 failures, 0 errors, 0 skipped) trong 27.9s (`BUILD SUCCESS`).
+  - Frontend `npm run build`: Compile sạch 100% không lỗi.
+- **Trạng thái**: Completed (Chính thức đóng Phase 4).
 
 ---
 

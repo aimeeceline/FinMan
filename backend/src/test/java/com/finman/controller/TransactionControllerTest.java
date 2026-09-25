@@ -235,6 +235,26 @@ class TransactionControllerTest {
     }
 
     @Test
+    @DisplayName("TC_TXN_08: Tính toàn vẹn Database Transaction (Rollback khi gặp lỗi, số dư không đổi)")
+    void testCreateTransaction_RollbackOnFailure_BalancePreserved() throws Exception {
+        Long initialBalance = accountA1.getCurrentBalance();
+
+        // Gửi request sai danh mục (category loại INCOME nhưng giao dịch loại EXPENSE)
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                accountA1.getId(), categoryIncome.getId(), TransactionType.EXPENSE, 500_000L, LocalDate.now(), "Lỗi khớp danh mục");
+
+        mockMvc.perform(post("/api/v1/transactions")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        // Xác nhận số dư ví được bảo toàn nguyên trạng, không bị trừ tiền
+        Account refreshed = accountRepository.findById(accountA1.getId()).orElseThrow();
+        assertEquals(initialBalance, refreshed.getCurrentBalance());
+    }
+
+    @Test
     @DisplayName("TC_TXN_09: Lấy danh sách giao dịch & Phân trang, Lọc theo tháng")
     void testGetTransactions_MonthFilter_Success() throws Exception {
         LocalDate dateSept = LocalDate.of(2026, 9, 15);

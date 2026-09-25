@@ -7,6 +7,8 @@ export interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onUpdateTransaction?: (id: number, transaction: Omit<Transaction, 'id'>) => void;
+  editingTransaction?: Transaction | null;
   accounts?: Account[];
   categories?: Category[];
   transactions?: Transaction[];
@@ -72,6 +74,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,
   onAddTransaction,
+  onUpdateTransaction,
+  editingTransaction,
   accounts = [],
   categories,
   transactions = [],
@@ -91,6 +95,34 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [newCatName, setNewCatName] = useState<string>('');
   const [newCatIcon, setNewCatIcon] = useState<string>('🍜');
   const [isSavingCategory, setIsSavingCategory] = useState<boolean>(false);
+
+  // Sync form state when editingTransaction or isOpen changes
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editingTransaction) {
+      setType(editingTransaction.type === 'INCOME' ? 'INCOME' : 'EXPENSE');
+      setAmount(editingTransaction.amount);
+      setDate(editingTransaction.date);
+      if (editingTransaction.time) {
+        setTime(editingTransaction.time);
+      }
+      setNote(editingTransaction.note || '');
+      if (editingTransaction.account) {
+        const matchedAcc = accounts.find((a) => a.id === editingTransaction.account.id);
+        if (matchedAcc) setSelectedAccount(matchedAcc);
+      }
+      if (editingTransaction.category) {
+        const matchedCat = categoriesList.find((c) => c.id === editingTransaction.category.id);
+        if (matchedCat) setSelectedCategory(matchedCat);
+      }
+    } else {
+      setType('EXPENSE');
+      setAmount(0);
+      setDate(new Date().toISOString().split('T')[0]);
+      setTime(new Date().toTimeString().slice(0, 5));
+      setNote('');
+    }
+  }, [isOpen, editingTransaction]);
 
   // Sync categories prop
   useEffect(() => {
@@ -223,15 +255,27 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     e.preventDefault();
     if (amount <= 0 || !selectedCategory || !selectedAccount) return;
 
-    onAddTransaction({
-      amount,
-      type,
-      category: selectedCategory,
-      account: selectedAccount,
-      date,
-      time,
-      note: note.trim() || undefined,
-    });
+    if (editingTransaction && onUpdateTransaction) {
+      onUpdateTransaction(editingTransaction.id, {
+        amount,
+        type,
+        category: selectedCategory,
+        account: selectedAccount,
+        date,
+        time,
+        note: note.trim() || undefined,
+      });
+    } else {
+      onAddTransaction({
+        amount,
+        type,
+        category: selectedCategory,
+        account: selectedAccount,
+        date,
+        time,
+        note: note.trim() || undefined,
+      });
+    }
 
     // Reset form & close
     setAmount(0);
@@ -339,9 +383,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </span>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Thêm giao dịch mới</h2>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                {editingTransaction ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch mới'}
+              </h2>
               <p className="text-xs text-slate-500 font-medium">
-                {type === 'EXPENSE'
+                {editingTransaction
+                  ? `Cập nhật thông tin giao dịch #${editingTransaction.id}`
+                  : type === 'EXPENSE'
                   ? 'Ghi nhận chi phí sinh hoạt & dòng tiền ra'
                   : 'Ghi nhận nguồn thu nhập & tích lũy tài sản'}
               </p>
@@ -843,7 +891,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     strokeWidth="2.5"
                   ></path>
                 </svg>
-                <span>Lưu giao dịch (Enter)</span>
+                <span>{editingTransaction ? 'Lưu thay đổi (Enter)' : 'Lưu giao dịch (Enter)'}</span>
               </button>
             </div>
           </footer>
