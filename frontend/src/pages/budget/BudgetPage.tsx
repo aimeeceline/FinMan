@@ -331,10 +331,10 @@ export const BudgetPage: React.FC = () => {
     }
   };
 
-  // Format month label (e.g., '2026-09' -> 'Tháng 9, 2026')
+  // Format month label (e.g., '2026-09' -> 'Th 9/2026')
   const formatMonthLabel = (monthStr: string) => {
     const [y, m] = monthStr.split('-');
-    return `Tháng ${parseInt(m, 10)}, ${y}`;
+    return `Th ${parseInt(m, 10)}/${y}`;
   };
 
   return (
@@ -371,7 +371,6 @@ export const BudgetPage: React.FC = () => {
               >
                 <span className="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
                 <span>{formatMonthLabel(selectedMonth)}</span>
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">keyboard_arrow_down</span>
               </button>
 
               <button
