@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { categoryService } from '../../services/categoryService';
 import { budgetService } from '../../services/budgetService';
 import type { BudgetSummary } from '../../services/budgetService';
@@ -10,6 +10,12 @@ export const BudgetPage: React.FC = () => {
   // State: Month Selection (Defaults to September 2026 or current month)
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-09');
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState<number>(() => {
+    const [y] = '2026-09'.split('-').map(Number);
+    return y || 2026;
+  });
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const [formMonth, setFormMonth] = useState<string>('2026-09');
 
   // State: Core Data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,6 +47,42 @@ export const BudgetPage: React.FC = () => {
       setToast(null);
     }, 4000);
   }, []);
+
+  // Close picker popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setIsMonthPickerOpen(false);
+      }
+    };
+    if (isMonthPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMonthPickerOpen]);
+
+  // Sync pickerYear when selectedMonth changes
+  useEffect(() => {
+    const [y] = selectedMonth.split('-').map(Number);
+    if (y) setPickerYear(y);
+  }, [selectedMonth]);
+
+  // Quick navigation between months
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const prev = new Date(y, m - 2, 1);
+    const ym = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(ym);
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const next = new Date(y, m, 1);
+    const ym = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(ym);
+  };
 
   // 1. Load Categories
   useEffect(() => {
@@ -117,20 +159,29 @@ export const BudgetPage: React.FC = () => {
     return { overbudget, warning, safe, total: budgets.length };
   }, [budgets]);
 
-  // Daily budget projection calculation
-  const daysInMonth = useMemo(() => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    return new Date(year, month, 0).getDate();
+  // Daily budget projection calculation & Calendar parameters
+  const [calendarYear, calendarMonth] = useMemo(() => {
+    const parts = selectedMonth.split('-').map(Number);
+    return [parts[0] || 2026, parts[1] || 9];
   }, [selectedMonth]);
+
+  const daysInMonth = useMemo(() => {
+    return new Date(calendarYear, calendarMonth, 0).getDate();
+  }, [calendarYear, calendarMonth]);
+
+  // Weekday offset for the 1st of month (0 = Mon, 6 = Sun)
+  const startDayOfWeek = useMemo(() => {
+    const day = new Date(calendarYear, calendarMonth - 1, 1).getDay(); // 0 is Sun, 1 is Mon...
+    return (day + 6) % 7;
+  }, [calendarYear, calendarMonth]);
 
   const remainingDays = useMemo(() => {
     const today = new Date();
-    const [year, month] = selectedMonth.split('-').map(Number);
-    if (today.getFullYear() === year && today.getMonth() + 1 === month) {
+    if (today.getFullYear() === calendarYear && today.getMonth() + 1 === calendarMonth) {
       return Math.max(1, daysInMonth - today.getDate());
     }
     return Math.max(1, daysInMonth - 16); // default midpoint
-  }, [selectedMonth, daysInMonth]);
+  }, [calendarYear, calendarMonth, daysInMonth]);
 
   const dailyAllowedRate = useMemo(() => {
     return Math.round(totalRemaining / remainingDays);
@@ -184,6 +235,7 @@ export const BudgetPage: React.FC = () => {
   const handleOpenAddModal = () => {
     setEditingBudget(null);
     setFormCategoryId(categories[0]?.id || 0);
+    setFormMonth(selectedMonth);
     setFormAmount('');
     setFormError(null);
     setIsModalOpen(true);
@@ -193,6 +245,7 @@ export const BudgetPage: React.FC = () => {
   const handleOpenEditModal = (b: Budget) => {
     setEditingBudget(b);
     setFormCategoryId(b.category.id);
+    setFormMonth(b.month);
     setFormAmount(formatCurrencyInput(b.amount ?? b.allocatedAmount));
     setFormError(null);
     setIsModalOpen(true);
@@ -217,18 +270,22 @@ export const BudgetPage: React.FC = () => {
       setIsSubmitting(true);
       await budgetService.setBudget({
         categoryId: formCategoryId,
-        month: selectedMonth,
+        month: formMonth,
         amount: parsed,
       });
 
       const cat = categories.find((c) => c.id === formCategoryId);
       showToast(
         editingBudget ? 'Cập nhật ngân sách thành công' : 'Thiết lập ngân sách thành công',
-        `Đã lưu hạn mức ${parsed.toLocaleString('vi-VN')} ₫ cho danh mục ${cat?.name || ''}.`
+        `Đã lưu hạn mức ${parsed.toLocaleString('vi-VN')} ₫ cho danh mục ${cat?.name || ''} (${formatMonthLabel(formMonth)}).`
       );
 
       setIsModalOpen(false);
-      await loadBudgetData();
+      if (formMonth !== selectedMonth) {
+        setSelectedMonth(formMonth);
+      } else {
+        await loadBudgetData();
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Không thể lưu ngân sách. Vui lòng thử lại!';
       setFormError(msg);
@@ -280,9 +337,6 @@ export const BudgetPage: React.FC = () => {
     return `Tháng ${parseInt(m, 10)}, ${y}`;
   };
 
-  // Month navigation options
-  const monthOptions = ['2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12'];
-
   return (
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
       {/* 1. Top Command Action Bar */}
@@ -299,40 +353,129 @@ export const BudgetPage: React.FC = () => {
               Quản lý Ngân sách chi tiêu
             </h2>
 
-            {/* Interactive Month Selector Dropdown */}
-            <div className="relative">
+            {/* Interactive Month & Year Navigator */}
+            <div className="flex items-center gap-1 bg-surface-container-high rounded-xl p-1 relative" ref={pickerRef}>
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+                title="Tháng trước"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
-                className="flex items-center gap-space-xs px-space-sm py-1 rounded-xl bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all cursor-pointer"
+                className="flex items-center gap-space-xs px-2.5 py-1 rounded-lg text-on-surface hover:bg-surface-container-highest transition-all cursor-pointer font-bold text-sm"
               >
                 <span className="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
-                <span className="font-label-lg text-label-lg font-semibold">{formatMonthLabel(selectedMonth)}</span>
+                <span>{formatMonthLabel(selectedMonth)}</span>
                 <span className="material-symbols-outlined text-[18px] text-on-surface-variant">keyboard_arrow_down</span>
               </button>
 
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+                title="Tháng sau"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+
+              {/* Year & Month Popover */}
               {isMonthPickerOpen && (
-                <div className="absolute left-0 top-full mt-2 w-48 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl z-30 py-1">
-                  {monthOptions.map((m) => (
+                <div className="absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95">
+                  {/* Year Selector Bar */}
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-container-high/60">
                     <button
-                      key={m}
+                      type="button"
+                      onClick={() => setPickerYear((prev) => prev - 1)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                      title="Năm trước"
+                    >
+                      <span className="material-symbols-outlined text-lg">chevron_left</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5 font-bold text-on-surface text-base">
+                      <span>Năm</span>
+                      <select
+                        value={pickerYear}
+                        onChange={(e) => setPickerYear(Number(e.target.value))}
+                        className="bg-surface-container-low px-2 py-0.5 rounded-lg border border-outline-variant/40 font-bold text-primary cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 text-sm"
+                      >
+                        {Array.from({ length: 31 }, (_, i) => 2015 + i).map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPickerYear((prev) => prev + 1)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                      title="Năm sau"
+                    >
+                      <span className="material-symbols-outlined text-lg">chevron_right</span>
+                    </button>
+                  </div>
+
+                  {/* 12 Months Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                      const mStr = `${pickerYear}-${String(m).padStart(2, '0')}`;
+                      const isSelected = selectedMonth === mStr;
+                      const now = new Date();
+                      const isCurrentMonth = now.getFullYear() === pickerYear && now.getMonth() + 1 === m;
+
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setSelectedMonth(mStr);
+                            setIsMonthPickerOpen(false);
+                          }}
+                          className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${
+                            isSelected
+                              ? 'bg-primary text-white shadow-sm font-bold scale-105'
+                              : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                          }`}
+                        >
+                          Tháng {m}
+                          {isCurrentMonth && !isSelected && (
+                            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer Quick Action */}
+                  <div className="mt-3 pt-2 border-t border-surface-container-high/60 flex items-center justify-between">
+                    <button
                       type="button"
                       onClick={() => {
-                        setSelectedMonth(m);
+                        const now = new Date();
+                        const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                        setPickerYear(now.getFullYear());
+                        setSelectedMonth(cur);
                         setIsMonthPickerOpen(false);
                       }}
-                      className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between transition-colors ${
-                        m === selectedMonth
-                          ? 'bg-surface-container-high font-bold text-primary'
-                          : 'text-on-surface hover:bg-surface-container-low'
-                      }`}
+                      className="text-xs font-bold text-secondary hover:underline cursor-pointer"
                     >
-                      <span>{formatMonthLabel(m)}</span>
-                      {m === selectedMonth && (
-                        <span className="material-symbols-outlined text-sm text-primary">check</span>
-                      )}
+                      Tháng hiện tại
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsMonthPickerOpen(false)}
+                      className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    >
+                      Đóng
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -757,6 +900,11 @@ export const BudgetPage: React.FC = () => {
 
             {/* Days Grid with micro cashflows */}
             <div className="grid grid-cols-7 gap-1 text-center text-[11px]">
+              {/* Preceding weekday alignment empty cells */}
+              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="p-1 min-h-[50px] rounded-xl opacity-20 pointer-events-none" />
+              ))}
+
               {Array.from({ length: daysInMonth }).map((_, idx) => {
                 const day = idx + 1;
                 const flow = dailyCashflows.get(day);
@@ -903,13 +1051,13 @@ export const BudgetPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Chu kỳ tháng
+                  Chu kỳ tháng áp dụng
                 </label>
                 <input
-                  type="text"
-                  value={formatMonthLabel(selectedMonth)}
-                  disabled
-                  className="w-full bg-surface-container-high/50 rounded-xl px-3 py-2 text-sm border border-outline-variant/30 text-on-surface-variant font-medium"
+                  type="month"
+                  value={formMonth}
+                  onChange={(e) => setFormMonth(e.target.value)}
+                  className="w-full bg-surface-container-low rounded-xl px-3 py-2 text-sm border border-outline-variant/40 text-on-surface font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                 />
               </div>
 
