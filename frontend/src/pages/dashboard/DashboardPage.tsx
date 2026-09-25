@@ -1875,37 +1875,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
 
                     {/* Transactions Ledger List for This Day */}
-                    <div className="flex flex-col gap-space-xs mt-space-sm">
+                    <div className="flex flex-col gap-1.5 mt-1.5 mx-3 sm:mx-6 md:mx-8">
                       {group.items.map((tx) => {
                         const isIncome = tx.type === 'INCOME';
                         return (
                           <div
                             key={tx.id}
-                            className="p-space-md rounded-xl bg-surface-container-lowest hover:bg-surface-container-low/80 transition-all flex items-center justify-between group shadow-sm border border-outline-variant/15"
+                            className="py-1.5 px-3 sm:py-2 sm:px-3.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low/80 transition-all flex items-center justify-between group shadow-xs border border-outline-variant/15"
                           >
                             {/* Left Info */}
-                            <div className="flex items-center gap-space-md min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0"
                                 style={{
                                   backgroundColor: isIncome ? '#85f8c4' : '#ffdad6',
                                   color: isIncome ? '#006c4a' : '#dc2626',
                                 }}
                               >
-                                <span className="material-symbols-outlined text-[24px]">
+                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                   {tx.category.icon || (isIncome ? 'account_balance' : 'payments')}
                                 </span>
                               </div>
                               <div className="min-w-0">
-                                <div className="flex items-center gap-space-xs">
-                                  <span className="font-title-md text-title-md text-on-surface font-bold truncate">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs sm:text-sm text-on-surface font-semibold truncate">
                                     {tx.note || tx.category.name}
                                   </span>
-                                  <span className="px-space-xs py-0.5 rounded bg-surface-container text-on-surface font-label-sm text-label-sm">
+                                  <span className="px-1.5 py-0.2 rounded bg-surface-container text-on-surface text-[10px] font-medium">
                                     {tx.category.name}
                                   </span>
                                 </div>
-                                <div className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-space-xs mt-0.5">
+                                <div className="text-[11px] text-on-surface-variant flex items-center gap-1 mt-0.5">
                                   <span className="font-medium text-on-surface">
                                     {tx.account.name}
                                   </span>
@@ -1928,10 +1928,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             </div>
 
                             {/* Right Amount & Actions */}
-                            <div className="flex items-center gap-space-lg shrink-0 pl-space-md">
+                            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 pl-2">
                               <div className="text-right">
                                 <div
-                                  className={`font-currency-row text-currency-row font-bold ${
+                                  className={`text-xs sm:text-sm font-bold ${
                                     isIncome ? 'text-secondary' : 'text-primary-container'
                                   }`}
                                 >
@@ -1939,10 +1939,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   {tx.amount.toLocaleString('vi-VN')} ₫
                                 </div>
                                 <span
-                                  className={`font-label-sm text-label-sm px-space-xs py-0.5 rounded font-semibold ${
+                                  className={`text-[10px] px-1.5 py-0.2 rounded font-medium inline-block mt-0.5 ${
                                     isIncome
                                       ? 'bg-secondary-fixed/40 text-on-secondary-fixed'
-                                      : 'text-on-surface-variant'
+                                      : 'text-on-surface-variant bg-surface-container'
                                   }`}
                                 >
                                   {isIncome ? 'Hoàn tất' : 'Chi tiêu'}
@@ -1950,7 +1950,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               </div>
 
                               {/* Hover Action Buttons */}
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => {
                                     if (onEditTransaction) {
@@ -1959,10 +1959,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       onOpenAddModal();
                                     }
                                   }}
-                                  className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer"
+                                  className="p-1 rounded-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer"
                                   title="Chỉnh sửa giao dịch"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">
+                                  <span className="material-symbols-outlined text-[15px]">
                                     edit
                                   </span>
                                 </button>
@@ -1973,10 +1973,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                         onDeleteTransaction(tx.id);
                                       }
                                     }}
-                                    className="p-1 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container cursor-pointer"
+                                    className="p-1 rounded-md text-on-surface-variant hover:bg-error-container hover:text-on-error-container cursor-pointer"
                                     title="Xóa giao dịch"
                                   >
-                                    <span className="material-symbols-outlined text-[18px]">
+                                    <span className="material-symbols-outlined text-[15px]">
                                       delete
                                     </span>
                                   </button>

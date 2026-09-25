@@ -42,6 +42,34 @@ const renderCategoryIcon = (icon?: string, sizeClass = 'text-[18px]') => {
   return <span className={`material-symbols-outlined ${sizeClass}`}>{icon}</span>;
 };
 
+export interface BudgetColor {
+  bg: string;
+  hex: string;
+  text: string;
+  dot: string;
+  lightBg: string;
+}
+
+const BUDGET_COLORS: BudgetColor[] = [
+  { bg: 'bg-emerald-500', hex: '#10B981', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500', lightBg: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' },
+  { bg: 'bg-blue-500', hex: '#3B82F6', text: 'text-blue-600 dark:text-blue-400', dot: 'bg-blue-500', lightBg: 'bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300' },
+  { bg: 'bg-purple-500', hex: '#8B5CF6', text: 'text-purple-600 dark:text-purple-400', dot: 'bg-purple-500', lightBg: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300' },
+  { bg: 'bg-amber-500', hex: '#F59E0B', text: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500', lightBg: 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' },
+  { bg: 'bg-rose-500', hex: '#F43F5E', text: 'text-rose-600 dark:text-rose-400', dot: 'bg-rose-500', lightBg: 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300' },
+  { bg: 'bg-cyan-500', hex: '#06B6D4', text: 'text-cyan-600 dark:text-cyan-400', dot: 'bg-cyan-500', lightBg: 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-300' },
+  { bg: 'bg-indigo-500', hex: '#6366F1', text: 'text-indigo-600 dark:text-indigo-400', dot: 'bg-indigo-500', lightBg: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300' },
+  { bg: 'bg-orange-500', hex: '#F97316', text: 'text-orange-600 dark:text-orange-400', dot: 'bg-orange-500', lightBg: 'bg-orange-50 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300' },
+  { bg: 'bg-teal-500', hex: '#14B8A6', text: 'text-teal-600 dark:text-teal-400', dot: 'bg-teal-500', lightBg: 'bg-teal-50 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300' },
+  { bg: 'bg-fuchsia-500', hex: '#D946EF', text: 'text-fuchsia-600 dark:text-fuchsia-400', dot: 'bg-fuchsia-500', lightBg: 'bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/50 dark:text-fuchsia-300' },
+];
+
+const getBudgetColor = (index: number, categoryId?: number): BudgetColor => {
+  if (typeof categoryId === 'number' && categoryId > 0) {
+    return BUDGET_COLORS[(categoryId - 1) % BUDGET_COLORS.length];
+  }
+  return BUDGET_COLORS[index % BUDGET_COLORS.length];
+};
+
 export const BudgetPage: React.FC = () => {
   // State: Month Selection (Defaults to September 2026 or current month)
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-09');
@@ -71,7 +99,6 @@ export const BudgetPage: React.FC = () => {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [formCategoryId, setFormCategoryId] = useState<number>(0);
   const [isFormCategoryDropdownOpen, setIsFormCategoryDropdownOpen] = useState<boolean>(false);
-  const [formCategorySearch, setFormCategorySearch] = useState<string>('');
   const formCategoryDropdownRef = useRef<HTMLDivElement>(null);
   const [formAmount, setFormAmount] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -124,13 +151,6 @@ export const BudgetPage: React.FC = () => {
   const selectedFormCategory = useMemo(() => {
     return categories.find((c) => c.id === formCategoryId) || categories[0];
   }, [categories, formCategoryId]);
-
-  // Filtered categories in modal search
-  const filteredFormCategories = useMemo(() => {
-    const q = formCategorySearch.toLowerCase().trim();
-    if (!q) return categories;
-    return categories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [categories, formCategorySearch]);
 
   // Sync pickerYear when selectedMonth changes
   useEffect(() => {
@@ -206,6 +226,29 @@ export const BudgetPage: React.FC = () => {
 
   const spentPercent = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
   const safePercent = Math.max(0, 100 - spentPercent);
+  const unusedPercent = Math.max(0, 100 - spentPercent);
+
+  // Multi-segment progress bar data (tiến độ theo màu của từng ngân sách)
+  const budgetSegments = useMemo(() => {
+    if (totalAllocated <= 0) return [];
+
+    return budgets
+      .map((b, idx) => {
+        const color = getBudgetColor(idx, b.category?.id);
+        const spent = b.spentAmount || 0;
+        const percentOfTotal = (spent / totalAllocated) * 100;
+        return {
+          id: b.id,
+          name: b.category?.name || 'Danh mục',
+          icon: b.category?.icon,
+          spent,
+          percentOfTotal,
+          color,
+        };
+      })
+      .filter((seg) => seg.spent > 0)
+      .sort((a, b) => b.spent - a.spent);
+  }, [budgets, totalAllocated]);
 
   // Category counts by alert status
   const categoryStats = useMemo(() => {
@@ -308,7 +351,6 @@ export const BudgetPage: React.FC = () => {
     setFormAmount('');
     setFormError(null);
     setIsFormCategoryDropdownOpen(false);
-    setFormCategorySearch('');
     setIsModalOpen(true);
   };
 
@@ -320,7 +362,6 @@ export const BudgetPage: React.FC = () => {
     setFormAmount(formatCurrencyInput(b.amount ?? b.allocatedAmount));
     setFormError(null);
     setIsFormCategoryDropdownOpen(false);
-    setFormCategorySearch('');
     setIsModalOpen(true);
   };
 
@@ -592,23 +633,78 @@ export const BudgetPage: React.FC = () => {
 
             {/* Big Visual Multi-Segment Progress Indicator */}
             <div className="space-y-space-xs mb-space-md">
-              <div className="flex items-center justify-between font-label-md text-label-md">
-                <span className="text-primary font-semibold flex items-center gap-1.5">
+              <div className="flex items-center justify-between font-label-md text-label-md flex-wrap gap-2">
+                <span className="text-on-surface font-semibold flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block"></span>
                   Đã sử dụng {spentPercent.toFixed(1)}% ({totalSpent.toLocaleString('vi-VN')} đ)
                 </span>
-                <span className="text-secondary font-semibold flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-secondary inline-block"></span>
-                  Khả dụng {totalRemaining.toLocaleString('vi-VN')} đ
+                <span className="text-on-surface-variant font-medium flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 inline-block"></span>
+                  Khả dụng (chưa sử dụng) {totalRemaining.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className="w-full h-3.5 bg-surface-container rounded-full overflow-hidden flex p-0.5">
-                <div
-                  className="h-full bg-primary rounded-l-full transition-all duration-700"
-                  style={{ width: `${Math.min(100, spentPercent)}%` }}
-                ></div>
-                <div className="h-full bg-secondary/30 rounded-r-full flex-1"></div>
+
+              {/* Progress Track: Các phân đoạn ngân sách theo màu, phần còn lại màu xám */}
+              <div className="w-full h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex p-0.5 shadow-inner relative">
+                {/* Segments for each budget category */}
+                {budgetSegments.map((seg, sIdx) => {
+                  const isFirst = sIdx === 0;
+                  const isLast = sIdx === budgetSegments.length - 1 && unusedPercent <= 0;
+                  return (
+                    <div
+                      key={seg.id}
+                      className={`h-full ${seg.color.bg} transition-all duration-700 relative group cursor-pointer ${
+                        isFirst ? 'rounded-l-full' : ''
+                      } ${isLast ? 'rounded-r-full' : ''}`}
+                      style={{ width: `${seg.percentOfTotal}%` }}
+                      title={`${seg.name}: ${seg.spent.toLocaleString('vi-VN')} đ (${seg.percentOfTotal.toFixed(1)}% tổng ngân sách)`}
+                    >
+                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/25 transition-colors"></div>
+                    </div>
+                  );
+                })}
+
+                {/* Gray segment: Phần chưa sử dụng */}
+                {unusedPercent > 0 && (
+                  <div
+                    className={`h-full bg-slate-300 dark:bg-slate-700 transition-all duration-700 flex-1 ${
+                      budgetSegments.length === 0 ? 'rounded-full' : 'rounded-r-full'
+                    }`}
+                    title={`Chưa sử dụng: ${totalRemaining.toLocaleString('vi-VN')} đ (${unusedPercent.toFixed(1)}%)`}
+                  ></div>
+                )}
               </div>
+
+              {/* Legend: Chú thích màu sắc của các ngân sách */}
+              {budgets.length > 0 && (
+                <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap pt-2">
+                  {budgets.map((b, idx) => {
+                    const color = getBudgetColor(idx, b.category?.id);
+                    const spent = b.spentAmount || 0;
+                    const pctOfTotal = totalAllocated > 0 ? (spent / totalAllocated) * 100 : 0;
+                    return (
+                      <div
+                        key={b.id}
+                        className="flex items-center gap-1.5 text-xs text-on-surface font-medium bg-surface-container-low px-2.5 py-1 rounded-lg border border-outline-variant/15 shadow-2xs hover:bg-surface-container transition-colors cursor-pointer"
+                        title={`${b.category?.name}: Đã tiêu ${spent.toLocaleString('vi-VN')} đ`}
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full ${color.bg} shrink-0`}></span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{b.category?.name}</span>
+                        <span className="text-[11px] text-on-surface-variant font-bold">
+                          {spent > 0 ? `${pctOfTotal.toFixed(1)}%` : '0%'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium bg-surface-container-low/60 px-2.5 py-1 rounded-lg border border-outline-variant/10 shadow-2xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0"></span>
+                    <span>Chưa sử dụng</span>
+                    <span className="text-[11px] font-bold">
+                      {unusedPercent.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -779,7 +875,8 @@ export const BudgetPage: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-space-md">
-              {filteredBudgets.map((b) => {
+              {filteredBudgets.map((b, idx) => {
+                const budgetColor = getBudgetColor(idx, b.category?.id);
                 const allocated = b.amount ?? b.allocatedAmount;
                 const pct = allocated > 0 ? (b.spentAmount / allocated) * 100 : 0;
                 const isOver = pct > 100 || b.status === 'OVERBUDGET';
@@ -788,7 +885,7 @@ export const BudgetPage: React.FC = () => {
                 // Determine badge and bar styling
                 let badgeClass = 'bg-secondary-fixed/40 text-on-secondary-fixed font-bold';
                 let badgeLabel = 'An toàn';
-                let barClass = 'bg-secondary';
+                let barClass = budgetColor.bg;
                 let amountTextClass = 'text-secondary';
 
                 if (isOver) {
@@ -824,7 +921,7 @@ export const BudgetPage: React.FC = () => {
                               ? 'bg-error-container/70 text-on-error-container'
                               : isWarn
                               ? 'bg-amber-100 text-amber-800'
-                              : 'bg-secondary-fixed/50 text-on-secondary-fixed'
+                              : budgetColor.lightBg
                           }`}
                         >
                           <span className="material-symbols-outlined text-[26px]">
@@ -833,6 +930,7 @@ export const BudgetPage: React.FC = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${budgetColor.bg} inline-block shrink-0`}></span>
                             <span className="font-title-md text-title-md font-bold text-on-surface">
                               {b.category.name}
                             </span>
@@ -892,7 +990,7 @@ export const BudgetPage: React.FC = () => {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-2.5 bg-surface-container rounded-full overflow-hidden mb-space-xs">
+                    <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700/80 rounded-full overflow-hidden mb-space-xs">
                       <div
                         className={`h-full ${barClass} rounded-full transition-all duration-700`}
                         style={{ width: `${Math.min(100, Math.max(2, pct))}%` }}
@@ -1153,46 +1251,12 @@ export const BudgetPage: React.FC = () => {
                   )}
                 </button>
 
-                {/* Dropdown Menu Modal Card matching Screenshot 2 */}
+                {/* Dropdown Menu Modal Card */}
                 {isFormCategoryDropdownOpen && (
-                  <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-slate-200/90 dark:border-outline-variant/30 p-3.5 animate-fadeIn select-none">
-                    {/* Top Header: Purple Badge + "Danh Mục" */}
-                    <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-outline-variant/20">
-                      <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-purple-600 dark:text-purple-300 shadow-2xs">
-                        <span className="material-symbols-outlined text-[16px]">segment</span>
-                      </div>
-                      <h4 className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
-                        Danh Mục
-                      </h4>
-                    </div>
-
-                    {/* Search Input */}
-                    <div className="relative my-2.5">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[17px] text-slate-400">
-                        search
-                      </span>
-                      <input
-                        type="text"
-                        value={formCategorySearch}
-                        onChange={(e) => setFormCategorySearch(e.target.value)}
-                        placeholder="Tìm danh mục (Ăn uống, Lương...)"
-                        className="w-full bg-slate-50 dark:bg-surface-container-low text-slate-800 dark:text-on-surface text-xs font-medium pl-8.5 pr-7 py-2 rounded-xl border border-slate-200 dark:border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-purple-400/25 focus:border-purple-500 transition-all placeholder:text-slate-400"
-                        autoFocus
-                      />
-                      {formCategorySearch && (
-                        <button
-                          type="button"
-                          onClick={() => setFormCategorySearch('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">close</span>
-                        </button>
-                      )}
-                    </div>
-
+                  <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-slate-200/90 dark:border-outline-variant/30 p-2 animate-fadeIn select-none">
                     {/* Category List */}
-                    <div className="max-h-[220px] overflow-y-auto custom-scroll space-y-1 pr-1">
-                      {filteredFormCategories.map((c) => {
+                    <div className="max-h-[240px] overflow-y-auto custom-scroll space-y-1 pr-1">
+                      {categories.map((c) => {
                         const isSelected = formCategoryId === c.id;
                         const pastelBg = getCategoryPastelBg(c.id, c.name);
                         return (
@@ -1202,7 +1266,6 @@ export const BudgetPage: React.FC = () => {
                             onClick={() => {
                               setFormCategoryId(c.id);
                               setIsFormCategoryDropdownOpen(false);
-                              setFormCategorySearch('');
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${
                               isSelected
@@ -1228,11 +1291,6 @@ export const BudgetPage: React.FC = () => {
                           </button>
                         );
                       })}
-                      {filteredFormCategories.length === 0 && (
-                        <div className="py-5 text-center text-xs text-slate-400 font-medium">
-                          Không tìm thấy danh mục "{formCategorySearch}"
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}

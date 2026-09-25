@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Account, Category, Transaction, AccountType } from '../../types';
+import type { Account, Category, Transaction, AccountType, Budget } from '../../types';
 import { categoryService } from '../../services/categoryService';
+import { budgetService } from '../../services/budgetService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 
 export interface AddTransactionModalProps {
@@ -12,6 +13,7 @@ export interface AddTransactionModalProps {
   accounts?: Account[];
   categories?: Category[];
   transactions?: Transaction[];
+  budgets?: Budget[];
   onCategoryCreated?: (newCategory: Category) => void;
 }
 
@@ -47,22 +49,22 @@ const getAccountEmoji = (type: AccountType): string => {
 // Preset category visual styling & icon fallback
 const CATEGORY_STYLES: Record<
   string,
-  { emoji: string; bg: string; text: string; defaultLimit: number }
+  { emoji: string; bg: string; text: string }
 > = {
-  'Ăn uống': { emoji: '🍜', bg: 'bg-red-100', text: 'text-red-700', defaultLimit: 2500000 },
-  'Áo quần': { emoji: '👕', bg: 'bg-blue-100', text: 'text-blue-700', defaultLimit: 1000000 },
-  'Mua sắm': { emoji: '🛒', bg: 'bg-emerald-100', text: 'text-emerald-700', defaultLimit: 2000000 },
-  'Giao thông': { emoji: '🚕', bg: 'bg-amber-100', text: 'text-amber-700', defaultLimit: 800000 },
-  'Giải trí': { emoji: '🎮', bg: 'bg-purple-100', text: 'text-purple-700', defaultLimit: 1200000 },
-  'Sinh hoạt': { emoji: '🏠', bg: 'bg-rose-100', text: 'text-rose-700', defaultLimit: 3000000 },
-  'Sức khỏe': { emoji: '💊', bg: 'bg-pink-100', text: 'text-pink-700', defaultLimit: 1000000 },
-  'Giáo dục': { emoji: '📚', bg: 'bg-teal-100', text: 'text-teal-700', defaultLimit: 1500000 },
-  'Chi tiêu khác': { emoji: '📦', bg: 'bg-slate-100', text: 'text-slate-700', defaultLimit: 1000000 },
-  'Lương': { emoji: '💼', bg: 'bg-emerald-100', text: 'text-emerald-700', defaultLimit: 0 },
-  'Thưởng': { emoji: '🎁', bg: 'bg-amber-100', text: 'text-amber-700', defaultLimit: 0 },
-  'Đầu tư': { emoji: '📈', bg: 'bg-indigo-100', text: 'text-indigo-700', defaultLimit: 0 },
-  'Freelance': { emoji: '💻', bg: 'bg-sky-100', text: 'text-sky-700', defaultLimit: 0 },
-  'Thu nhập khác': { emoji: '🪙', bg: 'bg-violet-100', text: 'text-violet-700', defaultLimit: 0 },
+  'Ăn uống': { emoji: '🍜', bg: 'bg-red-100', text: 'text-red-700' },
+  'Áo quần': { emoji: '👕', bg: 'bg-blue-100', text: 'text-blue-700' },
+  'Mua sắm': { emoji: '🛒', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  'Giao thông': { emoji: '🚕', bg: 'bg-amber-100', text: 'text-amber-700' },
+  'Giải trí': { emoji: '🎮', bg: 'bg-purple-100', text: 'text-purple-700' },
+  'Sinh hoạt': { emoji: '🏠', bg: 'bg-rose-100', text: 'text-rose-700' },
+  'Sức khỏe': { emoji: '💊', bg: 'bg-pink-100', text: 'text-pink-700' },
+  'Giáo dục': { emoji: '📚', bg: 'bg-teal-100', text: 'text-teal-700' },
+  'Chi tiêu khác': { emoji: '📦', bg: 'bg-slate-100', text: 'text-slate-700' },
+  'Lương': { emoji: '💼', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  'Thưởng': { emoji: '🎁', bg: 'bg-amber-100', text: 'text-amber-700' },
+  'Đầu tư': { emoji: '📈', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  'Freelance': { emoji: '💻', bg: 'bg-sky-100', text: 'text-sky-700' },
+  'Thu nhập khác': { emoji: '🪙', bg: 'bg-violet-100', text: 'text-violet-700' },
 };
 
 const PRESET_ICONS = [
@@ -78,7 +80,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   editingTransaction,
   accounts = [],
   categories,
-  transactions = [],
+  transactions: _transactions = [],
+  budgets: externalBudgets,
   onCategoryCreated,
 }) => {
   const [categoriesList, setCategoriesList] = useState<Category[]>(categories || []);
@@ -89,6 +92,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState<string>(new Date().toTimeString().slice(0, 5));
   const [note, setNote] = useState<string>('');
+  const [internalBudgets, setInternalBudgets] = useState<Budget[]>([]);
+
+  // Fetch real budget data from backend for the transaction month
+  useEffect(() => {
+    if (!isOpen) return;
+    const currentMonth = date ? date.slice(0, 7) : new Date().toISOString().slice(0, 7);
+    budgetService.getBudgets(currentMonth)
+      .then((data) => {
+        setInternalBudgets(data || []);
+      })
+      .catch((err) => {
+        console.error('Error fetching real budgets in AddTransactionModal:', err);
+        setInternalBudgets([]);
+      });
+  }, [isOpen, date]);
+
+  // Combined active budgets
+  const activeBudgets = externalBudgets && externalBudgets.length > 0 ? externalBudgets : internalBudgets;
 
   // Quick category creation modal state
   const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
@@ -188,33 +209,68 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, showAddCategoryModal, onClose]);
 
-  // Calculate realtime category budget stats
+  // Calculate realtime category budget stats using REAL database budget data
   const budgetStats = useMemo(() => {
     if (type !== 'EXPENSE' || !selectedCategory) return null;
 
-    const currentYearMonth = date.slice(0, 7); // e.g. "2026-09"
-    const currentMonthNum = parseInt(date.slice(5, 7), 10);
-    const currentYear = date.slice(0, 4);
+    const currentYearMonth = date ? date.slice(0, 7) : new Date().toISOString().slice(0, 7);
+    const currentMonthNum = parseInt(currentYearMonth.slice(5, 7), 10);
+    const currentYear = currentYearMonth.slice(0, 4);
+    const monthLabel = `Tháng ${currentMonthNum}/${currentYear}`;
 
-    // Sum transactions for this category in current month
-    const existingSpent = transactions
-      .filter(
-        (t) =>
-          t.type === 'EXPENSE' &&
-          t.category?.id === selectedCategory.id &&
-          t.date &&
-          t.date.startsWith(currentYearMonth)
-      )
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Find real budget in database for this category & month
+    const realBudget = activeBudgets.find(
+      (b) => b.category?.id === selectedCategory.id
+    );
 
-    const projectedSpent = existingSpent + amount;
-    const categoryConfig = CATEGORY_STYLES[selectedCategory.name];
-    const limit = categoryConfig?.defaultLimit || 2000000;
+    if (!realBudget) {
+      return {
+        monthLabel,
+        hasBudget: false,
+        limit: 0,
+        spent: 0,
+        remaining: 0,
+        percentage: 0,
+        isOverBudget: false,
+        isWarning: false,
+      };
+    }
+
+    const limit = realBudget.amount ?? realBudget.allocatedAmount ?? 0;
+    if (limit <= 0) {
+      return {
+        monthLabel,
+        hasBudget: false,
+        limit: 0,
+        spent: 0,
+        remaining: 0,
+        percentage: 0,
+        isOverBudget: false,
+        isWarning: false,
+      };
+    }
+
+    // Existing spent from real database
+    let existingSpent = realBudget.spentAmount ?? 0;
+
+    // If editing existing transaction, adjust base spent so we don't double count
+    if (
+      editingTransaction &&
+      editingTransaction.category?.id === selectedCategory.id &&
+      editingTransaction.date &&
+      editingTransaction.date.startsWith(currentYearMonth) &&
+      editingTransaction.type === 'EXPENSE'
+    ) {
+      existingSpent = Math.max(0, existingSpent - (editingTransaction.amount || 0));
+    }
+
+    const projectedSpent = existingSpent + (Number(amount) || 0);
     const remaining = limit - projectedSpent;
     const percentage = Math.round((projectedSpent / limit) * 100);
 
     return {
-      monthLabel: `Tháng ${currentMonthNum}/${currentYear}`,
+      monthLabel,
+      hasBudget: true,
       spent: projectedSpent,
       limit,
       remaining,
@@ -222,7 +278,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       isOverBudget: projectedSpent > limit,
       isWarning: percentage >= 80 && percentage <= 100,
     };
-  }, [type, selectedCategory, date, transactions, amount]);
+  }, [type, selectedCategory, date, activeBudgets, amount, editingTransaction]);
 
   if (!isOpen) return null;
 
@@ -491,16 +547,16 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             >
               {type === 'EXPENSE' ? 'Số tiền chi tiêu' : 'Số tiền thu nhập'}
             </label>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2">
               <span
-                className={`text-3xl lg:text-4xl font-extrabold tracking-tight ${
+                className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
                   type === 'EXPENSE' ? 'text-red-600' : 'text-emerald-600'
                 }`}
               >
                 {type === 'EXPENSE' ? '-' : '+'}
               </span>
               <input
-                className={`w-72 lg:w-96 text-center text-4xl lg:text-5xl font-extrabold bg-transparent border-0 border-b-2 focus:ring-0 p-0 tracking-tight font-currency-display ${
+                className={`w-52 sm:w-72 text-center text-3xl sm:text-4xl font-extrabold bg-transparent border-0 border-b-2 outline-none focus:outline-none focus:ring-0 p-0 pb-0.5 tracking-tight font-currency-display ${
                   type === 'EXPENSE'
                     ? 'text-red-600 border-red-300 focus:border-red-600'
                     : 'text-emerald-600 border-emerald-300 focus:border-emerald-600'
@@ -513,7 +569,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 placeholder="0"
               />
               <span
-                className={`text-2xl lg:text-3xl font-bold underline ${
+                className={`text-xl sm:text-2xl font-bold underline ${
                   type === 'EXPENSE'
                     ? 'text-red-600 decoration-red-300'
                     : 'text-emerald-600 decoration-emerald-300'
@@ -639,95 +695,105 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
               {/* Realtime Category Budget Status Bar (For Expense) */}
               {budgetStats && (
-                <div
-                  className={`p-3.5 border rounded-2xl transition-all animate-fadeIn ${
-                    budgetStats.isOverBudget
-                      ? 'bg-red-50/70 border-red-200/80'
-                      : budgetStats.isWarning
-                      ? 'bg-amber-50/70 border-amber-200/80'
-                      : 'bg-emerald-50/50 border-emerald-200/80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span
-                      className={`font-bold flex items-center gap-1.5 ${
-                        budgetStats.isOverBudget
-                          ? 'text-red-900'
-                          : budgetStats.isWarning
-                          ? 'text-amber-900'
-                          : 'text-emerald-900'
-                      }`}
-                    >
-                      <svg
-                        className={`w-4 h-4 ${
-                          budgetStats.isOverBudget
-                            ? 'text-red-600'
-                            : budgetStats.isWarning
-                            ? 'text-amber-600'
-                            : 'text-emerald-600'
-                        }`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          clipRule="evenodd"
-                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                          fillRule="evenodd"
-                        ></path>
-                      </svg>
-                      Ngân sách "{selectedCategory?.name}" {budgetStats.monthLabel}:
-                    </span>
-                    <span
-                      className={`font-semibold font-currency-row ${
-                        budgetStats.isOverBudget
-                          ? 'text-red-800'
-                          : budgetStats.isWarning
-                          ? 'text-amber-800'
-                          : 'text-emerald-800'
-                      }`}
-                    >
-                      Đã chi {formatVND(budgetStats.spent)} / {formatVND(budgetStats.limit)}
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200/60 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        budgetStats.isOverBudget
-                          ? 'bg-red-500'
-                          : budgetStats.isWarning
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${Math.min(budgetStats.percentage, 100)}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-[11px] font-semibold mt-1 flex items-center justify-between">
-                    <span
-                      className={
-                        budgetStats.remaining < 0 ? 'text-red-700' : 'text-emerald-700'
-                      }
-                    >
-                      {budgetStats.remaining < 0
-                        ? `Vượt ngân sách: ${formatVND(Math.abs(budgetStats.remaining))}`
-                        : `Còn lại: ${formatVND(budgetStats.remaining)}`}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        budgetStats.isOverBudget
-                          ? 'bg-red-100 text-red-800'
-                          : budgetStats.isWarning
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}
-                    >
-                      {budgetStats.isOverBudget
-                        ? `Vượt mức (${budgetStats.percentage}%)`
+                budgetStats.hasBudget ? (
+                  <div
+                    className={`p-3.5 border rounded-2xl transition-all animate-fadeIn ${
+                      budgetStats.isOverBudget
+                        ? 'bg-red-50/70 border-red-200/80'
                         : budgetStats.isWarning
-                        ? `Cảnh báo (${budgetStats.percentage}%)`
-                        : `An toàn (${100 - budgetStats.percentage}%)`}
+                        ? 'bg-amber-50/70 border-amber-200/80'
+                        : 'bg-emerald-50/50 border-emerald-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span
+                        className={`font-bold flex items-center gap-1.5 ${
+                          budgetStats.isOverBudget
+                            ? 'text-red-900'
+                            : budgetStats.isWarning
+                            ? 'text-amber-900'
+                            : 'text-emerald-900'
+                        }`}
+                      >
+                        <svg
+                          className={`w-4 h-4 ${
+                            budgetStats.isOverBudget
+                              ? 'text-red-600'
+                              : budgetStats.isWarning
+                              ? 'text-amber-600'
+                              : 'text-emerald-600'
+                          }`}
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            clipRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            fillRule="evenodd"
+                          ></path>
+                        </svg>
+                        Ngân sách "{selectedCategory?.name}" {budgetStats.monthLabel}:
+                      </span>
+                      <span
+                        className={`font-semibold font-currency-row ${
+                          budgetStats.isOverBudget
+                            ? 'text-red-800'
+                            : budgetStats.isWarning
+                            ? 'text-amber-800'
+                            : 'text-emerald-800'
+                        }`}
+                      >
+                        Đã chi {formatVND(budgetStats.spent)} / {formatVND(budgetStats.limit)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/60 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          budgetStats.isOverBudget
+                            ? 'bg-red-500'
+                            : budgetStats.isWarning
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min(budgetStats.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-[11px] font-semibold mt-1 flex items-center justify-between">
+                      <span
+                        className={
+                          budgetStats.remaining < 0 ? 'text-red-700' : 'text-emerald-700'
+                        }
+                      >
+                        {budgetStats.remaining < 0
+                          ? `Vượt ngân sách: ${formatVND(Math.abs(budgetStats.remaining))}`
+                          : `Còn lại: ${formatVND(budgetStats.remaining)}`}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          budgetStats.isOverBudget
+                            ? 'bg-red-100 text-red-800'
+                            : budgetStats.isWarning
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {budgetStats.isOverBudget
+                          ? `Vượt mức (${budgetStats.percentage}%)`
+                          : budgetStats.isWarning
+                          ? `Cảnh báo (${budgetStats.percentage}%)`
+                          : `An toàn (${Math.max(0, 100 - budgetStats.percentage)}%)`}
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 border border-slate-200/80 rounded-2xl bg-slate-50/80 flex items-center justify-between text-xs text-slate-500 transition-all">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="material-symbols-outlined text-[16px] text-slate-400">info</span>
+                      Chưa thiết lập ngân sách cho "{selectedCategory?.name}" ({budgetStats.monthLabel})
                     </span>
-                  </p>
-                </div>
+                    <span className="text-[11px] font-semibold text-slate-400">Không giới hạn</span>
+                  </div>
+                )
               )}
             </div>
 
