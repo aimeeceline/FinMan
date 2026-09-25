@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████████] 61.0% (25 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Hoàn thành Phase 4 — Sẵn sàng cho Phase 5 (Ready for Phase 5)
+Tiến độ dự án: [████████████████████] 63.4% (26 / 41 Tasks hoàn thành)
+Trạng thái:    🟢 Đang thực hiện Phase 5 — Hoàn thành Task 5.1 (Backend Budget APIs)
 Phase hiện tại: Phase 5 — Budgeting System Fullstack (APIs + Stitch Budget Screen)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 25 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.1 (Backend Budget APIs) |
-| **Chưa thực hiện (Pending)** | 16 tasks | Phase 5 (4 tasks) đến Phase 9 |
+| **Đã hoàn thành (Done)** | 26 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (1) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.2 (Frontend Budget Screen) |
+| **Chưa thực hiện (Pending)** | 15 tasks | Task 5.2 đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -94,7 +94,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 ### Phase 5: Budgeting System Fullstack (APIs + Stitch Budget Screen)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 5.1** | Backend Budget APIs (Upsert, tính amountSpent, cảnh báo 80%, 100%) | `Pending` | — | — |
+| **Task 5.1** | Backend Budget APIs (Upsert, tính amountSpent, cảnh báo 80%, 100%) | `Completed` | 2026-09-25 | Agent |
 | **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` | `Pending` | — | — |
 | **Task 5.3** | Kết nối Frontend Budget với Backend API | `Pending` | — | — |
 | **Task 5.4** | Tests cho Budgeting System | `Pending` | — | — |
@@ -697,6 +697,43 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
   - Backend `mvn test`: **83/83 tests passed** (0 failures, 0 errors, 0 skipped) trong 27.9s (`BUILD SUCCESS`).
   - Frontend `npm run build`: Compile sạch 100% không lỗi.
 - **Trạng thái**: Completed (Chính thức đóng Phase 4).
+
+### [2026-09-25] Task 5.1: Backend Budget APIs (Upsert, Spending & Alert Engine)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Xây dựng tầng DTO cho module Budget: `BudgetRequest`, `BudgetResponse` và `BudgetSummaryResponse`.
+  - Triển khai enum `BudgetStatus` (`NORMAL`, `WARNING`, `OVERBUDGET`).
+  - Xây dựng `BudgetService`:
+    - Quản lý CRUD ngân sách theo tháng (`YYYY-MM`) và danh mục.
+    - Cơ chế **Upsert**: Tự động cập nhật hạn mức nếu ngân sách cùng `(user_id, category_id, month)` đã tồn tại, hoặc tạo mới nếu chưa có (`TC_BDG_01`).
+    - Chặn thiết lập ngân sách cho danh mục loại `INCOME` với thông điệp: `"Chỉ được đặt ngân sách cho danh mục chi tiêu"` (`TC_BDG_02`).
+    - Tính toán tổng chi tiêu thực tế `spentAmount` trong tháng theo danh mục qua `TransactionRepository.sumAmountByUserIdAndCategoryIdAndDateBetween`.
+    - Tính số tiền còn lại `remainingAmount`, số tiền vượt `overspentAmount` và tỷ lệ phần trăm `percentage`.
+    - Gắn nhãn trạng thái cảnh báo trực quan:
+      - `NORMAL`: Chi tiêu < 80% hạn mức (`TC_BDG_03`).
+      - `WARNING`: Chi tiêu từ 80% đến 100% hạn mức (`TC_BDG_04`).
+      - `OVERBUDGET`: Chi tiêu vượt quá 100% hạn mức (`TC_BDG_05`).
+    - Đảm bảo kiểm tra phân quyền sở hữu người dùng chặt chẽ trên mọi thao tác xem, sửa, xóa (chống IDOR).
+  - Xây dựng `BudgetController`:
+    - `GET /api/v1/budgets?month=YYYY-MM`: Lấy danh sách ngân sách tháng kèm tiến độ chi tiêu.
+    - `GET /api/v1/budgets/summary?month=YYYY-MM`: Lấy tổng quan ngân sách và tổng chi tiêu toàn tháng.
+    - `GET /api/v1/budgets/{id}`: Xem chi tiết một ngân sách.
+    - `POST /api/v1/budgets`: Thiết lập / Upsert ngân sách.
+    - `PUT /api/v1/budgets/{id}`: Cập nhật hạn mức ngân sách.
+    - `DELETE /api/v1/budgets/{id}`: Hủy thiết lập ngân sách.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/entity/enums/BudgetStatus.java`: Enum trạng thái cảnh báo ngân sách.
+  - `backend/src/main/java/com/finman/dto/request/BudgetRequest.java`: DTO nhận yêu cầu tạo/sửa ngân sách.
+  - `backend/src/main/java/com/finman/dto/response/BudgetResponse.java`: DTO phản hồi chi tiết tiến độ ngân sách.
+  - `backend/src/main/java/com/finman/dto/response/BudgetSummaryResponse.java`: DTO tổng quan toàn bộ ngân sách theo tháng.
+  - `backend/src/main/java/com/finman/service/BudgetService.java`: Service xử lý nghiệp vụ ngân sách, tính lũy kế chi tiêu và cảnh báo.
+  - `backend/src/main/java/com/finman/controller/BudgetController.java`: REST API Controller với xác thực JWT và phân quyền.
+  - `backend/src/test/java/com/finman/service/BudgetServiceTest.java`: Unit tests bao phủ đầy đủ các kịch bản `TC_BDG_01` đến `TC_BDG_05`, IDOR và validation.
+  - `backend/src/test/java/com/finman/controller/BudgetControllerTest.java`: MockMvc integration tests kiểm thử các endpoints API, bảo mật và phân quyền.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `BudgetServiceTest` (9 tests) & `BudgetControllerTest` (5 tests): **14/14 tests PASSED**.
+  - Toàn bộ backend test suite: **97/97 tests PASSED** (0 failures, 0 errors, 0 skipped) trong 20.5s (`BUILD SUCCESS`).
+- **Trạng thái**: Completed.
 
 ---
 
