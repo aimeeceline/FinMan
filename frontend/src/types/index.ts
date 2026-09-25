@@ -74,6 +74,11 @@ export interface Budget {
   allocatedAmount: number;
   spentAmount: number;
   month: string; // YYYY-MM
+  amount?: number;
+  remainingAmount?: number;
+  overspentAmount?: number;
+  percentage?: number;
+  status?: 'NORMAL' | 'WARNING' | 'OVERBUDGET';
 }
 
 export interface FinancialStats {

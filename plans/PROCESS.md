@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████████] 63.4% (26 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Đang thực hiện Phase 5 — Hoàn thành Task 5.1 (Backend Budget APIs)
+Tiến độ dự án: [████████████████████] 68.3% (28 / 41 Tasks hoàn thành)
+Trạng thái:    🟢 Đang thực hiện Phase 5 — Hoàn thành Task 5.1, 5.2, 5.3 (Sẵn sàng Task 5.4 Tests)
 Phase hiện tại: Phase 5 — Budgeting System Fullstack (APIs + Stitch Budget Screen)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 26 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (1) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.2 (Frontend Budget Screen) |
-| **Chưa thực hiện (Pending)** | 15 tasks | Task 5.2 đến Phase 9 |
+| **Đã hoàn thành (Done)** | 28 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (3) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.4 (Tests cho Budgeting System) |
+| **Chưa thực hiện (Pending)** | 13 tasks | Task 5.4 đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -95,8 +95,8 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
 | **Task 5.1** | Backend Budget APIs (Upsert, tính amountSpent, cảnh báo 80%, 100%) | `Completed` | 2026-09-25 | Agent |
-| **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` | `Pending` | — | — |
-| **Task 5.3** | Kết nối Frontend Budget với Backend API | `Pending` | — | — |
+| **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` | `Completed` | 2026-09-25 | Agent |
+| **Task 5.3** | Kết nối Frontend Budget với Backend API | `Completed` | 2026-09-25 | Agent |
 | **Task 5.4** | Tests cho Budgeting System | `Pending` | — | — |
 
 ### Phase 6: Statistics & Data Export Fullstack
@@ -733,6 +733,45 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% —
   - `BudgetServiceTest` (9 tests) & `BudgetControllerTest` (5 tests): **14/14 tests PASSED**.
   - Toàn bộ backend test suite: **97/97 tests PASSED** (0 failures, 0 errors, 0 skipped) trong 20.5s (`BUILD SUCCESS`).
+- **Trạng thái**: Completed.
+
+### [2026-09-25] Task 5.2 & Task 5.3: Frontend Budget Screen & API Integration (Stitch Design 100%)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Bóc tách toàn diện desktop layout từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` sang `frontend/src/pages/budget/BudgetPage.tsx`.
+  - Bộ thẻ KPI sức khỏe ngân sách cấp cao (Primary Budget Health Dashboard):
+    - Hạn mức chi tiêu tổng thể + Badge "Mức độ an toàn: X%" (`verified_user`).
+    - Thanh đo tiến độ đa đoạn (Multi-Segment Progress Indicator) với tỷ lệ đã sử dụng (%) và khả dụng còn lại (VNĐ).
+    - Dải Quick Metrics Ribbon (3 thẻ): Đã giải ngân tháng này, Chi tiêu dự kiến/ngày còn lại (~ X đ/ngày), Tình trạng danh mục (Chạm trần / Cảnh báo / An toàn).
+    - Thẻ tốc độ & dự báo chi tiêu hàng ngày (Daily Allowed Rate & AI Insight callout).
+  - Bố cục chia đôi chuẩn Stitch Web (7 cột Danh mục / 5 cột Lịch chi tiêu):
+    - **Cột trái (7 cols)**:
+      - Bộ lọc tab danh mục: "Tất cả", "Cảnh báo (X)", "An toàn (Y)".
+      - Thẻ ngân sách danh mục: Icon danh mục, huy hiệu trạng thái (An toàn / Sắp chạm ngưỡng / Hết hạn mức), số tiền đã tiêu / hạn mức, phần trăm và số tiền còn lại hoặc vượt trần.
+      - Thanh tiến độ đổi màu trực quan: Xanh (< 80%), Vàng (80-100%), Đỏ (> 100%).
+      - Thẻ cảnh báo nổi bật (Distinct Warning Notice) khi chạm trần / vượt hạn mức kèm nút "Nâng quỹ +500k".
+      - Nút sửa / xóa ngân sách linh hoạt trên từng danh mục.
+    - **Cột phải (5 cols)**:
+      - Lịch chi tiêu tương tác trực quan theo tháng (`selectedMonth`).
+      - Ma trận ngày hiển thị dòng tiền thực tế (`+X`, `-Y`).
+      - Chọn ngày trên lịch để xem sổ nhật ký chi tiết (Drilldown Ledger) các giao dịch trong ngày đã chọn.
+  - Modal Glassmorphism Thiết lập / Chỉnh sửa ngân sách mới:
+    - Chọn danh mục, chọn tháng, nhập số tiền định dạng dấu chấm phân cách hàng nghìn.
+    - Quick Amount Chips: 500k, 1M, 2M, 5M.
+    - Bắt lỗi validation trực tiếp và hiển thị banner cảnh báo.
+  - Tích hợp 100% Backend REST APIs qua `frontend/src/services/budgetService.ts`:
+    - `budgetService.getBudgets(selectedMonth)`
+    - `budgetService.getBudgetSummary(selectedMonth)`
+    - `budgetService.setBudget(...)` (Upsert & Quick Boost +500k)
+    - `budgetService.deleteBudget(id)`
+  - Toast notification thông báo kết quả thao tác mượt mà.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/types/index.ts`: Bổ sung các trường `amount`, `remainingAmount`, `overspentAmount`, `percentage`, `status` cho interface `Budget`.
+  - `frontend/src/services/budgetService.ts`: Xây dựng service gọi các endpoints `/api/v1/budgets`.
+  - `frontend/src/pages/budget/BudgetPage.tsx`: Bóc tách và hoàn thiện toàn bộ giao diện Stitch Web Budget.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `npm run build`: **91 modules transformed** thành công trong 1.58s (0 TypeScript errors, 0 linter warnings).
+  - Toàn bộ 97 backend tests duy trì PASS 100%.
 - **Trạng thái**: Completed.
 
 ---
