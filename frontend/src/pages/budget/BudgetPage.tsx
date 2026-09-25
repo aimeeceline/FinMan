@@ -5,6 +5,42 @@ import type { BudgetSummary } from '../../services/budgetService';
 import { transactionService } from '../../services/transactionService';
 import type { Budget, Category, Transaction } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
+const PASTEL_PALETTES = [
+  'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
+  'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+  'bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300',
+  'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+  'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
+  'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300',
+  'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300',
+  'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
+  'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300',
+];
+
+const getCategoryPastelBg = (id?: number, name?: string): string => {
+  if (typeof id === 'number' && id > 0) {
+    return PASTEL_PALETTES[id % PASTEL_PALETTES.length];
+  }
+  const str = name || 'category';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return PASTEL_PALETTES[Math.abs(hash) % PASTEL_PALETTES.length];
+};
+
+const renderCategoryIcon = (icon?: string, sizeClass = 'text-[18px]') => {
+  if (!icon) {
+    return <span className={`material-symbols-outlined ${sizeClass}`}>payments</span>;
+  }
+  const isEmoji = /\p{Extended_Pictographic}/u.test(icon) || icon.length <= 2;
+  if (isEmoji) {
+    return <span className="text-base leading-none">{icon}</span>;
+  }
+  return <span className={`material-symbols-outlined ${sizeClass}`}>{icon}</span>;
+};
 
 export const BudgetPage: React.FC = () => {
   // State: Month Selection (Defaults to September 2026 or current month)
@@ -34,6 +70,9 @@ export const BudgetPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [formCategoryId, setFormCategoryId] = useState<number>(0);
+  const [isFormCategoryDropdownOpen, setIsFormCategoryDropdownOpen] = useState<boolean>(false);
+  const [formCategorySearch, setFormCategorySearch] = useState<string>('');
+  const formCategoryDropdownRef = useRef<HTMLDivElement>(null);
   const [formAmount, setFormAmount] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -62,6 +101,36 @@ export const BudgetPage: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isMonthPickerOpen]);
+
+  // Close form category dropdown popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        formCategoryDropdownRef.current &&
+        !formCategoryDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsFormCategoryDropdownOpen(false);
+      }
+    };
+    if (isFormCategoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFormCategoryDropdownOpen]);
+
+  // Selected category in modal
+  const selectedFormCategory = useMemo(() => {
+    return categories.find((c) => c.id === formCategoryId) || categories[0];
+  }, [categories, formCategoryId]);
+
+  // Filtered categories in modal search
+  const filteredFormCategories = useMemo(() => {
+    const q = formCategorySearch.toLowerCase().trim();
+    if (!q) return categories;
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, formCategorySearch]);
 
   // Sync pickerYear when selectedMonth changes
   useEffect(() => {
@@ -238,6 +307,8 @@ export const BudgetPage: React.FC = () => {
     setFormMonth(selectedMonth);
     setFormAmount('');
     setFormError(null);
+    setIsFormCategoryDropdownOpen(false);
+    setFormCategorySearch('');
     setIsModalOpen(true);
   };
 
@@ -248,6 +319,8 @@ export const BudgetPage: React.FC = () => {
     setFormMonth(b.month);
     setFormAmount(formatCurrencyInput(b.amount ?? b.allocatedAmount));
     setFormError(null);
+    setIsFormCategoryDropdownOpen(false);
+    setFormCategorySearch('');
     setIsModalOpen(true);
   };
 
@@ -1030,22 +1103,139 @@ export const BudgetPage: React.FC = () => {
             )}
 
             <form onSubmit={handleSubmitBudget} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+              {/* Custom Styled Category Dropdown (Khớp giao diện Trang Giao Dịch) */}
+              <div className="relative" ref={formCategoryDropdownRef}>
+                <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
                   Danh mục chi tiêu
                 </label>
-                <select
-                  value={formCategoryId}
-                  onChange={(e) => setFormCategoryId(Number(e.target.value))}
+
+                {/* Custom Trigger Button */}
+                <button
+                  type="button"
                   disabled={editingBudget != null}
-                  className="w-full bg-surface-container-low rounded-xl px-3 py-2.5 text-sm border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/40 text-on-surface"
+                  onClick={() => setIsFormCategoryDropdownOpen((prev) => !prev)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${
+                    editingBudget != null
+                      ? 'bg-surface-container/50 border-outline-variant/30 text-on-surface-variant cursor-not-allowed opacity-80'
+                      : isFormCategoryDropdownOpen
+                      ? 'border-2 border-purple-500 bg-surface-container-low ring-2 ring-purple-500/15'
+                      : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/40 hover:border-purple-400'
+                  }`}
                 >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.icon})
-                    </option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-3">
+                    {selectedFormCategory ? (
+                      <>
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${getCategoryPastelBg(
+                            selectedFormCategory.id,
+                            selectedFormCategory.name
+                          )}`}
+                        >
+                          {renderCategoryIcon(selectedFormCategory.icon)}
+                        </div>
+                        <span className="font-semibold text-sm text-on-surface">
+                          {selectedFormCategory.name}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-on-surface-variant text-sm">Chọn danh mục chi tiêu...</span>
+                    )}
+                  </div>
+
+                  {editingBudget == null && (
+                    <span
+                      className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${
+                        isFormCategoryDropdownOpen ? 'rotate-180 text-purple-600' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Menu Modal Card matching Screenshot 2 */}
+                {isFormCategoryDropdownOpen && (
+                  <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-slate-200/90 dark:border-outline-variant/30 p-3.5 animate-fadeIn select-none">
+                    {/* Top Header: Purple Badge + "Danh Mục" */}
+                    <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-outline-variant/20">
+                      <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-purple-600 dark:text-purple-300 shadow-2xs">
+                        <span className="material-symbols-outlined text-[16px]">segment</span>
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
+                        Danh Mục
+                      </h4>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative my-2.5">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[17px] text-slate-400">
+                        search
+                      </span>
+                      <input
+                        type="text"
+                        value={formCategorySearch}
+                        onChange={(e) => setFormCategorySearch(e.target.value)}
+                        placeholder="Tìm danh mục (Ăn uống, Lương...)"
+                        className="w-full bg-slate-50 dark:bg-surface-container-low text-slate-800 dark:text-on-surface text-xs font-medium pl-8.5 pr-7 py-2 rounded-xl border border-slate-200 dark:border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-purple-400/25 focus:border-purple-500 transition-all placeholder:text-slate-400"
+                        autoFocus
+                      />
+                      {formCategorySearch && (
+                        <button
+                          type="button"
+                          onClick={() => setFormCategorySearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Category List */}
+                    <div className="max-h-[220px] overflow-y-auto custom-scroll space-y-1 pr-1">
+                      {filteredFormCategories.map((c) => {
+                        const isSelected = formCategoryId === c.id;
+                        const pastelBg = getCategoryPastelBg(c.id, c.name);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setFormCategoryId(c.id);
+                              setIsFormCategoryDropdownOpen(false);
+                              setFormCategorySearch('');
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-900/40 shadow-2xs'
+                                : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}
+                              >
+                                {renderCategoryIcon(c.icon)}
+                              </div>
+                              <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-on-surface">
+                                {c.name}
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <span className="material-symbols-outlined text-[18px] text-purple-600 dark:text-purple-400 font-bold">
+                                check
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                      {filteredFormCategories.length === 0 && (
+                        <div className="py-5 text-center text-xs text-slate-400 font-medium">
+                          Không tìm thấy danh mục "{formCategorySearch}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
