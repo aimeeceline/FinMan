@@ -86,6 +86,13 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 user?.fullName || 'User'
               )}&background=0D8ABC&color=fff`
             }
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                user?.fullName || 'User'
+              )}&background=0D8ABC&color=fff`;
+            }}
           />
         </div>
       </div>

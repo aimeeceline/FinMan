@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import type { User } from '../types';
 import { api } from '../services/api';
 
+import { userService } from '../services/userService';
+
 export interface GoogleAuthData {
   idToken?: string;
   email?: string;
@@ -23,6 +25,7 @@ interface AuthContextType {
   register: (email: string, fullName: string, password: string) => Promise<AuthResult>;
   loginWithGoogle: (data: GoogleAuthData) => Promise<AuthResult>;
   logout: () => void;
+  updateUser: (updated: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,11 +47,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const logout = useCallback(() => {
+    try {
+      api.post('/users/logout').catch(() => {});
+    } catch {
+      // ignore
+    }
     localStorage.removeItem('finman_token');
     localStorage.removeItem('finman_user');
     setToken(null);
     setUser(null);
   }, []);
+
+  const updateUser = useCallback((updated: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const nextUser = { ...prev, ...updated };
+      try {
+        localStorage.setItem('finman_user', JSON.stringify(nextUser));
+      } catch (err) {
+        console.error('Failed to persist user updates:', err);
+      }
+      return nextUser;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      userService.getProfile()
+        .then((profile) => {
+          if (profile) {
+            setUser((prev) => {
+              const merged = prev ? { ...prev, ...profile } : profile;
+              try {
+                localStorage.setItem('finman_user', JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [token]);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -181,6 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         loginWithGoogle,
         logout,
+        updateUser,
       }}
     >
       {children}

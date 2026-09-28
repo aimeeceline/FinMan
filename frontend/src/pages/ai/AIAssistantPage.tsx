@@ -10,10 +10,15 @@ export interface ParsedItemState extends AiQuickAddItem {
   id: string;
   isSaved?: boolean;
   isEditing?: boolean;
+  editableType?: 'INCOME' | 'EXPENSE';
   editableAmount?: number;
-  editableNote?: string;
+  editableCategoryId?: number;
   editableCategoryName?: string;
+  editableCategoryIcon?: string;
+  editableAccountId?: number;
   editableAccountName?: string;
+  editableDate?: string;
+  editableNote?: string;
 }
 
 export interface ChatMessage {
@@ -24,10 +29,15 @@ export interface ChatMessage {
   parsedTransaction?: AiQuickAddResult & {
     isSaved?: boolean;
     isEditing?: boolean;
+    editableType?: 'INCOME' | 'EXPENSE';
     editableAmount?: number;
-    editableNote?: string;
+    editableCategoryId?: number;
     editableCategoryName?: string;
+    editableCategoryIcon?: string;
+    editableAccountId?: number;
     editableAccountName?: string;
+    editableDate?: string;
+    editableNote?: string;
   };
   parsedItems?: ParsedItemState[];
   insightsData?: AiInsightsResult;
@@ -148,10 +158,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
           id: `item-${Date.now()}-${idx}`,
           isSaved: false,
           isEditing: false,
+          editableType: it.type,
           editableAmount: it.amount,
-          editableNote: it.note,
+          editableCategoryId: it.categoryId,
           editableCategoryName: it.categoryName,
+          editableCategoryIcon: it.categoryIcon,
+          editableAccountId: it.accountId,
           editableAccountName: it.accountName,
+          editableDate: it.transactionDate || new Date().toISOString().split('T')[0],
+          editableNote: it.note,
         }));
 
         const firstItem = chatRes.items[0];
@@ -178,10 +193,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
             source: chatRes.source,
             isSaved: false,
             isEditing: false,
+            editableType: firstItem.type,
             editableAmount: firstItem.amount,
-            editableNote: firstItem.note,
+            editableCategoryId: firstItem.categoryId,
             editableCategoryName: firstItem.categoryName,
+            editableCategoryIcon: firstItem.categoryIcon,
+            editableAccountId: firstItem.accountId,
             editableAccountName: firstItem.accountName,
+            editableDate: firstItem.transactionDate || new Date().toISOString().split('T')[0],
+            editableNote: firstItem.note,
           },
         };
         setMessages((prev) => [...prev, aiMsg]);
@@ -286,29 +306,33 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     if (!msg || !msg.parsedTransaction || msg.parsedTransaction.isSaved) return;
 
     const pt = msg.parsedTransaction;
-    const finalAmount = pt.editableAmount || pt.amount;
-    const finalNote = pt.editableNote !== undefined ? pt.editableNote : pt.note;
+    const finalType: 'INCOME' | 'EXPENSE' = pt.editableType || pt.type || 'EXPENSE';
+    const finalAmount = pt.editableAmount !== undefined ? pt.editableAmount : pt.amount;
+    const finalNote = pt.editableNote !== undefined ? pt.editableNote : (pt.note || '');
+    const finalDate = pt.editableDate || pt.transactionDate || new Date().toISOString().split('T')[0];
 
     // Match real account
     const matchedAccount =
+      (pt.editableAccountId ? accounts.find((a) => a.id === pt.editableAccountId) : null) ||
       accounts.find((a) =>
-        a.name.toLowerCase().includes((pt.editableAccountName || pt.accountName).toLowerCase())
-      ) || accounts[0];
+        a.name.toLowerCase().includes((pt.editableAccountName || pt.accountName || '').toLowerCase())
+      ) ||
+      accounts[0];
 
     // Match real category
-    const categoryType: 'INCOME' | 'EXPENSE' = pt.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
     const matchedCategory: Category =
+      (pt.editableCategoryId ? categories.find((c) => c.id === pt.editableCategoryId) : null) ||
       categories.find(
         (c) =>
-          c.name.toLowerCase() === (pt.editableCategoryName || pt.categoryName).toLowerCase() &&
-          c.type === categoryType
+          c.name.toLowerCase() === (pt.editableCategoryName || pt.categoryName || '').toLowerCase() &&
+          c.type === finalType
       ) ||
-      categories.find((c) => c.name.toLowerCase().includes('khác') && c.type === categoryType) ||
-      categories.find((c) => c.type === categoryType) || {
-        id: 1,
-        name: pt.categoryName,
-        type: categoryType,
-        icon: pt.categoryIcon || 'restaurant',
+      categories.find((c) => c.name.toLowerCase().includes('khác') && c.type === finalType) ||
+      categories.find((c) => c.type === finalType) || {
+        id: pt.categoryId || 1,
+        name: pt.editableCategoryName || pt.categoryName || 'Khác',
+        type: finalType,
+        icon: pt.editableCategoryIcon || pt.categoryIcon || 'category',
       };
 
     if (!matchedAccount) {
@@ -318,10 +342,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
     const payload: Omit<Transaction, 'id'> = {
       amount: finalAmount,
-      type: pt.type,
+      type: finalType,
       category: matchedCategory,
       account: matchedAccount,
-      date: pt.transactionDate || new Date().toISOString().split('T')[0],
+      date: finalDate,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       note: finalNote,
     };
@@ -333,10 +357,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
         await transactionService.createTransaction({
           accountId: matchedAccount.id,
           categoryId: matchedCategory.id,
-          type: pt.type,
+          type: finalType,
           amount: finalAmount,
-          transactionDate: payload.date,
-          note: payload.note,
+          transactionDate: finalDate,
+          note: finalNote,
         });
         if (onRefreshData) onRefreshData();
       }
@@ -373,27 +397,31 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     const item = msg.parsedItems.find((it) => it.id === itemId);
     if (!item || item.isSaved) return;
 
-    const finalAmount = item.editableAmount || item.amount;
-    const finalNote = item.editableNote !== undefined ? item.editableNote : item.note;
+    const finalType: 'INCOME' | 'EXPENSE' = item.editableType || item.type || 'EXPENSE';
+    const finalAmount = item.editableAmount !== undefined ? item.editableAmount : item.amount;
+    const finalNote = item.editableNote !== undefined ? item.editableNote : (item.note || '');
+    const finalDate = item.editableDate || item.transactionDate || new Date().toISOString().split('T')[0];
 
     const matchedAccount =
+      (item.editableAccountId ? accounts.find((a) => a.id === item.editableAccountId) : null) ||
       accounts.find((a) =>
-        a.name.toLowerCase().includes((item.editableAccountName || item.accountName).toLowerCase())
-      ) || accounts[0];
+        a.name.toLowerCase().includes((item.editableAccountName || item.accountName || '').toLowerCase())
+      ) ||
+      accounts[0];
 
-    const categoryType: 'INCOME' | 'EXPENSE' = item.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
     const matchedCategory: Category =
+      (item.editableCategoryId ? categories.find((c) => c.id === item.editableCategoryId) : null) ||
       categories.find(
         (c) =>
-          c.name.toLowerCase() === (item.editableCategoryName || item.categoryName).toLowerCase() &&
-          c.type === categoryType
+          c.name.toLowerCase() === (item.editableCategoryName || item.categoryName || '').toLowerCase() &&
+          c.type === finalType
       ) ||
-      categories.find((c) => c.name.toLowerCase().includes('khác') && c.type === categoryType) ||
-      categories.find((c) => c.type === categoryType) || {
-        id: 1,
-        name: item.categoryName,
-        type: categoryType,
-        icon: item.categoryIcon || 'restaurant',
+      categories.find((c) => c.name.toLowerCase().includes('khác') && c.type === finalType) ||
+      categories.find((c) => c.type === finalType) || {
+        id: item.categoryId || 1,
+        name: item.editableCategoryName || item.categoryName || 'Khác',
+        type: finalType,
+        icon: item.editableCategoryIcon || item.categoryIcon || 'category',
       };
 
     if (!matchedAccount) {
@@ -405,10 +433,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
       if (onApplyAiTransaction) {
         onApplyAiTransaction({
           amount: finalAmount,
-          type: item.type,
+          type: finalType,
           category: matchedCategory,
           account: matchedAccount,
-          date: item.transactionDate || new Date().toISOString().split('T')[0],
+          date: finalDate,
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           note: finalNote,
         });
@@ -416,9 +444,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
         await transactionService.createTransaction({
           accountId: matchedAccount.id,
           categoryId: matchedCategory.id,
-          type: item.type,
+          type: finalType,
           amount: finalAmount,
-          transactionDate: item.transactionDate || new Date().toISOString().split('T')[0],
+          transactionDate: finalDate,
           note: finalNote,
         });
         if (onRefreshData) onRefreshData();
@@ -486,14 +514,23 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   };
 
   // Update field for a single item in multi-item batch
-  const updateItemField = (messageId: string, itemId: string, field: string, value: any) => {
+  const updateItemField = (
+    messageId: string,
+    itemId: string,
+    fieldOrUpdates: string | Record<string, any>,
+    value?: any
+  ) => {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id === messageId && m.parsedItems) {
+          const updates =
+            typeof fieldOrUpdates === 'string'
+              ? { [fieldOrUpdates]: value }
+              : fieldOrUpdates;
           return {
             ...m,
             parsedItems: m.parsedItems.map((it) =>
-              it.id === itemId ? { ...it, [field]: value } : it
+              it.id === itemId ? { ...it, ...updates } : it
             ),
           };
         }
@@ -512,6 +549,32 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
             parsedTransaction: {
               ...m.parsedTransaction,
               isEditing: !m.parsedTransaction.isEditing,
+            },
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  // Update field for single transaction
+  const updateTransactionField = (
+    messageId: string,
+    fieldOrUpdates: string | Record<string, any>,
+    value?: any
+  ) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === messageId && m.parsedTransaction) {
+          const updates =
+            typeof fieldOrUpdates === 'string'
+              ? { [fieldOrUpdates]: value }
+              : fieldOrUpdates;
+          return {
+            ...m,
+            parsedTransaction: {
+              ...m.parsedTransaction,
+              ...updates,
             },
           };
         }
@@ -710,16 +773,16 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                   {idx + 1}
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                                    item.type === 'INCOME'
+                                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                                    (item.editableType || item.type) === 'INCOME'
                                       ? 'bg-secondary-container text-on-secondary-container'
                                       : 'bg-primary-container/20 text-primary'
                                   }`}
                                 >
-                                  {item.type === 'INCOME' ? 'Thu nhập (+)' : 'Chi tiêu (-)'}
+                                  {(item.editableType || item.type) === 'INCOME' ? 'Thu nhập (+)' : 'Chi tiêu (-)'}
                                 </span>
                                 <span className="font-bold text-sm text-on-surface">
-                                  {(item.editableAmount || item.amount).toLocaleString('vi-VN')} ₫
+                                  {(item.editableAmount !== undefined ? item.editableAmount : item.amount).toLocaleString('vi-VN')} ₫
                                 </span>
                               </div>
 
@@ -754,34 +817,192 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
                             {/* Details / Inline Editing */}
                             {item.isEditing ? (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2 border-t border-outline-variant/10">
-                                <div>
-                                  <label className="text-[11px] text-on-surface-variant font-medium block">Số tiền (₫):</label>
-                                  <input
-                                    type="number"
-                                    value={item.editableAmount}
-                                    onChange={(e) =>
-                                      updateItemField(m.id, item.id, 'editableAmount', parseFloat(e.target.value) || 0)
-                                    }
-                                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1 text-xs font-bold mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
-                                  />
+                              <div className="space-y-3 pt-3 border-t border-outline-variant/15 text-xs animate-fadeIn">
+                                {/* Type selector tabs */}
+                                <div className="flex items-center gap-1.5 p-0.5 bg-surface-container-low rounded-lg border border-outline-variant/30 w-fit">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newType = 'EXPENSE';
+                                      const defaultCat = categories.find((c) => c.type === newType);
+                                      updateItemField(m.id, item.id, {
+                                        editableType: newType,
+                                        editableCategoryId: defaultCat?.id,
+                                        editableCategoryName: defaultCat?.name,
+                                        editableCategoryIcon: defaultCat?.icon,
+                                      });
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                      (item.editableType || item.type) === 'EXPENSE'
+                                        ? 'bg-primary text-white shadow-xs'
+                                        : 'text-on-surface-variant hover:text-on-surface'
+                                    }`}
+                                  >
+                                    Chi tiêu (-)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newType = 'INCOME';
+                                      const defaultCat = categories.find((c) => c.type === newType);
+                                      updateItemField(m.id, item.id, {
+                                        editableType: newType,
+                                        editableCategoryId: defaultCat?.id,
+                                        editableCategoryName: defaultCat?.name,
+                                        editableCategoryIcon: defaultCat?.icon,
+                                      });
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                      (item.editableType || item.type) === 'INCOME'
+                                        ? 'bg-secondary text-white shadow-xs'
+                                        : 'text-on-surface-variant hover:text-on-surface'
+                                    }`}
+                                  >
+                                    Thu nhập (+)
+                                  </button>
                                 </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                  {/* Amount */}
+                                  <div>
+                                    <label className="text-[11px] text-on-surface-variant font-medium block">
+                                      Số tiền (₫):
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="1000"
+                                      value={item.editableAmount !== undefined ? item.editableAmount : item.amount}
+                                      onChange={(e) =>
+                                        updateItemField(m.id, item.id, 'editableAmount', parseFloat(e.target.value) || 0)
+                                      }
+                                      className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 text-xs font-bold mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
+                                    />
+                                  </div>
+
+                                  {/* Category */}
+                                  <div>
+                                    <label className="text-[11px] text-on-surface-variant font-medium block">
+                                      Danh mục:
+                                    </label>
+                                    <select
+                                      value={
+                                        item.editableCategoryId ??
+                                        categories.find(
+                                          (c) =>
+                                            c.name.toLowerCase() ===
+                                            (item.editableCategoryName || item.categoryName || '').toLowerCase()
+                                        )?.id ??
+                                        ''
+                                      }
+                                      onChange={(e) => {
+                                        const catId = Number(e.target.value);
+                                        const selectedCat = categories.find((c) => c.id === catId);
+                                        if (selectedCat) {
+                                          updateItemField(m.id, item.id, {
+                                            editableCategoryId: selectedCat.id,
+                                            editableCategoryName: selectedCat.name,
+                                            editableCategoryIcon: selectedCat.icon,
+                                          });
+                                        }
+                                      }}
+                                      className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 text-xs font-bold mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary truncate"
+                                    >
+                                      {categories
+                                        .filter((c) => c.type === (item.editableType || item.type || 'EXPENSE'))
+                                        .map((c) => (
+                                          <option key={c.id} value={c.id}>
+                                            {c.name}
+                                          </option>
+                                        ))}
+                                      {categories
+                                        .filter((c) => c.type !== (item.editableType || item.type || 'EXPENSE'))
+                                        .map((c) => (
+                                          <option key={c.id} value={c.id}>
+                                            {c.name} ({c.type === 'INCOME' ? 'Thu' : 'Chi'})
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Account */}
+                                  <div>
+                                    <label className="text-[11px] text-on-surface-variant font-medium block">
+                                      Tài khoản ví:
+                                    </label>
+                                    <select
+                                      value={
+                                        item.editableAccountId ??
+                                        accounts.find((a) =>
+                                          a.name
+                                            .toLowerCase()
+                                            .includes((item.editableAccountName || item.accountName || '').toLowerCase())
+                                        )?.id ??
+                                        accounts[0]?.id ??
+                                        ''
+                                      }
+                                      onChange={(e) => {
+                                        const accId = Number(e.target.value);
+                                        const selectedAcc = accounts.find((a) => a.id === accId);
+                                        if (selectedAcc) {
+                                          updateItemField(m.id, item.id, {
+                                            editableAccountId: selectedAcc.id,
+                                            editableAccountName: selectedAcc.name,
+                                          });
+                                        }
+                                      }}
+                                      className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 text-xs font-bold mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary truncate"
+                                    >
+                                      {accounts.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                          {a.name} ({a.currentBalance.toLocaleString('vi-VN')} ₫)
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Date */}
+                                  <div>
+                                    <label className="text-[11px] text-on-surface-variant font-medium block">
+                                      Ngày giao dịch:
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={
+                                        item.editableDate ||
+                                        item.transactionDate ||
+                                        new Date().toISOString().split('T')[0]
+                                      }
+                                      onChange={(e) =>
+                                        updateItemField(m.id, item.id, 'editableDate', e.target.value)
+                                      }
+                                      className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 text-xs font-bold mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Note */}
                                 <div>
-                                  <label className="text-[11px] text-on-surface-variant font-medium block">Nội dung ghi chú:</label>
+                                  <label className="text-[11px] text-on-surface-variant font-medium block">
+                                    Nội dung ghi chú:
+                                  </label>
                                   <input
                                     type="text"
-                                    value={item.editableNote}
+                                    placeholder="Nhập ghi chú giao dịch..."
+                                    value={item.editableNote !== undefined ? item.editableNote : (item.note || '')}
                                     onChange={(e) =>
                                       updateItemField(m.id, item.id, 'editableNote', e.target.value)
                                     }
-                                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1 text-xs mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
+                                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 text-xs mt-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div className="flex items-center gap-3 text-xs text-on-surface-variant flex-wrap">
                                 <span className="flex items-center gap-1 font-medium">
-                                  <span className="material-symbols-outlined text-[14px] text-tertiary">category</span>
+                                  <span className="material-symbols-outlined text-[14px] text-tertiary">
+                                    {item.editableCategoryIcon || item.categoryIcon || 'category'}
+                                  </span>
                                   {item.editableCategoryName || item.categoryName}
                                 </span>
                                 <span>•</span>
@@ -792,9 +1013,20 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                   {item.editableAccountName || item.accountName}
                                 </span>
                                 <span>•</span>
-                                <span className="text-on-surface font-normal italic truncate">
-                                  "{item.editableNote !== undefined ? item.editableNote : item.note}"
+                                <span className="flex items-center gap-1 font-medium">
+                                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant">
+                                    calendar_today
+                                  </span>
+                                  {item.editableDate || item.transactionDate || 'Hôm nay'}
                                 </span>
+                                {(item.editableNote !== undefined ? item.editableNote : item.note) && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="italic truncate max-w-[200px]">
+                                      "{item.editableNote !== undefined ? item.editableNote : item.note}"
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -803,17 +1035,66 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                     </div>
                   ) : m.parsedTransaction && (
                     <div className="w-full bg-surface-container-lowest border-2 border-tertiary/20 rounded-xl p-4 shadow-md transition-all hover:border-tertiary/40 animate-fadeIn">
-                      <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15">
+                      <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                              m.parsedTransaction.type === 'INCOME'
-                                ? 'bg-secondary-container text-on-secondary-container'
-                                : 'bg-primary-container/20 text-primary font-bold'
-                            }`}
-                          >
-                            {m.parsedTransaction.type === 'INCOME' ? 'Thu nhập (+)' : 'Chi tiêu (-)'}
-                          </span>
+                          {/* Type indicator or toggle buttons */}
+                          {m.parsedTransaction.isEditing ? (
+                            <div className="flex items-center gap-1 p-0.5 bg-surface-container-low rounded-lg border border-outline-variant/30">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newType = 'EXPENSE';
+                                  const defaultCat = categories.find((c) => c.type === newType);
+                                  updateTransactionField(m.id, {
+                                    editableType: newType,
+                                    editableCategoryId: defaultCat?.id,
+                                    editableCategoryName: defaultCat?.name,
+                                    editableCategoryIcon: defaultCat?.icon,
+                                  });
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                  (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'EXPENSE'
+                                    ? 'bg-primary text-white shadow-xs'
+                                    : 'text-on-surface-variant hover:text-on-surface'
+                                }`}
+                              >
+                                Chi tiêu (-)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newType = 'INCOME';
+                                  const defaultCat = categories.find((c) => c.type === newType);
+                                  updateTransactionField(m.id, {
+                                    editableType: newType,
+                                    editableCategoryId: defaultCat?.id,
+                                    editableCategoryName: defaultCat?.name,
+                                    editableCategoryIcon: defaultCat?.icon,
+                                  });
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                  (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                    ? 'bg-secondary text-white shadow-xs'
+                                    : 'text-on-surface-variant hover:text-on-surface'
+                                }`}
+                              >
+                                Thu nhập (+)
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                  ? 'bg-secondary-container text-on-secondary-container'
+                                  : 'bg-primary-container/20 text-primary font-bold'
+                              }`}
+                            >
+                              {(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                ? 'Thu nhập (+)'
+                                : 'Chi tiêu (-)'}
+                            </span>
+                          )}
+
                           {m.parsedTransaction.source === 'GEMINI_2.5_FLASH' ? (
                             <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                               <span className="material-symbols-outlined text-[13px]">bolt</span>
@@ -838,102 +1119,238 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                             className="text-xs text-tertiary hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                             type="button"
                           >
-                            <span className="material-symbols-outlined text-[15px]">edit</span>
-                            {m.parsedTransaction.isEditing ? 'Đóng sửa' : 'Chỉnh sửa'}
+                            <span className="material-symbols-outlined text-[15px]">
+                              {m.parsedTransaction.isEditing ? 'check' : 'edit'}
+                            </span>
+                            {m.parsedTransaction.isEditing ? 'Xong chỉnh sửa' : 'Chỉnh sửa'}
                           </button>
                         )}
                       </div>
 
-                      {/* Transaction Key Details */}
-                      <div className="py-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        {/* Amount */}
+                      {/* Transaction Key Details: 4 Columns */}
+                      <div className="py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        {/* 1. Amount */}
                         <div className="flex flex-col gap-1 bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/10">
                           <span className="text-on-surface-variant font-medium">Số tiền:</span>
                           {m.parsedTransaction.isEditing ? (
-                            <input
-                              type="number"
-                              className="font-bold text-sm bg-surface-container-lowest border border-outline-variant/30 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-tertiary"
-                              value={m.parsedTransaction.editableAmount}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setMessages((prev) =>
-                                  prev.map((msg) =>
-                                    msg.id === m.id && msg.parsedTransaction
-                                      ? {
-                                          ...msg,
-                                          parsedTransaction: {
-                                            ...msg.parsedTransaction,
-                                            editableAmount: val,
-                                          },
-                                        }
-                                      : msg
-                                  )
-                                );
-                              }}
-                            />
+                            <div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                className="w-full font-bold text-sm bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-tertiary"
+                                value={
+                                  m.parsedTransaction.editableAmount !== undefined
+                                    ? m.parsedTransaction.editableAmount
+                                    : m.parsedTransaction.amount
+                                }
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  updateTransactionField(m.id, { editableAmount: val });
+                                }}
+                              />
+                              <span className="text-[10px] text-tertiary font-bold block mt-0.5">
+                                {(m.parsedTransaction.editableAmount !== undefined
+                                  ? m.parsedTransaction.editableAmount
+                                  : m.parsedTransaction.amount
+                                ).toLocaleString('vi-VN')}{' '}
+                                ₫
+                              </span>
+                            </div>
                           ) : (
                             <span
                               className={`font-bold text-sm ${
-                                m.parsedTransaction.type === 'INCOME' ? 'text-secondary' : 'text-primary'
+                                (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                  ? 'text-secondary'
+                                  : 'text-primary'
                               }`}
                             >
-                              {(m.parsedTransaction.editableAmount || m.parsedTransaction.amount).toLocaleString(
-                                'vi-VN'
-                              )}{' '}
+                              {(m.parsedTransaction.editableAmount !== undefined
+                                ? m.parsedTransaction.editableAmount
+                                : m.parsedTransaction.amount
+                              ).toLocaleString('vi-VN')}{' '}
                               ₫
                             </span>
                           )}
                         </div>
 
-                        {/* Category */}
+                        {/* 2. Category */}
                         <div className="flex flex-col gap-1 bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/10">
                           <span className="text-on-surface-variant font-medium">Danh mục:</span>
-                          <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
-                            <span className="material-symbols-outlined text-[15px] text-tertiary">
-                              {m.parsedTransaction.categoryIcon || 'category'}
+                          {m.parsedTransaction.isEditing ? (
+                            <select
+                              className="w-full font-bold text-xs bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-tertiary truncate"
+                              value={
+                                m.parsedTransaction.editableCategoryId ??
+                                categories.find(
+                                  (c) =>
+                                    c.name.toLowerCase() ===
+                                    (m.parsedTransaction?.editableCategoryName || m.parsedTransaction?.categoryName || '').toLowerCase()
+                                )?.id ??
+                                ''
+                              }
+                              onChange={(e) => {
+                                const catId = Number(e.target.value);
+                                const selectedCat = categories.find((c) => c.id === catId);
+                                if (selectedCat) {
+                                  updateTransactionField(m.id, {
+                                    editableCategoryId: selectedCat.id,
+                                    editableCategoryName: selectedCat.name,
+                                    editableCategoryIcon: selectedCat.icon,
+                                  });
+                                }
+                              }}
+                            >
+                              {categories
+                                .filter(
+                                  (c) =>
+                                    c.type ===
+                                    (m.parsedTransaction?.editableType || m.parsedTransaction?.type || 'EXPENSE')
+                                )
+                                .map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              {categories
+                                .filter(
+                                  (c) =>
+                                    c.type !==
+                                    (m.parsedTransaction?.editableType || m.parsedTransaction?.type || 'EXPENSE')
+                                )
+                                .map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name} ({c.type === 'INCOME' ? 'Thu' : 'Chi'})
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
+                              <span className="material-symbols-outlined text-[15px] text-tertiary">
+                                {m.parsedTransaction.editableCategoryIcon || m.parsedTransaction.categoryIcon || 'category'}
+                              </span>
+                              {m.parsedTransaction.editableCategoryName || m.parsedTransaction.categoryName}
                             </span>
-                            {m.parsedTransaction.editableCategoryName || m.parsedTransaction.categoryName}
-                          </span>
+                          )}
                         </div>
 
-                        {/* Account */}
+                        {/* 3. Account */}
                         <div className="flex flex-col gap-1 bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/10">
                           <span className="text-on-surface-variant font-medium">Tài khoản ví:</span>
-                          <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
-                            <span className="material-symbols-outlined text-[15px] text-secondary">
-                              account_balance_wallet
+                          {m.parsedTransaction.isEditing ? (
+                            <select
+                              className="w-full font-bold text-xs bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-tertiary truncate"
+                              value={
+                                m.parsedTransaction.editableAccountId ??
+                                accounts.find((a) =>
+                                  a.name
+                                    .toLowerCase()
+                                    .includes(
+                                      (m.parsedTransaction?.editableAccountName || m.parsedTransaction?.accountName || '').toLowerCase()
+                                    )
+                                )?.id ??
+                                accounts[0]?.id ??
+                                ''
+                              }
+                              onChange={(e) => {
+                                const accId = Number(e.target.value);
+                                const selectedAcc = accounts.find((a) => a.id === accId);
+                                if (selectedAcc) {
+                                  updateTransactionField(m.id, {
+                                    editableAccountId: selectedAcc.id,
+                                    editableAccountName: selectedAcc.name,
+                                  });
+                                }
+                              }}
+                            >
+                              {accounts.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.name} ({a.currentBalance.toLocaleString('vi-VN')} ₫)
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
+                              <span className="material-symbols-outlined text-[15px] text-secondary">
+                                account_balance_wallet
+                              </span>
+                              {m.parsedTransaction.editableAccountName || m.parsedTransaction.accountName}
                             </span>
-                            {m.parsedTransaction.editableAccountName || m.parsedTransaction.accountName}
-                          </span>
+                          )}
                         </div>
 
-                        {/* Date */}
+                        {/* 4. Date */}
                         <div className="flex flex-col gap-1 bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/10">
                           <span className="text-on-surface-variant font-medium">Ngày ghi nhận:</span>
-                          <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
-                            <span className="material-symbols-outlined text-[15px] text-on-surface-variant">
-                              calendar_today
+                          {m.parsedTransaction.isEditing ? (
+                            <input
+                              type="date"
+                              className="w-full font-bold text-xs bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-tertiary"
+                              value={
+                                m.parsedTransaction.editableDate ||
+                                m.parsedTransaction.transactionDate ||
+                                new Date().toISOString().split('T')[0]
+                              }
+                              onChange={(e) => {
+                                updateTransactionField(m.id, { editableDate: e.target.value });
+                              }}
+                            />
+                          ) : (
+                            <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
+                              <span className="material-symbols-outlined text-[15px] text-on-surface-variant">
+                                calendar_today
+                              </span>
+                              {m.parsedTransaction.editableDate || m.parsedTransaction.transactionDate || 'Hôm nay'}
                             </span>
-                            {m.parsedTransaction.transactionDate || 'Hôm nay'}
-                          </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Note snippet */}
-                      <div className="text-xs text-on-surface-variant bg-surface-container-low/40 px-3 py-2 rounded-lg flex items-center gap-2 mb-3">
-                        <span className="material-symbols-outlined text-[15px] text-outline">notes</span>
-                        <span className="truncate">
-                          Nội dung: "
-                          {m.parsedTransaction.editableNote !== undefined
-                            ? m.parsedTransaction.editableNote
-                            : m.parsedTransaction.note}
-                          "
-                        </span>
-                      </div>
+                      {/* 5. Note / Ghi chú */}
+                      {m.parsedTransaction.isEditing ? (
+                        <div className="bg-surface-container-low/40 p-2.5 rounded-lg border border-outline-variant/10 mb-3">
+                          <label className="text-[11px] text-on-surface-variant font-medium block mb-1">
+                            Nội dung ghi chú:
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nhập ghi chú giao dịch..."
+                            className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2.5 py-1.5 text-xs text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-tertiary"
+                            value={
+                              m.parsedTransaction.editableNote !== undefined
+                                ? m.parsedTransaction.editableNote
+                                : (m.parsedTransaction.note || '')
+                            }
+                            onChange={(e) => {
+                              updateTransactionField(m.id, { editableNote: e.target.value });
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xs text-on-surface-variant bg-surface-container-low/40 px-3 py-2 rounded-lg flex items-center gap-2 mb-3">
+                          <span className="material-symbols-outlined text-[15px] text-outline">notes</span>
+                          <span className="truncate">
+                            Nội dung: "
+                            {m.parsedTransaction.editableNote !== undefined
+                              ? m.parsedTransaction.editableNote
+                              : m.parsedTransaction.note}
+                            "
+                          </span>
+                        </div>
+                      )}
 
                       {/* Action Button: Apply & Save */}
                       {!m.parsedTransaction.isSaved && (
                         <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/15">
+                          {m.parsedTransaction.isEditing && (
+                            <button
+                              onClick={() => toggleEditTransaction(m.id)}
+                              className="px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-bold transition-all cursor-pointer"
+                              type="button"
+                            >
+                              Xong
+                            </button>
+                          )}
                           <button
                             onClick={() => handleSaveTransaction(m.id)}
                             className="px-4 py-2 rounded-xl bg-tertiary hover:opacity-90 active:scale-95 text-on-tertiary font-label-md text-label-md font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"

@@ -107,6 +107,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/40"
               src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=0D8ABC&color=fff`}
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=0D8ABC&color=fff`;
+              }}
             />
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-secondary rounded-full ring-2 ring-surface-container-lowest"></div>
           </div>

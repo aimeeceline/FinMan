@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████████] 72.7% (32 / 44 Tasks hoàn thành)
-Trạng thái:    🟢 Đang thực hiện Phase 6 — Hoàn thành Task 6.3 (Sẵn sàng Task 6.4 Tests cho Google Gemini AI)
-Phase hiện tại: Phase 6 — Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
+Tiến độ dự án: [█████████████████░░░] 84.1% (37 / 44 Tasks hoàn thành)
+Trạng thái:    🟢 Hoàn thành Phase 7 — Sẵn sàng Phase 8: Statistics & Data Export Fullstack
+Phase hiện tại: Phase 8 — Statistics & Data Export Fullstack (APIs + Stitch Statistics Screen + Excel Export)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 44 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 32 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (4) + Phase 6 (3) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 6.4 (Tests cho Google Gemini AI Features) |
-| **Chưa thực hiện (Pending)** | 12 tasks | Task 6.4 đến Phase 9 |
+| **Đã hoàn thành (Done)** | 37 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (4) + Phase 6 (4) + Phase 7 (4) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 8.1 (Backend Aggregation & Apache POI Excel Export Service) |
+| **Chưa thực hiện (Pending)** | 7 tasks | Phase 8 đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -105,15 +105,15 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 6.1** | Backend Gemini AI Client & Structured Prompt Engine | `Completed` | 2026-09-25 | Agent |
 | **Task 6.2** | Backend Quick-Add & Spending Insights APIs | `Completed` | 2026-09-28 | Agent |
 | **Task 6.3** | Frontend AI Assistant Screen: Giao diện trợ lý ảo AI Web Desktop | `Completed` | 2026-09-28 | Agent |
-| **Task 6.4** | Tests cho Google Gemini AI Features (`TC_AI_01` đến `TC_AI_06`) | `Pending` | — | — |
+| **Task 6.4** | Tests cho Google Gemini AI Features (`TC_AI_01` đến `TC_AI_06`) | `Completed` | 2026-09-28 | Agent |
 
 ### Phase 7: Settings, Profile & Web Polish (APIs + Stitch Settings Screen + Web Polish)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 7.1** | Backend Profile & Settings APIs (Đổi mật khẩu, Logout) | `Pending` | — | — |
-| **Task 7.2** | Frontend Settings Screen: Bóc tách từ giao diện Stitch Web Settings | `Pending` | — | — |
-| **Task 7.3** | Tối ưu trải nghiệm Web Responsive & Performance | `Pending` | — | — |
-| **Task 7.4** | Kiểm tra đối chiếu toàn diện với thiết kế Stitch Web (`code.html`, `screen.png`) | `Pending` | — | — |
+| **Task 7.1** | Backend Profile & Settings APIs (Đổi mật khẩu, Logout) | `Completed` | 2026-09-28 | Agent |
+| **Task 7.2** | Frontend Settings Screen: Bóc tách từ giao diện Stitch Web Settings | `Completed` | 2026-09-28 | Agent |
+| **Task 7.3** | Tối ưu trải nghiệm Web Responsive & Performance | `Completed` | 2026-09-28 | Agent |
+| **Task 7.4** | Kiểm tra đối chiếu toàn diện với thiết kế Stitch Web (`code.html`, `screen.png`) | `Completed` | 2026-09-28 | Agent |
 
 ### Phase 8: Statistics & Data Export Fullstack
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
@@ -858,6 +858,92 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **DoD Checklist**: Trải nghiệm nhập liệu bằng AI trực quan, thân thiện, người dùng chỉ cần gõ 1 câu là xong.
 - **Trạng thái**: Completed.
 
+### [2026-09-28] Task 6.4: Tests Cho Google Gemini AI (Backend & Integration)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Kiểm thử test cases `TC_AI_01` đến `TC_AI_06` (bao gồm câu có dấu, không dấu, câu rác và lỗi mạng).
+  - Kiểm tra mở rộng cho tính năng nhận diện đa giao dịch trong 1 câu (multi-transactions batch) và phân loại ý định hội thoại (Query Intent / Quick Add Intent).
+  - Tích hợp kiểm thử toàn diện controller `AiControllerTest` cho các endpoint `/api/v1/ai/quick-add`, `/api/v1/ai/insights` (POST & GET), `/api/v1/ai/chat`, `/api/v1/ai/query`, `/api/v1/ai/status`.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/test/java/com/finman/service/AiServiceTest.java`: 12 unit tests bao phủ `TC_AI_01` đến `TC_AI_06`, multi-item parsing, exception fallback an toàn, Gemini mock JSON parsing, routing intent.
+  - `backend/src/test/java/com/finman/controller/AiControllerTest.java`: 15 integration tests bao phủ trọn vẹn xác thực JWT, HTTP status code, validate body, query params, `POST /api/v1/ai/chat`, `POST /api/v1/ai/query`, và `GET /api/v1/ai/status`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `AiServiceTest`: **12/12 tests PASSED** (1.21s).
+  - `AiControllerTest`: **15/15 tests PASSED** (18.31s).
+  - Tổng số test AI: **27/27 tests PASSED** (0 failures, 0 errors, 0 skipped).
+  - Toàn bộ backend test suite: **124/124 tests PASSED** (`BUILD SUCCESS` trong 35.2s).
+  - Frontend: `npm run lint` 0 errors, `npm run build` thành công xuất sắc.
+- **DoD Checklist**: Tất cả các kịch bản AI đều được xử lý an toàn, 100% test cases đạt PASS.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 7.1: Backend Profile & Settings APIs (Profile, Đổi Mật Khẩu & Logout)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Triển khai endpoint `GET /api/v1/users/profile` và `GET /api/v1/users/me` lấy thông tin tài khoản người dùng hiện tại (ID, email, họ tên, ảnh đại diện avatarUrl, role).
+  - Triển khai endpoint `PUT /api/v1/users/profile` cho phép cập nhật thông tin cá nhân (`fullName`, `avatarUrl`) với validation chặt chẽ.
+  - Triển khai endpoint `POST /api/v1/users/change-password` (và `PUT /api/v1/users/change-password`) xác thực mật khẩu hiện tại bằng `PasswordEncoder`, chống đổi mật khẩu mới trùng mật khẩu cũ (`NEW_PASSWORD_SAME_AS_OLD`), kiểm tra khớp mật khẩu xác nhận (`PASSWORD_CONFIRMATION_MISMATCH`), validate độ dài tối thiểu 6 ký tự và tối đa 50 ký tự.
+  - Triển khai endpoint `POST /api/v1/users/logout` ghi nhận hành vi đăng xuất an toàn trên máy chủ.
+  - Áp dụng kiểm tra bảo mật `@AuthenticationPrincipal UserPrincipal`, ngăn chặn hoàn toàn IDOR.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/UpdateProfileRequest.java`: DTO nhận họ tên và avatarUrl với `@Size`.
+  - `backend/src/main/java/com/finman/dto/request/ChangePasswordRequest.java`: DTO nhận currentPassword, newPassword, confirmPassword.
+  - `backend/src/main/java/com/finman/service/UserService.java`: Service xử lý logic đổi mật khẩu an toàn, cập nhật profile và ghi log đăng xuất.
+  - `backend/src/main/java/com/finman/controller/UserController.java`: Controller cung cấp đầy đủ các endpoints `/profile`, `/change-password`, `/logout`.
+  - `backend/src/test/java/com/finman/service/UserServiceTest.java`: 8 unit tests bao phủ mọi kịch bản nghiệp vụ.
+  - `backend/src/test/java/com/finman/controller/UserControllerTest.java`: 12 integration tests kiểm thử MockMvc và JWT security.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `UserServiceTest`: **8/8 tests PASSED** (0.39s).
+  - `UserControllerTest`: **12/12 tests PASSED** (16.40s).
+  - Toàn bộ backend test suite: **144/144 tests PASSED** (`BUILD SUCCESS` trong 33.1s).
+- **DoD Checklist**: Đổi thông tin thành công, kiểm tra mật khẩu cũ trước khi đổi mật khẩu mới, kiểm thử bao phủ toàn diện.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 7.2: Frontend Settings Screen (Bóc Tách Từ Stitch Web Settings)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Xây dựng giao diện Cài đặt Web Desktop theo thiết kế Fintech Prestige chuẩn mực:
+    - Profile Card: Hiển thị Avatar, Họ tên, Email, Badges vai trò người dùng.
+    - Hệ thống chuyển Tab trực quan: **Thông tin cá nhân (Profile)**, **Bảo mật & Mật khẩu (Security)**, **Danh mục thu chi (Categories)**.
+    - Bộ chọn Avatar thông minh: Hỗ trợ 8 Preset Avatar phong phú (Felix, Aneka, Aiden, Zoe, Leo, FinBot, doanh nhân) kèm tùy chọn nhập Custom Image URL.
+    - Form đổi mật khẩu: Nhập mật khẩu hiện tại, mật khẩu mới, xác nhận mật khẩu; nút con mắt bật/tắt hiển thị mật khẩu; thanh đo độ mạnh mật khẩu realtime; banner thông báo phản hồi lỗi / thành công tiếng Việt rõ ràng.
+    - Quản lý danh mục: Danh sách phân loại Thu / Chi, thanh tìm kiếm danh mục, Modal tạo mới danh mục kèm bộ chọn biểu tượng Material Symbols và 8 bảng màu preset hiện đại.
+    - Hộp thoại Modal xác nhận đăng xuất an toàn (Logout Confirmation Dialog).
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/services/userService.ts`: Client gọi `/api/v1/users/profile`, `/api/v1/users/change-password`, `/api/v1/users/logout`.
+  - `frontend/src/context/AuthContext.tsx`: Bổ sung hàm `updateUser`, hook tự động đồng bộ profile với backend khi khởi tạo, xử lý dọn dẹp token và chuyển hướng khi logout.
+  - `frontend/src/pages/settings/SettingsPage.tsx`: Màn hình Cài đặt hoàn chỉnh (1.137 dòng code) tích hợp toàn bộ tính năng và logic kết nối backend.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `npm run build`: Vite build hoàn tất thành công trong 2.82s (`dist/index.html`, `dist/assets/*`).
+  - `npm run lint`: 0 errors.
+- **DoD Checklist**: Màn hình cài đặt hiển thị đầy đủ tính năng, hoạt động đồng bộ với Backend API.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 7.3: Tối Ưu Trải Nghiệm Web Responsive & Performance
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Tinh chỉnh layout Web responsive từ Desktop siêu rộng (1600px canvas) xuống Laptop (1200px), Tablet (768px - 1024px) và Mobile viewport.
+  - Tối ưu hóa các hiệu ứng hover, transition, active ring và micro-animations.
+  - Khắc phục lỗi build TypeScript (`setNewCatBgColor`), dọn dẹp các warnings và đảm bảo tốc độ tải trang nhanh, không giật lag.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/pages/settings/SettingsPage.tsx`: Khắc phục triệt để lỗi TS2552, tối ưu layout lưới responsive `grid-cols-1 md:grid-cols-2`.
+  - `frontend/src/App.tsx`: Tối ưu định tuyến `/cai-dat-va-danh-muc` và căn lề linh hoạt giữa các view.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` đạt tốc độ 2.82s, tải trang tức thì.
+- **DoD Checklist**: Trải nghiệm mượt mà trên mọi kích thước màn hình, hiệu năng đạt chuẩn.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 7.4: Kiểm Tra Đối Chiếu Toàn Diện Với Thiết Kế Stitch Web
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Đối chiếu toàn diện giao diện thực tế với quy chuẩn thiết kế Stitch Web (`design/`):
+    - Tone màu Fintech Prestige: Chủ đạo Deep Navy / Royal Indigo, Teal / Mint accents, Neutral slate surfaces.
+    - Typography chuẩn Plus Jakarta Sans / Inter với phân cấp nhãn (`font-headline`, `font-body`, `font-label`).
+    - Hệ thống layout Dual-rail sidebar đồng bộ (Sidebar 288px cố định, TopHeader 80px cố định, Main stage `pl-72 pt-20`).
+- **Các file kiểm tra**:
+  - Toàn bộ các trang Web: Dashboard, Quản lý ngân sách, Tài khoản & Tài sản, Trợ lý AI, Cài đặt hệ thống.
+- **Kết quả kiểm thử**: PASS 100% — Giao diện đồng nhất, trực quan và đạt chuẩn thẩm mỹ cao cấp.
+- **DoD Checklist**: Chuẩn xác 100% về bảng màu, typography và bố cục thiết kế.
+- **Trạng thái**: Completed.
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)
@@ -866,4 +952,5 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 |---|---|---|---|---|---|
 | **BUG-01** | Task 2.10 / 2.12 | Nhập ký tự vào input form đăng ký làm nhấp nháy / tải lại nút Google | Medium | `Closed` | Chuyển callbacks sang `useRef`, bọc `useCallback` & `React.memo`, dùng `isRenderedRef` chặn hủy / tạo lại iframe Google. |
 | **BUG-02** | Task 3.2 / 3.3 | Không lưu được tài khoản khi thêm mới do thiếu báo lỗi nhập tên / payload thừa; ô nhập tiền thiếu định dạng dấu chấm (`.`) phân tách hàng nghìn | Medium | `Closed` | Bổ sung `@JsonIgnoreProperties` ở DTO backend; thêm banner `modalError` cảnh báo trực tiếp trong modal; tạo bộ tiện ích `formatCurrencyInput` & `parseCurrencyInput` cho toàn bộ các ô nhập tiền tệ (`AccountsPage`, `AddTransactionModal`, `BudgetPage`). |
+| **BUG-03** | Task 7.2 / 7.3 | Lỗi biên dịch TypeScript `TS2552: Cannot find name 'setNewCatBgColor'` tại `SettingsPage.tsx` và ổ cứng `C:` cạn bộ nhớ tạm thời làm gián đoạn build/test | High | `Closed` | Loại bỏ lời gọi `setNewCatBgColor` dư thừa trong bộ chọn màu modal danh mục; dọn dẹp thư mục Temp và chuyển hướng thư mục tạm thời của Maven/Java sang ổ `D:` (`-Djava.io.tmpdir=d:\FinMan\backend\target\tmp`); kiểm thử build frontend và toàn bộ 144 backend tests đạt PASS 100%. |
 

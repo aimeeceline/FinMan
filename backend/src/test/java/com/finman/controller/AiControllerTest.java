@@ -1,6 +1,7 @@
 package com.finman.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.finman.dto.request.AiChatRequest;
 import com.finman.dto.request.AiInsightsRequest;
 import com.finman.dto.request.AiQuickAddRequest;
 import com.finman.entity.Account;
@@ -257,5 +258,63 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.model").value("gemini-2.5-flash"))
                 .andExpect(jsonPath("$.data.geminiConnected").value(false));
+    }
+
+    @Test
+    @DisplayName("API_AI_12: POST /api/v1/ai/chat - Trò chuyện truy vấn số dư tài khoản (QUERY_ANSWER)")
+    void testChat_QueryData_Success() throws Exception {
+        AiChatRequest request = new AiChatRequest("Số dư tài khoản của tôi hiện tại là bao nhiêu?");
+
+        mockMvc.perform(post("/api/v1/ai/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.responseType").value("QUERY_ANSWER"))
+                .andExpect(jsonPath("$.data.text").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("API_AI_13: POST /api/v1/ai/chat - Trò chuyện nhập nhanh nhiều giao dịch (QUICK_ADD with items)")
+    void testChat_QuickAddMulti_Success() throws Exception {
+        AiChatRequest request = new AiChatRequest("Ăn bún bò 45k ví tiền mặt và mua áo 200k");
+
+        mockMvc.perform(post("/api/v1/ai/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.responseType").value("QUICK_ADD"))
+                .andExpect(jsonPath("$.data.items", hasSize(greaterThanOrEqualTo(1))));
+    }
+
+    @Test
+    @DisplayName("API_AI_14: POST /api/v1/ai/query - Truy vấn trực tiếp số liệu cá nhân")
+    void testQueryData_Direct_Success() throws Exception {
+        AiChatRequest request = new AiChatRequest("Hôm nay tôi đã chi tiêu bao nhiêu tiền?");
+
+        mockMvc.perform(post("/api/v1/ai/query")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.responseType").value("QUERY_ANSWER"))
+                .andExpect(jsonPath("$.data.text").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("API_AI_15: POST /api/v1/ai/chat - Báo lỗi khi request body message bị rỗng")
+    void testChat_EmptyMessage_BadRequest() throws Exception {
+        AiChatRequest request = new AiChatRequest("   ");
+
+        mockMvc.perform(post("/api/v1/ai/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }
