@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
+import { aiService } from '../../services/aiService';
 
 interface DashboardPageProps {
   transactions: Transaction[];
@@ -132,7 +133,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     categoryIcon: string;
     accountName: string;
     note: string;
+    source?: string;
   } | null>(null);
+  const [aiParsedItems, setAiParsedItems] = useState<Array<{
+    amount: number;
+    type: 'INCOME' | 'EXPENSE';
+    categoryName: string;
+    categoryIcon: string;
+    accountName: string;
+    note: string;
+    source?: string;
+  }> | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
 
   // Real accounts from backend
@@ -549,9 +560,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return Array.from(map.values());
   }, [currentPageTransactions, todayStr, yesterdayStr]);
 
-  // AI Parser Logic
-  const handleAiParse = () => {
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // AI Parser Logic with Backend Gemini API & resilient local fallback
+  const handleAiParse = async () => {
     if (!aiText.trim()) return;
+    setIsAiLoading(true);
+
+    try {
+      const res = await aiService.quickAdd(aiText.trim());
+      const items = res.items && res.items.length > 0 ? res.items : [res];
+      if (items.length > 1) {
+        setAiParsedItems(
+          items.map((it) => ({
+            amount: it.amount,
+            type: it.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+            categoryName: it.categoryName,
+            categoryIcon: it.categoryIcon || (it.type === 'INCOME' ? 'payments' : 'restaurant'),
+            accountName: it.accountName,
+            note: it.note,
+            source: it.source || res.source,
+          }))
+        );
+      } else {
+        setAiParsedItems(null);
+      }
+      setAiParsed({
+        amount: res.amount,
+        type: res.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+        categoryName: res.categoryName,
+        categoryIcon: res.categoryIcon || (res.type === 'INCOME' ? 'payments' : 'restaurant'),
+        accountName: res.accountName,
+        note: res.note || aiText.trim(),
+        source: res.source,
+      });
+    } catch (err: any) {
+      console.warn('Backend AI failed or offline, falling back locally:', err);
+      runLocalAiParse();
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const runLocalAiParse = () => {
     const lower = aiText.toLowerCase();
 
     // Parse amount
@@ -670,51 +721,72 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  // Apply parsed AI transaction
+  // Apply parsed AI transaction (supports batch if multiple items)
   const handleApplyAi = () => {
-    if (!aiParsed) return;
+    if (!aiParsed && (!aiParsedItems || aiParsedItems.length === 0)) return;
 
     if (displayAccounts.length === 0) {
       alert('Bạn chưa có tài khoản nào. Vui lòng tạo tài khoản trước khi ghi nhận giao dịch.');
       return;
     }
 
-    const matchedAccount = displayAccounts.find((a) =>
-      a.name.toLowerCase().includes(aiParsed.accountName.toLowerCase())
-    ) || displayAccounts[0];
+    const itemsToSave =
+      aiParsedItems && aiParsedItems.length > 1
+        ? aiParsedItems
+        : aiParsed
+        ? [aiParsed]
+        : [];
 
-    // Find category from real database categories
-    const matchedCategory = categories.find((c) =>
-      c.name.toLowerCase() === aiParsed.categoryName.toLowerCase() && c.type === aiParsed.type
-    ) || categories.find((c) =>
-      c.name.toLowerCase().includes('khác') && c.type === aiParsed.type
-    ) || categories.find((c) => c.type === aiParsed.type) || {
-      id: 1,
-      name: aiParsed.categoryName,
-      type: aiParsed.type,
-      icon: aiParsed.categoryIcon,
-      color: aiParsed.type === 'INCOME' ? '#006c4a' : '#dc2626',
-      bgColor: aiParsed.type === 'INCOME' ? '#85f8c4' : '#ffdad6',
-    };
+    let savedCount = 0;
+    for (const item of itemsToSave) {
+      const matchedAccount =
+        displayAccounts.find((a) =>
+          a.name.toLowerCase().includes(item.accountName.toLowerCase())
+        ) || displayAccounts[0];
 
-    const newTx: Omit<Transaction, 'id'> = {
-      amount: aiParsed.amount,
-      type: aiParsed.type,
-      category: matchedCategory,
-      account: matchedAccount,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      note: aiParsed.note,
-    };
+      const matchedCategory =
+        categories.find(
+          (c) =>
+            c.name.toLowerCase() === item.categoryName.toLowerCase() &&
+            c.type === item.type
+        ) ||
+        categories.find(
+          (c) => c.name.toLowerCase().includes('khác') && c.type === item.type
+        ) ||
+        categories.find((c) => c.type === item.type) || {
+          id: 1,
+          name: item.categoryName,
+          type: item.type,
+          icon: item.categoryIcon,
+          color: item.type === 'INCOME' ? '#006c4a' : '#dc2626',
+          bgColor: item.type === 'INCOME' ? '#85f8c4' : '#ffdad6',
+        };
 
-    if (onApplyAiTransaction) {
-      onApplyAiTransaction(newTx);
+      const newTx: Omit<Transaction, 'id'> = {
+        amount: item.amount,
+        type: item.type,
+        category: matchedCategory,
+        account: matchedAccount,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        note: item.note,
+      };
+
+      if (onApplyAiTransaction) {
+        onApplyAiTransaction(newTx);
+      }
+      savedCount++;
     }
 
-    setAiStatusMessage('Đã ghi nhận giao dịch thành công!');
+    setAiStatusMessage(
+      savedCount > 1
+        ? `Đã ghi nhận ${savedCount} giao dịch thành công!`
+        : 'Đã ghi nhận giao dịch thành công!'
+    );
     setTimeout(() => {
       setAiStatusMessage(null);
       setAiParsed(null);
+      setAiParsedItems(null);
       setAiText('');
     }, 2000);
   };
@@ -902,11 +974,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
           <button
             onClick={handleAiParse}
-            className="px-space-md py-space-sm rounded-lg bg-primary-container hover:bg-primary text-on-primary-container font-label-lg text-label-lg transition-all shadow-sm flex items-center gap-space-xs cursor-pointer active:scale-95"
+            disabled={isAiLoading}
+            className="px-space-md py-space-sm rounded-lg bg-primary-container hover:bg-primary text-on-primary-container font-label-lg text-label-lg transition-all shadow-sm flex items-center gap-space-xs cursor-pointer active:scale-95 disabled:opacity-50"
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">bolt</span>
-            <span>Bóc tách</span>
+            <span className={`material-symbols-outlined text-[18px] ${isAiLoading ? 'animate-spin' : ''}`}>
+              {isAiLoading ? 'progress_activity' : 'bolt'}
+            </span>
+            <span>{isAiLoading ? 'Đang bóc tách...' : 'Bóc tách'}</span>
           </button>
         </div>
 
@@ -915,45 +990,85 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div
             className="mt-space-md bg-surface-container-low/90 rounded-xl p-space-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md border border-outline-variant/20 animate-fadeIn"
           >
-            <div className="flex flex-col gap-space-2xs">
-              <div className="flex items-center gap-space-xs text-secondary font-label-md text-label-md font-bold">
+            <div className="flex flex-col gap-space-2xs flex-1">
+              <div className="flex items-center gap-space-xs text-secondary font-label-md text-label-md font-bold flex-wrap">
                 <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                <span>AI đã bóc tách chính xác giao dịch</span>
+                <span>
+                  {aiParsedItems && aiParsedItems.length > 1
+                    ? `AI đã bóc tách chính xác ${aiParsedItems.length} giao dịch`
+                    : 'AI đã bóc tách chính xác giao dịch'}
+                </span>
+                {aiParsed.source === 'GEMINI_2.5_FLASH' ? (
+                  <span className="ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ⚡ Google Gemini 2.5 Flash
+                  </span>
+                ) : (
+                  <span className="ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    ⚠️ Fallback Cục bộ
+                  </span>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-x-space-md gap-y-space-xs text-body-sm font-body-sm text-on-surface">
-                <div className="flex items-center gap-1">
-                  <span className="text-on-surface-variant">Số tiền:</span>
-                  <span
-                    className={`font-currency-row text-currency-row font-bold ${
-                      aiParsed.type === 'INCOME' ? 'text-secondary' : 'text-primary-container'
-                    }`}
-                  >
-                    {aiParsed.type === 'INCOME' ? '+' : '-'}
-                    {aiParsed.amount.toLocaleString('vi-VN')} ₫
-                  </span>
+
+              {aiParsedItems && aiParsedItems.length > 1 ? (
+                <div className="space-y-1.5 mt-1">
+                  {aiParsedItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 text-xs bg-surface-container-lowest/80 px-2.5 py-1.5 rounded-lg border border-outline-variant/15 flex-wrap"
+                    >
+                      <span className="w-4 h-4 rounded-full bg-tertiary/10 text-tertiary font-bold text-[10px] flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          item.type === 'INCOME' ? 'text-secondary' : 'text-primary-container'
+                        }`}
+                      >
+                        {item.type === 'INCOME' ? '+' : '-'}
+                        {item.amount.toLocaleString('vi-VN')} ₫
+                      </span>
+                      <span className="text-on-surface-variant font-medium">• {item.categoryName}</span>
+                      <span className="text-on-surface-variant font-medium">• {item.accountName}</span>
+                      <span className="text-on-surface italic truncate max-w-xs">"{item.note}"</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-on-surface-variant">Danh mục:</span>
-                  <span className="px-space-xs py-0.5 rounded bg-error-container text-on-surface font-semibold flex items-center gap-1 text-xs">
-                    <span className="material-symbols-outlined text-[14px] text-primary">
-                      {aiParsed.categoryIcon}
-                    </span>{' '}
-                    {aiParsed.categoryName}
-                  </span>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-space-md gap-y-space-xs text-body-sm font-body-sm text-on-surface">
+                  <div className="flex items-center gap-1">
+                    <span className="text-on-surface-variant">Số tiền:</span>
+                    <span
+                      className={`font-currency-row text-currency-row font-bold ${
+                        aiParsed.type === 'INCOME' ? 'text-secondary' : 'text-primary-container'
+                      }`}
+                    >
+                      {aiParsed.type === 'INCOME' ? '+' : '-'}
+                      {aiParsed.amount.toLocaleString('vi-VN')} ₫
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-on-surface-variant">Danh mục:</span>
+                    <span className="px-space-xs py-0.5 rounded bg-error-container text-on-surface font-semibold flex items-center gap-1 text-xs">
+                      <span className="material-symbols-outlined text-[14px] text-primary">
+                        {aiParsed.categoryIcon}
+                      </span>{' '}
+                      {aiParsed.categoryName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-on-surface-variant">Tài khoản:</span>
+                    <span className="px-space-xs py-0.5 rounded bg-surface-container-high font-semibold text-on-surface text-xs">
+                      {aiParsed.accountName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-on-surface-variant">Ghi chú:</span>
+                    <span className="italic text-on-surface font-medium truncate max-w-xs">
+                      "{aiParsed.note}"
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-on-surface-variant">Tài khoản:</span>
-                  <span className="px-space-xs py-0.5 rounded bg-surface-container-high font-semibold text-on-surface text-xs">
-                    {aiParsed.accountName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-on-surface-variant">Ghi chú:</span>
-                  <span className="italic text-on-surface font-medium truncate max-w-xs">
-                    "{aiParsed.note}"
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center gap-space-xs shrink-0 self-end md:self-auto">
@@ -976,7 +1091,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <span className="material-symbols-outlined text-[16px]">
                   {aiStatusMessage ? 'check_circle' : 'done'}
                 </span>
-                <span>{aiStatusMessage || 'Áp dụng & Lưu'}</span>
+                <span>
+                  {aiStatusMessage ||
+                    (aiParsedItems && aiParsedItems.length > 1
+                      ? `Áp dụng tất cả (${aiParsedItems.length})`
+                      : 'Áp dụng & Lưu')}
+                </span>
               </button>
             </div>
           </div>

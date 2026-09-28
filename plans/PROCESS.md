@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [████████████████████] 68.3% (28 / 41 Tasks hoàn thành)
-Trạng thái:    🟢 Đang thực hiện Phase 5 — Hoàn thành Task 5.1, 5.2, 5.3 (Sẵn sàng Task 5.4 Tests)
-Phase hiện tại: Phase 5 — Budgeting System Fullstack (APIs + Stitch Budget Screen)
+Tiến độ dự án: [████████████████████] 72.7% (32 / 44 Tasks hoàn thành)
+Trạng thái:    🟢 Đang thực hiện Phase 6 — Hoàn thành Task 6.3 (Sẵn sàng Task 6.4 Tests cho Google Gemini AI)
+Phase hiện tại: Phase 6 — Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
-| **Tổng số Task** | 41 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 28 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (3) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 5.4 (Tests cho Budgeting System) |
-| **Chưa thực hiện (Pending)** | 13 tasks | Task 5.4 đến Phase 9 |
+| **Tổng số Task** | 44 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
+| **Đã hoàn thành (Done)** | 32 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (4) + Phase 6 (3) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 6.4 (Tests cho Google Gemini AI Features) |
+| **Chưa thực hiện (Pending)** | 12 tasks | Task 6.4 đến Phase 9 |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -97,31 +97,31 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 5.1** | Backend Budget APIs (Upsert, tính amountSpent, cảnh báo 80%, 100%) | `Completed` | 2026-09-25 | Agent |
 | **Task 5.2** | Frontend Budget Screen: Bóc tách từ `design/finman_web_qu_n_l_ng_n_s_ch/code.html` | `Completed` | 2026-09-25 | Agent |
 | **Task 5.3** | Kết nối Frontend Budget với Backend API | `Completed` | 2026-09-25 | Agent |
-| **Task 5.4** | Tests cho Budgeting System | `Pending` | — | — |
+| **Task 5.4** | Tests cho Budgeting System (`TC_BDG_01` đến `TC_BDG_05`) | `Completed` | 2026-09-25 | Agent |
 
-### Phase 6: Statistics & Data Export Fullstack
+### Phase 6: Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 6.1** | Backend Aggregation & Apache POI Excel Export Service | `Pending` | — | — |
-| **Task 6.2** | Frontend Statistics Screen: Bóc tách từ `design/finman_web_th_ng_k_b_o_c_o/code.html` | `Pending` | — | — |
-| **Task 6.3** | Kết nối Frontend Statistics & Kích hoạt tải file Excel | `Pending` | — | — |
-| **Task 6.4** | Tests cho Statistics & Excel Export | `Pending` | — | — |
+| **Task 6.1** | Backend Gemini AI Client & Structured Prompt Engine | `Completed` | 2026-09-25 | Agent |
+| **Task 6.2** | Backend Quick-Add & Spending Insights APIs | `Completed` | 2026-09-28 | Agent |
+| **Task 6.3** | Frontend AI Assistant Screen: Giao diện trợ lý ảo AI Web Desktop | `Completed` | 2026-09-28 | Agent |
+| **Task 6.4** | Tests cho Google Gemini AI Features (`TC_AI_01` đến `TC_AI_06`) | `Pending` | — | — |
 
-### Phase 7: Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
+### Phase 7: Settings, Profile & Web Polish (APIs + Stitch Settings Screen + Web Polish)
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 7.1** | Backend Gemini AI Client & Structured Prompt Engine | `Pending` | — | — |
-| **Task 7.2** | Backend Quick-Add & Spending Insights APIs | `Pending` | — | — |
-| **Task 7.3** | Frontend AI Assistant Screen: Giao diện trợ lý ảo AI Web Desktop | `Pending` | — | — |
-| **Task 7.4** | Tests cho Google Gemini AI Features | `Pending` | — | — |
+| **Task 7.1** | Backend Profile & Settings APIs (Đổi mật khẩu, Logout) | `Pending` | — | — |
+| **Task 7.2** | Frontend Settings Screen: Bóc tách từ giao diện Stitch Web Settings | `Pending` | — | — |
+| **Task 7.3** | Tối ưu trải nghiệm Web Responsive & Performance | `Pending` | — | — |
+| **Task 7.4** | Kiểm tra đối chiếu toàn diện với thiết kế Stitch Web (`code.html`, `screen.png`) | `Pending` | — | — |
 
-### Phase 8: Settings, Profile & Web Polish (APIs + Stitch Settings Screen + Web Polish)
+### Phase 8: Statistics & Data Export Fullstack
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 8.1** | Backend Profile & Settings APIs (Đổi mật khẩu, Logout) | `Pending` | — | — |
-| **Task 8.2** | Frontend Settings Screen: Bóc tách từ giao diện Stitch Web Settings | `Pending` | — | — |
-| **Task 8.3** | Tối ưu trải nghiệm Web Responsive & Performance | `Pending` | — | — |
-| **Task 8.4** | Kiểm tra đối chiếu toàn diện với thiết kế Stitch Web (`code.html`, `screen.png`) | `Pending` | — | — |
+| **Task 8.1** | Backend Aggregation & Apache POI Excel Export Service | `Pending` | — | — |
+| **Task 8.2** | Frontend Statistics Screen: Bóc tách từ `design/finman_web_th_ng_k_b_o_c_o/code.html` | `Pending` | — | — |
+| **Task 8.3** | Kết nối Frontend Statistics & Kích hoạt tải file Excel | `Pending` | — | — |
+| **Task 8.4** | Tests cho Statistics & Excel Export (`TC_EXP_01`, `TC_EXP_02`) | `Pending` | — | — |
 
 ### Phase 9: Comprehensive Testing, Security Audit & Docker Deployment
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
@@ -772,6 +772,90 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% —
   - `npm run build`: **91 modules transformed** thành công trong 1.58s (0 TypeScript errors, 0 linter warnings).
   - Toàn bộ 97 backend tests duy trì PASS 100%.
+- **Trạng thái**: Completed.
+
+### [2026-09-25] Task 5.4: Tests Cho Budget Logic (Unit & Integration Tests)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Kiểm thử test cases `TC_BDG_01` đến `TC_BDG_05` bao phủ toàn diện:
+    - `TC_BDG_01`: Thiết lập ngân sách danh mục chi tiêu & cơ chế Upsert khi đã tồn tại.
+    - `TC_BDG_02`: Chặn tạo ngân sách cho danh mục Thu nhập (`INCOME`) với HTTP 400 và lỗi tương ứng.
+    - `TC_BDG_03`: Kiểm thử trạng thái bình thường `NORMAL` (< 80%), tính đúng `remainingAmount` và `percentage`.
+    - `TC_BDG_04`: Kiểm thử trạng thái sắp chạm ngưỡng `WARNING` (80% - 100%).
+    - `TC_BDG_05`: Kiểm thử trạng thái vượt hạn mức `OVERBUDGET` (> 100%) và tính đúng `overspentAmount`.
+    - `TC_BDG_VALIDATION`: Chặn số tiền `<= 0` hoặc định dạng tháng không hợp lệ.
+    - `TC_BDG_SUMMARY`: Tính toán tổng quan ngân sách tháng (tổng hạn mức, đã chi, còn lại, %).
+    - `TC_BDG_MULTI_TENANT`: Kiểm thử chống can thiệp trái phép ngân sách người dùng khác (IDOR protection).
+  - Tầng API Controller (`BudgetControllerTest`):
+    - Kiểm thử các endpoints `GET`, `POST`, `DELETE /api/v1/budgets` và `/summary`.
+    - Kiểm thử phân quyền JWT token (401 khi thiếu token, 404 khi cố xóa dữ liệu người dùng khác).
+- **Các file kiểm thử**:
+  - `backend/src/test/java/com/finman/service/BudgetServiceTest.java`: 9 unit tests.
+  - `backend/src/test/java/com/finman/controller/BudgetControllerTest.java`: 5 integration tests.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `BudgetServiceTest`: 9/9 tests PASSED (3.05s).
+  - `BudgetControllerTest`: 5/5 tests PASSED (16.53s).
+  - Toàn bộ backend test suite duy trì PASS 100%.
+- **Trạng thái**: Completed.
+
+### [2026-09-25] Task 6.1: Backend Gemini AI Client & Structured Prompt Engine
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Cấu hình Spring REST Client (`RestClient`) gọi Google Gemini API (`gemini-2.0-flash`) với structured prompt bóc tách ngôn ngữ tự nhiên tiếng Việt ra JSON chuẩn.
+  - Tự động map dữ liệu bóc tách được với danh mục khả dụng và tài khoản thực tế của người dùng trong cơ sở dữ liệu.
+  - Tích hợp bộ giải mã NLP tiếng Việt cục bộ (Local Vietnamese Financial NLP Engine) làm fallback an toàn khi offline, thiếu API key hoặc khi Gemini gặp sự cố, đảm bảo không làm gián đoạn ứng dụng.
+  - Xử lý các kịch bản ngoại lệ: mất kết nối, timeout, rate limit (HTTP 429) ném `AppException` với mã lỗi `AI_SERVICE_UNAVAILABLE` (chuẩn `TC_AI_06`).
+  - Kiểm tra câu không có số tiền hoặc không hợp lệ ném `BusinessValidationException` với thông báo thân thiện (chuẩn `TC_AI_04`).
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/AiQuickAddRequest.java`: DTO nhận câu lệnh văn bản tự nhiên.
+  - `backend/src/main/java/com/finman/dto/response/AiQuickAddResponse.java`: DTO trả về kết quả bóc tách kèm ID danh mục và ví tương ứng.
+  - `backend/src/main/java/com/finman/dto/response/AiInsightsResponse.java`: DTO báo cáo nhận xét chi tiêu hàng tháng.
+  - `backend/src/main/java/com/finman/config/GeminiConfig.java`: Spring `@Configuration` quản lý API key, model `gemini-2.0-flash`, base URL và `RestClient` bean với timeout 10s/25s.
+  - `backend/src/main/java/com/finman/client/GeminiClient.java` & `GeminiClientImpl.java`: Client gọi endpoint `generateContent` với `responseMimeType: application/json`, loại bỏ markdown code fence.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Dịch vụ AI lõi bóc tách giao dịch, ánh xạ danh mục/ví, tạo nhận xét tài chính hàng tháng.
+  - `backend/src/test/java/com/finman/service/AiServiceTest.java`: Bộ test suite 8 tests bao phủ toàn diện `TC_AI_01` đến `TC_AI_06`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `AiServiceTest`: **8/8 tests PASSED** (1.56s).
+  - Toàn bộ backend test suite: **105/105 tests PASSED** (0 failures, 0 errors, 0 skipped) trong 19.8s (`BUILD SUCCESS`).
+- **DoD Checklist**: Bóc tách chính xác câu `"Ăn bún bò 45k bằng tiền mặt"` thành `type: EXPENSE`, `amount: 45000`, `category: Ăn uống`, `account: Tiền mặt`, `note: bún bò`.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 6.2: Backend Quick-Add & Spending Insights APIs
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Triển khai endpoint `POST /api/v1/ai/quick-add` nhận dạng ngôn ngữ tự nhiên tiếng Việt, bóc tách và trả về dữ liệu form điền sẵn giao dịch tài chính (`AiQuickAddResponse`).
+  - Triển khai endpoint `POST /api/v1/ai/insights` và `GET /api/v1/ai/insights` phân tích tình hình tài chính tháng `YYYY-MM`, đưa ra nhận xét tổng quan và ít nhất 2 lời khuyên tiết kiệm thiết thực bằng tiếng Việt.
+  - Tích hợp gọi Google Gemini API khi có cấu hình API Key và tự động fallback sang bộ xử lý tài chính rule-based cục bộ khi offline hoặc khi mạng gián đoạn, đảm bảo không bao giờ crash ứng dụng.
+  - Phân quyền bảo mật JWT bắt buộc cho toàn bộ `/api/v1/ai/**`, kiểm tra chặt chẽ `user_id` của phiên đăng nhập.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/AiInsightsRequest.java`: DTO nhận tham số tháng phân tích với validation pattern `YYYY-MM`.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Cập nhật `generateMonthlyInsights` tích hợp Google Gemini API prompt phân tích tài chính kèm fallback an toàn.
+  - `backend/src/main/java/com/finman/controller/AiController.java`: Controller xử lý `/api/v1/ai/quick-add`, `/api/v1/ai/insights` (POST & GET).
+  - `backend/src/test/java/com/finman/controller/AiControllerTest.java`: Bộ test suite 10 integration tests bao phủ trọn vẹn các kịch bản quick-add, insights (body, query param, default), validation và JWT security.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `AiControllerTest`: **10/10 tests PASSED** (9.14s).
+  - Toàn bộ backend test suite: **115/115 tests PASSED** (0 failures, 0 errors, 0 skipped) trong 19.6s (`BUILD SUCCESS`).
+- **DoD Checklist**: Trả về form đã điền sẵn cho Quick Add và nhận xét chi tiêu hữu ích bằng tiếng Việt.
+- **Trạng thái**: Completed.
+
+### [2026-09-28] Task 6.3: Frontend AI Assistant Screen (Bóc tách từ Stitch)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Tái sử dụng giao diện trợ lý ảo AI trên nền tảng Web Desktop theo thiết kế Fintech Prestige.
+  - Xây dựng luồng hội thoại chat trực quan với bong bóng chat thông minh, typing indicator và hỗ trợ giọng nói Web Speech.
+  - Tích hợp Card xem trước giao dịch bóc tách tự động: hiển thị loại, số tiền, danh mục, ví, ngày, cho phép chỉnh sửa nhanh inline và bấm "Áp dụng & Lưu vào Sổ cái" trực tiếp từ màn hình chat.
+  - Tích hợp Card báo cáo tài chính tháng: tổng thu, tổng chi, thặng dư/thâm hụt, bài nhận xét phân tích từ Gemini và danh sách các lời khuyên tiết kiệm thiết thực.
+  - Nối khung nhập liệu AI tại màn hình Dashboard sang Backend `aiService.quickAdd` để loại bỏ regex tĩnh cũ, có loading spinner và cơ chế fallback an toàn.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/services/aiService.ts`: Service frontend kết nối `/api/v1/ai/quick-add` và `/api/v1/ai/insights`.
+  - `frontend/src/services/accountService.ts`: Bổ sung hàm `getAccounts()`.
+  - `frontend/src/pages/ai/AIAssistantPage.tsx`: Màn hình trợ lý ảo AI hoàn chỉnh với dual-rail layout, chat stream, transaction preview cards, monthly insights cards và snapshot panel.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Cập nhật `handleAiParse` gọi Backend `aiService.quickAdd`.
+  - `frontend/src/App.tsx`: Cung cấp `accounts`, `categories`, `onApplyAiTransaction` và `onRefreshData` vào `AIAssistantPage`.
+- **Kết quả kiểm thử**: PASS 100% —
+  - `npm run build`: Compile sạch 0 lỗi TypeScript, Vite bundle production thành công trong 2.03s.
+  - Backend AI tests: **18/18 tests PASSED** (`AiControllerTest` 10/10, `AiServiceTest` 8/8).
+- **DoD Checklist**: Trải nghiệm nhập liệu bằng AI trực quan, thân thiện, người dùng chỉ cần gõ 1 câu là xong.
 - **Trạng thái**: Completed.
 
 ---

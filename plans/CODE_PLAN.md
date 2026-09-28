@@ -23,7 +23,8 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 | [`design/finman_web_popup_th_m_giao_d_ch_m_i`](file:///d:/FinMan/design/finman_web_popup_th_m_giao_d_ch_m_i) | Modal Thêm giao dịch Glassmorphism Web | **Task 4.3**: `src/components/modals/AddTransactionModal.tsx` |
 | [`design/finman_web_qu_n_l_ng_n_s_ch`](file:///d:/FinMan/design/finman_web_qu_n_l_ng_n_s_ch) | Màn hình Quản lý Ngân sách chi tiêu Web | **Task 5.2**: `src/pages/budget/BudgetPage.tsx` |
 | [`design/finman_web_t_i_kho_n_t_i_s_n_r_ng`](file:///d:/FinMan/design/finman_web_t_i_kho_n_t_i_s_n_r_ng) | Màn hình Tài khoản & Tài sản ròng Web (VIP Net Worth) | **Task 3.2**: `src/pages/accounts/AccountsPage.tsx` |
-| [`design/finman_web_th_ng_k_b_o_c_o`](file:///d:/FinMan/design/finman_web_th_ng_k_b_o_c_o) | Màn hình Thống kê & Báo cáo dòng tiền Web | **Task 6.2**: `src/pages/statistics/StatisticsPage.tsx` |
+| [`design/finman_web_th_ng_k_b_o_c_o`](file:///d:/FinMan/design/finman_web_th_ng_k_b_o_c_o) | Màn hình Thống kê & Báo cáo dòng tiền Web | **Task 8.2**: `src/pages/statistics/StatisticsPage.tsx` |
+| [`design/finman_web_tr_l_finman_ai`](file:///d:/FinMan/design/finman_web_tr_l_finman_ai) | Màn hình Trợ lý FinMan AI Web | **Task 6.3**: `src/pages/ai/AIAssistantPage.tsx` |
 
 ---
 
@@ -37,9 +38,9 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 | **Phase 3** | Financial Accounts & Categories Fullstack (APIs + Stitch Accounts Screen) | 4 tasks | Phase 2 |
 | **Phase 4** | Core Transaction Engine Fullstack (APIs + Stitch Home, Add Txn & Calendar) | 6 tasks | Phase 3 |
 | **Phase 5** | Budgeting System Fullstack (APIs + Stitch Budget Screen) | 4 tasks | Phase 4 |
-| **Phase 6** | Statistics & Data Export Fullstack (APIs + Stitch Stats Screen + Excel) | 4 tasks | Phase 4 |
-| **Phase 7** | Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen) | 4 tasks | Phase 4 |
-| **Phase 8** | Settings, Profile & App Polish (APIs + Stitch Settings Screen + PWA) | 4 tasks | Phase 2 - 7 |
+| **Phase 6** | Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen) | 4 tasks | Phase 4 |
+| **Phase 7** | Settings, Profile & App Polish (APIs + Stitch Settings Screen + PWA) | 4 tasks | Phase 2 - 6 |
+| **Phase 8** | Statistics & Data Export Fullstack (APIs + Stitch Stats Screen + Excel) | 4 tasks | Phase 4 |
 | **Phase 9** | Comprehensive Testing, Security Audit & Docker Deployment | 3 tasks | Phase 1 - 8 |
 
 ---
@@ -265,14 +266,67 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ---
 
-## Phase 6: Statistics & Data Export Fullstack
+## Phase 6: Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
 
-### Task 6.1: Backend Aggregation & Apache POI Excel Export
+### Task 6.1: Backend Gemini AI Client & Structured Prompt Engine
+- **Mục tiêu**: Cấu hình Spring REST Client gọi Gemini API (`gemini-2.0-flash`) với prompt bóc tách tiếng Việt ra JSON chuẩn.
+- **Files**: `backend/src/main/java/com/finman/config/GeminiConfig.java`, `service/AiService.java`.
+- **DoD**: Bóc tách chính xác câu `"Ăn bún bò 45k tiền mặt"` thành JSON giao dịch.
+
+### Task 6.2: Backend Quick-Add & Spending Insights APIs
+- **Mục tiêu**: Triển khai `/api/v1/ai/quick-add` và `/api/v1/ai/insights`. Xử lý fallback an toàn khi API AI lỗi.
+- **Files**: `backend/src/main/java/com/finman/controller/AiController.java`.
+- **DoD**: Trả về form đã điền sẵn cho Quick Add và nhận xét chi tiêu hữu ích bằng tiếng Việt.
+
+### Task 6.3: Frontend AI Assistant Screen (Bóc tách từ Stitch)
+- **Mục tiêu**:
+  - Tái sử dụng giao diện trợ lý ảo AI trên nền tảng Web Desktop:
+    - Khung nhập lệnh AI thông minh với placeholder gợi ý câu nói tự nhiên.
+    - Bong bóng chat tư vấn tài chính thông minh qua Gemini.
+    - Card xem trước thông tin giao dịch mà AI bóc tách được trước khi lưu (Số tiền, Danh mục, Ví, Ngày).
+- **Files**: `frontend/src/pages/ai/AIAssistantPage.tsx`.
+- **DoD**: Trải nghiệm nhập liệu bằng AI trực quan, thân thiện, người dùng chỉ cần gõ 1 câu là xong.
+
+### Task 6.4: Tests Cho Google Gemini AI
+- **Mục tiêu**: Kiểm thử test cases `TC_AI_01` đến `TC_AI_06` (bao gồm câu có dấu, không dấu, câu rác và lỗi mạng).
+- **DoD**: Tất cả các kịch bản AI đều được xử lý an toàn, đạt PASS.
+
+---
+
+## Phase 7: Settings, Profile & App Polish (APIs + Stitch Settings Screen)
+
+### Task 7.1: Backend Profile & Settings APIs
+- **Mục tiêu**: Cập nhật thông tin cá nhân (Họ tên, Mật khẩu), API đăng xuất.
+- **Files**: `backend/src/main/java/com/finman/controller/UserController.java`.
+- **DoD**: Đổi thông tin thành công, kiểm tra mật khẩu cũ trước khi đổi mật khẩu mới.
+
+### Task 7.2: Frontend More & Settings Screen (Bóc tách từ Stitch)
+- **Mục tiêu**:
+  - Tái sử dụng giao diện Cài đặt Web Desktop:
+    - Profile header (Avatar, Tên người dùng, Email).
+    - Danh sách tab: Thông tin cá nhân, Quản lý tài khoản, Danh mục thu chi, Cài đặt thông báo, Xuất dữ liệu Excel, Đăng xuất.
+- **Files**: `frontend/src/pages/settings/SettingsPage.tsx`.
+- **DoD**: Màn hình cài đặt hiển thị đầy đủ các tính năng hỗ trợ, đăng xuất chuyển hướng về Login.
+
+### Task 7.3: Tối Ưu Trải Nghiệm Web Responsive & Performance
+- **Mục tiêu**: Tinh chỉnh giao diện Web responsive từ Desktop (1600px canvas) xuống Tablet và Mobile viewport. Tối ưu animation CSS, lazy loading và bundle size với Vite.
+- **Files**: `frontend/src/index.css`, `frontend/src/App.tsx`, `frontend/tailwind.config.js`.
+- **DoD**: Trải nghiệm mượt mà trên mọi kích thước màn hình trình duyệt, Lighthouse Performance & Accessibility đạt chuẩn.
+
+### Task 7.4: Kiểm Tra Đối Chiếu Toàn Diện Với Thiết Kế Stitch Web
+- **Mục tiêu**: So sánh từng trang Web đã code với mã nguồn `code.html` và ảnh `screen.png` trong tất cả các thư mục `design/finman_web_*`.
+- **DoD**: Chuẩn xác 100% về bảng màu Fintech Prestige, typography Plus Jakarta Sans, layout dual-rail sidebar và spacing chuẩn design system.
+
+---
+
+## Phase 8: Statistics & Data Export Fullstack
+
+### Task 8.1: Backend Aggregation & Apache POI Excel Export
 - **Mục tiêu**: Viết query tổng hợp số liệu thu/chi theo danh mục và service xuất file `.xlsx` lịch sử giao dịch.
 - **Files**: `backend/src/main/java/com/finman/service/ExportService.java`, `controller/ExportController.java`.
 - **DoD**: Endpoint `/api/v1/export/excel` stream file Excel chuẩn về client.
 
-### Task 6.2: Frontend Statistics Screen (Bóc tách từ Stitch)
+### Task 8.2: Frontend Statistics Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
   - **Đọc trực tiếp từ Stitch**: [design/finman_web_th_ng_k_b_o_c_o/code.html](file:///d:/FinMan/design/finman_web_th_ng_k_b_o_c_o/code.html).
   - Tạo `frontend/src/pages/statistics/StatisticsPage.tsx`.
@@ -284,67 +338,14 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Files**: `frontend/src/pages/statistics/StatisticsPage.tsx`.
 - **DoD**: Biểu đồ hiển thị sắc nét, đồng bộ màu sắc với thiết kế Stitch.
 
-### Task 6.3: Kết Nối Frontend Statistics & Tải File Excel
+### Task 8.3: Kết Nối Frontend Statistics & Tải File Excel
 - **Mục tiêu**: Gọi API thống kê đổ dữ liệu vào biểu đồ và kích hoạt tải file `.xlsx` trực tiếp về trình duyệt khi bấm nút Xuất.
 - **Files**: `frontend/src/services/statisticsService.ts`.
 - **DoD**: Tải về file Excel mở được trên máy tính với dữ liệu tiếng Việt chuẩn Unicode.
 
-### Task 6.4: Tests Cho Statistics & Export
+### Task 8.4: Tests Cho Statistics & Export
 - **Mục tiêu**: Kiểm thử test cases `TC_EXP_01`, `TC_EXP_02`.
 - **DoD**: File Excel xuất ra nguyên vẹn, số liệu khớp hoàn toàn với cơ sở dữ liệu.
-
----
-
-## Phase 7: Google Gemini AI Fullstack (APIs + Stitch AI Assistant Screen)
-
-### Task 7.1: Backend Gemini AI Client & Structured Prompt Engine
-- **Mục tiêu**: Cấu hình Spring REST Client gọi Gemini API (`gemini-2.0-flash`) với prompt bóc tách tiếng Việt ra JSON chuẩn.
-- **Files**: `backend/src/main/java/com/finman/config/GeminiConfig.java`, `service/AiService.java`.
-- **DoD**: Bóc tách chính xác câu `"Ăn bún bò 45k tiền mặt"` thành JSON giao dịch.
-
-### Task 7.2: Backend Quick-Add & Spending Insights APIs
-- **Mục tiêu**: Triển khai `/api/v1/ai/quick-add` và `/api/v1/ai/insights`. Xử lý fallback an toàn khi API AI lỗi.
-- **Files**: `backend/src/main/java/com/finman/controller/AiController.java`.
-- **DoD**: Trả về form đã điền sẵn cho Quick Add và nhận xét chi tiêu hữu ích bằng tiếng Việt.
-
-### Task 7.3: Frontend AI Assistant Screen (Bóc tách từ Stitch)
-- **Mục tiêu**:
-  - Tái sử dụng giao diện trợ lý ảo AI trên nền tảng Web Desktop:
-    - Khung nhập lệnh AI thông minh với placeholder gợi ý câu nói tự nhiên.
-    - Bong bóng chat tư vấn tài chính thông minh qua Gemini.
-    - Card xem trước thông tin giao dịch mà AI bóc tách được trước khi lưu (Số tiền, Danh mục, Ví, Ngày).
-- **Files**: `frontend/src/pages/ai/AIAssistantPage.tsx`.
-- **DoD**: Trải nghiệm nhập liệu bằng AI trực quan, thân thiện, người dùng chỉ cần gõ 1 câu là xong.
-
-### Task 7.4: Tests Cho Google Gemini AI
-- **Mục tiêu**: Kiểm thử test cases `TC_AI_01` đến `TC_AI_06` (bao gồm câu có dấu, không dấu, câu rác và lỗi mạng).
-- **DoD**: Tất cả các kịch bản AI đều được xử lý an toàn, đạt PASS.
-
----
-
-## Phase 8: Settings, Profile & App Polish (APIs + Stitch Settings Screen)
-
-### Task 8.1: Backend Profile & Settings APIs
-- **Mục tiêu**: Cập nhật thông tin cá nhân (Họ tên, Mật khẩu), API đăng xuất.
-- **Files**: `backend/src/main/java/com/finman/controller/UserController.java`.
-- **DoD**: Đổi thông tin thành công, kiểm tra mật khẩu cũ trước khi đổi mật khẩu mới.
-
-### Task 8.2: Frontend More & Settings Screen (Bóc tách từ Stitch)
-- **Mục tiêu**:
-  - Tái sử dụng giao diện Cài đặt Web Desktop:
-    - Profile header (Avatar, Tên người dùng, Email).
-    - Danh sách tab: Thông tin cá nhân, Quản lý tài khoản, Danh mục thu chi, Cài đặt thông báo, Xuất dữ liệu Excel, Đăng xuất.
-- **Files**: `frontend/src/pages/settings/SettingsPage.tsx`.
-- **DoD**: Màn hình cài đặt hiển thị đầy đủ các tính năng hỗ trợ, đăng xuất chuyển hướng về Login.
-
-### Task 8.3: Tối Ưu Trải Nghiệm Web Responsive & Performance
-- **Mục tiêu**: Tinh chỉnh giao diện Web responsive từ Desktop (1600px canvas) xuống Tablet và Mobile viewport. Tối ưu animation CSS, lazy loading và bundle size với Vite.
-- **Files**: `frontend/src/index.css`, `frontend/src/App.tsx`, `frontend/tailwind.config.js`.
-- **DoD**: Trải nghiệm mượt mà trên mọi kích thước màn hình trình duyệt, Lighthouse Performance & Accessibility đạt chuẩn.
-
-### Task 8.4: Kiểm Tra Đối Chiếu Toàn Diện Với Thiết Kế Stitch Web
-- **Mục tiêu**: So sánh từng trang Web đã code với mã nguồn `code.html` và ảnh `screen.png` trong tất cả các thư mục `design/finman_web_*`.
-- **DoD**: Chuẩn xác 100% về bảng màu Fintech Prestige, typography Plus Jakarta Sans, layout dual-rail sidebar và spacing chuẩn design system.
 
 ---
 

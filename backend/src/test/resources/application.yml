@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: finman-backend-test
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
 
   datasource:
     url: jdbc:h2:mem:finman_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=MONTH,YEAR
@@ -23,12 +27,12 @@ spring:
 
 app:
   jwt:
-    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RpbmctcHVycG9zZXMtb25seS0zMmJ5dGVzCg==}
     expiration-ms: 604800000
   cors:
     allowed-origins: "*"
 
 gemini:
   api-key: test-key
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash
   base-url: https://generativelanguage.googleapis.com/v1beta

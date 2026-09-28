@@ -1,22 +1,83 @@
-# Tools & IDE
-.tools/
-.idea/
-.vscode/
-*.iml
+# ===================================================================
+# FinMan Master GitIgnore Configuration
+# ===================================================================
 
-# Java & Maven
+# -------------------------------------------------------------------
+# Environment & Secrets (TUYỆT ĐỐI KHÔNG COMMIT LÊN GIT)
+# -------------------------------------------------------------------
+.env
+.env.*
+*.env
+!.env.example
+*.local
+*.local.yml
+*.local.yaml
+*-local.yml
+*-local.yaml
+application-local.yml
+application-local.yaml
+application-local.properties
+
+# -------------------------------------------------------------------
+# Backend (Java / Spring Boot / Maven)
+# -------------------------------------------------------------------
 target/
+**/target/
 *.class
 *.jar
 *.war
+*.ear
+*.nar
+*.dumpstream
+.mvn/
 
-# Node & Frontend
+# -------------------------------------------------------------------
+# Frontend (Node / React / Vite)
+# -------------------------------------------------------------------
 node_modules/
+**/node_modules/
 dist/
-.env.local
-.env.*.local
+**/dist/
+dist-ssr/
+**/dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+*.log
 
-# OS & Temp
+# -------------------------------------------------------------------
+# IDEs & Code Editors
+# -------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+*.iws
+*.ipr
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.classpath
+.project
+.settings/
+
+# -------------------------------------------------------------------
+# Portable Tools & Utilities
+# -------------------------------------------------------------------
+.tools/
+
+# -------------------------------------------------------------------
+# Operating System & Temporary Files
+# -------------------------------------------------------------------
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 .DS_Store
 *.tmp
+*.temp
+*.bak

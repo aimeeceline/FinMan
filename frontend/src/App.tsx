@@ -229,7 +229,7 @@ const MainApp: React.FC = () => {
       />
 
       {/* 3. Main Stage Content Area (Offset pl-72 pt-20) */}
-      <main className="pl-72 pt-20 min-h-screen bg-surface">
+      <main className={`pl-72 pt-20 bg-surface ${currentRoute === 'tro-ly-finman-ai' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
         {currentRoute === 'giao-dich' && (
           <DashboardPage
             transactions={filteredTransactions}
@@ -258,7 +258,14 @@ const MainApp: React.FC = () => {
           <StatisticsPage transactions={transactions} />
         )}
 
-        {currentRoute === 'tro-ly-finman-ai' && <AIAssistantPage />}
+        {currentRoute === 'tro-ly-finman-ai' && (
+          <AIAssistantPage
+            accounts={accounts}
+            categories={categories}
+            onApplyAiTransaction={handleAddTransaction}
+            onRefreshData={loadData}
+          />
+        )}
 
         {currentRoute === 'cai-dat-va-danh-muc' && <SettingsPage />}
       </main>

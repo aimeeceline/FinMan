@@ -22,6 +22,14 @@ export const accountService = {
   },
 
   /**
+   * Lấy danh sách tài khoản của người dùng
+   */
+  async getAccounts(): Promise<Account[]> {
+    const summary = await this.getAccountsSummary();
+    return summary.accounts || [];
+  },
+
+  /**
    * Lấy chi tiết tài khoản theo ID
    */
   async getAccountById(id: number): Promise<Account> {
