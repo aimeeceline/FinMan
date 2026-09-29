@@ -124,7 +124,7 @@ Hệ thống FinMan áp dụng mô hình **Kim Tự Tháp Kiểm Thử (Testing 
 |---|---|---|---|---|
 | **TC_WEB_01** | Production Build Bundling | Chạy `npm run build` trong `frontend/` | TypeScript compile sạch 0 errors, Vite tạo bundle `dist/` thành công | Automated Build |
 | **TC_WEB_02** | Desktop-First Dual-Rail Layout | Viewport `>= 1280px` | Sidebar cố định 288px bên trái, TopHeader sticky 80px, Canvas chính 1600px | E2E Visual |
-| **TC_WEB_03** | Thêm giao dịch qua Modal | Bấm "+ Thêm giao dịch", nhập số tiền 90.000đ, chọn Ăn uống, bấm Lưu | Modal đóng mượt mà, giao dịch mới xuất hiện ngay trên đầu sổ cái | E2E Interactive |
+| **TC_WEB_03** | Thêm giao dịch qua Modal | Bấm "+ Thêm giao dịch", nhập số tiền 90.000đ, chọn Ăn uống, bấm Lưu | Modal đóng mượt mà, giao dịch mới xuất hiện ngay trên đầu lịch sử giao dịch | E2E Interactive |
 | **TC_WEB_04** | Điều hướng các phân hệ chức năng | Chuyển đổi giữa Giao dịch, Ngân sách, Tài khoản, Báo cáo, AI | Màn hình tải tức thì không reload trang, URL/Route đồng bộ | E2E Functional |
 
 ---

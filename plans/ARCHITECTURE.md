@@ -238,7 +238,7 @@ d:\FinMan/
 ├── design/                              # [STITCH WEB DESIGN SOURCE] 7 Màn hình Web chuẩn Desktop + DESIGN.md
 │   ├── finman_web_ng_nh_p_h_th_ng/      # Màn hình Đăng nhập Web (code.html & screen.png)
 │   ├── finman_web_ng_k_t_i_kho_n/       # Màn hình Đăng ký Web (code.html & screen.png)
-│   ├── finman_web_giao_d_ch_dashboard/  # Màn hình Dashboard & Sổ cái Giao dịch Web
+│   ├── finman_web_giao_d_ch_dashboard/  # Màn hình Dashboard & Lịch sử Giao dịch Web
 │   ├── finman_web_popup_th_m_giao_d_ch_m_i/ # Modal Thêm giao dịch Glassmorphism Web
 │   ├── finman_web_qu_n_l_ng_n_s_ch/     # Màn hình Quản lý Ngân sách chi tiêu Web
 │   ├── finman_web_t_i_kho_n_t_i_s_n_r_ng/ # Màn hình Tài khoản & Tài sản ròng Web

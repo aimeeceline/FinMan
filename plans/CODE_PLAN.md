@@ -19,7 +19,7 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 | [`design/fintech_prestige`](file:///d:/FinMan/design/fintech_prestige) | Toàn bộ Design Tokens & Quy chuẩn thiết kế (DESIGN.md) | **Task 0.4**: Cấu hình `tailwind.config.js` & `src/index.css` |
 | [`design/finman_web_ng_nh_p_h_th_ng`](file:///d:/FinMan/design/finman_web_ng_nh_p_h_th_ng) | Màn hình Đăng nhập Web (Login split screen) | **Task 2.3**: `src/pages/auth/LoginPage.tsx` |
 | [`design/finman_web_ng_k_t_i_kho_n`](file:///d:/FinMan/design/finman_web_ng_k_t_i_kho_n) | Màn hình Đăng ký Web (Register split screen) | **Task 2.3**: `src/pages/auth/RegisterPage.tsx` |
-| [`design/finman_web_giao_d_ch_dashboard`](file:///d:/FinMan/design/finman_web_giao_d_ch_dashboard) | Màn hình Dashboard & Sổ cái Giao dịch Web | **Task 4.2**: `src/pages/dashboard/DashboardPage.tsx` |
+| [`design/finman_web_giao_d_ch_dashboard`](file:///d:/FinMan/design/finman_web_giao_d_ch_dashboard) | Màn hình Dashboard & Lịch sử Giao dịch Web | **Task 4.2**: `src/pages/dashboard/DashboardPage.tsx` |
 | [`design/finman_web_popup_th_m_giao_d_ch_m_i`](file:///d:/FinMan/design/finman_web_popup_th_m_giao_d_ch_m_i) | Modal Thêm giao dịch Glassmorphism Web | **Task 4.3**: `src/components/modals/AddTransactionModal.tsx` |
 | [`design/finman_web_qu_n_l_ng_n_s_ch`](file:///d:/FinMan/design/finman_web_qu_n_l_ng_n_s_ch) | Màn hình Quản lý Ngân sách chi tiêu Web | **Task 5.2**: `src/pages/budget/BudgetPage.tsx` |
 | [`design/finman_web_t_i_kho_n_t_i_s_n_r_ng`](file:///d:/FinMan/design/finman_web_t_i_kho_n_t_i_s_n_r_ng) | Màn hình Tài khoản & Tài sản ròng Web (VIP Net Worth) | **Task 3.2**: `src/pages/accounts/AccountsPage.tsx` |
@@ -201,7 +201,7 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
     - Interactive Header & Bộ chọn tháng (Tháng 8, 9, 10...).
     - KPI Strip: Tổng số dư khả dụng, Thu nhập xanh, Chi tiêu đỏ, Tỷ lệ tích lũy.
     - Khung nhập lệnh nhanh FinMan AI (Quick AI Prompt bar).
-    - Sổ cái giao dịch gần đây nhóm theo thời gian.
+    - Lịch sử giao dịch gần đây nhóm theo thời gian.
     - Cột Net Worth & Tài khoản nhanh phía bên phải.
 - **Files**: `frontend/src/pages/dashboard/DashboardPage.tsx`.
 - **DoD**: Màn hình Web Dashboard hiển thị chuẩn xác từng pixel theo thiết kế Stitch Web.
@@ -221,7 +221,7 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **DoD**: Modal thêm giao dịch hoạt động mượt mà, đổi màu chủ đạo khi chuyển giữa Thu và Chi.
 
 ### Task 4.4: Frontend Calendar & Time Filtering
-- **Mục tiêu**: Tích hợp bộ lọc thời gian trực quan theo tháng và khoảng ngày trên Header và Dashboard, đồng bộ sổ cái giao dịch tức thì.
+- **Mục tiêu**: Tích hợp bộ lọc thời gian trực quan theo tháng và khoảng ngày trên Header và Dashboard, đồng bộ lịch sử giao dịch tức thì.
 - **Files**: `frontend/src/components/layout/TopHeader.tsx`, `frontend/src/pages/dashboard/DashboardPage.tsx`.
 - **DoD**: Người dùng dễ dàng chuyển đổi chu kỳ tháng và theo dõi dòng tiền trực quan.
 

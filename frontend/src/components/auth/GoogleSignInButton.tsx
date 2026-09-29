@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-  '985373734063-qnaa9b0gh7hotm83ir996kqutav885t5.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 interface GoogleSignInButtonProps {
   text?: 'signin_with' | 'signup_with' | 'continue_with';
@@ -36,6 +34,11 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = React.memo(
     let isCancelled = false;
 
     const initGoogleIdentity = () => {
+      if (!GOOGLE_CLIENT_ID) {
+        console.warn('[GoogleSignInButton] VITE_GOOGLE_CLIENT_ID chưa được cấu hình trong file .env');
+        return false;
+      }
+
       if (!window.google?.accounts?.id || !buttonContainerRef.current) {
         return false;
       }

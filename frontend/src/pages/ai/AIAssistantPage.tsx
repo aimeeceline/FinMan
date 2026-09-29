@@ -382,7 +382,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
         })
       );
 
-      setSaveSuccessMessage(`Đã ghi nhận giao dịch: ${finalAmount.toLocaleString('vi-VN')} ₫ vào sổ cái!`);
+      setSaveSuccessMessage(`Đã ghi nhận giao dịch: ${finalAmount.toLocaleString('vi-VN')} ₫ vào lịch sử giao dịch!`);
       setTimeout(() => setSaveSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Error saving AI transaction:', err);
@@ -609,7 +609,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-gutter-desktop h-full max-h-full flex flex-col overflow-hidden py-3 select-none">
       {/* 1. Header Page Title & Model Indicator */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-3">
-        <div>          
+        <div>
           <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight font-bold">
             Trợ lý Tài chính FinMan AI
           </h1>
@@ -617,11 +617,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
         <div className="flex items-center gap-space-sm flex-wrap">
           <div
-            className={`px-3.5 py-1.5 rounded-full font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm border ${
-              aiStatus?.geminiConnected
-                ? 'bg-secondary-container text-on-secondary-container border-secondary/30'
-                : 'bg-amber-100 text-amber-900 border-amber-300'
-            }`}
+            className={`px-3.5 py-1.5 rounded-full font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm border ${aiStatus?.geminiConnected
+              ? 'bg-secondary-container text-on-secondary-container border-secondary/30'
+              : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}
           >
             <span className="material-symbols-outlined text-[18px]">
               {aiStatus?.geminiConnected ? 'neurology' : 'cloud_off'}
@@ -677,7 +676,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left Column: Interactive Chat Stream (8 cols) */}
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
-          
+
           {/* Messages Stream Area */}
           <div className="flex-1 min-h-0 overflow-y-auto custom-scroll p-4 md:p-5 space-y-4">
             {messages.map((m) => (
@@ -687,9 +686,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
               >
                 {/* Avatar Icon */}
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                    m.sender === 'user' ? 'bg-primary text-white' : 'bg-tertiary text-on-tertiary'
-                  }`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${m.sender === 'user' ? 'bg-primary text-white' : 'bg-tertiary text-on-tertiary'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px]">
                     {m.sender === 'user' ? 'person' : 'smart_toy'}
@@ -698,19 +696,17 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
                 {/* Message Bubble & Cards */}
                 <div
-                  className={`max-w-xl md:max-w-2xl flex flex-col gap-2 ${
-                    m.sender === 'user' ? 'items-end' : 'items-start'
-                  }`}
+                  className={`max-w-xl md:max-w-2xl flex flex-col gap-2 ${m.sender === 'user' ? 'items-end' : 'items-start'
+                    }`}
                 >
                   {/* Bubble Text */}
                   <div
-                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xs ${
-                      m.sender === 'user'
-                        ? 'bg-primary-container text-on-primary-container rounded-tr-none'
-                        : m.isError
+                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xs ${m.sender === 'user'
+                      ? 'bg-primary-container text-on-primary-container rounded-tr-none'
+                      : m.isError
                         ? 'bg-error-container text-on-error-container rounded-tl-none border border-error/30'
                         : 'bg-surface-container-low text-on-surface rounded-tl-none border border-outline-variant/20'
-                    }`}
+                      }`}
                   >
                     <p className="font-body-md whitespace-pre-line">{renderFormattedText(m.text)}</p>
                     <span className="text-[10px] opacity-70 block text-right mt-1.5">{m.time}</span>
@@ -751,7 +747,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                         ) : (
                           <span className="px-2.5 py-1 rounded-lg bg-secondary-container text-secondary text-xs font-bold flex items-center gap-1">
                             <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                            Đã lưu tất cả vào Sổ cái
+                            Đã lưu tất cả vào giao dịch
                           </span>
                         )}
                       </div>
@@ -761,11 +757,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                         {m.parsedItems.map((item, idx) => (
                           <div
                             key={item.id}
-                            className={`p-3.5 rounded-xl border transition-all ${
-                              item.isSaved
-                                ? 'bg-secondary-container/10 border-secondary/30'
-                                : 'bg-surface-container-low/40 border-outline-variant/20 hover:border-tertiary/30'
-                            }`}
+                            className={`p-3.5 rounded-xl border transition-all ${item.isSaved
+                              ? 'bg-secondary-container/10 border-secondary/30'
+                              : 'bg-surface-container-low/40 border-outline-variant/20 hover:border-tertiary/30'
+                              }`}
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
@@ -773,11 +768,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                   {idx + 1}
                                 </span>
                                 <span
-                                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                                    (item.editableType || item.type) === 'INCOME'
-                                      ? 'bg-secondary-container text-on-secondary-container'
-                                      : 'bg-primary-container/20 text-primary'
-                                  }`}
+                                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${(item.editableType || item.type) === 'INCOME'
+                                    ? 'bg-secondary-container text-on-secondary-container'
+                                    : 'bg-primary-container/20 text-primary'
+                                    }`}
                                 >
                                   {(item.editableType || item.type) === 'INCOME' ? 'Thu nhập (+)' : 'Chi tiêu (-)'}
                                 </span>
@@ -832,11 +826,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                         editableCategoryIcon: defaultCat?.icon,
                                       });
                                     }}
-                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                                      (item.editableType || item.type) === 'EXPENSE'
-                                        ? 'bg-primary text-white shadow-xs'
-                                        : 'text-on-surface-variant hover:text-on-surface'
-                                    }`}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${(item.editableType || item.type) === 'EXPENSE'
+                                      ? 'bg-primary text-white shadow-xs'
+                                      : 'text-on-surface-variant hover:text-on-surface'
+                                      }`}
                                   >
                                     Chi tiêu (-)
                                   </button>
@@ -852,11 +845,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                         editableCategoryIcon: defaultCat?.icon,
                                       });
                                     }}
-                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                                      (item.editableType || item.type) === 'INCOME'
-                                        ? 'bg-secondary text-white shadow-xs'
-                                        : 'text-on-surface-variant hover:text-on-surface'
-                                    }`}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${(item.editableType || item.type) === 'INCOME'
+                                      ? 'bg-secondary text-white shadow-xs'
+                                      : 'text-on-surface-variant hover:text-on-surface'
+                                      }`}
                                   >
                                     Thu nhập (+)
                                   </button>
@@ -1052,11 +1044,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                     editableCategoryIcon: defaultCat?.icon,
                                   });
                                 }}
-                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                                  (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'EXPENSE'
-                                    ? 'bg-primary text-white shadow-xs'
-                                    : 'text-on-surface-variant hover:text-on-surface'
-                                }`}
+                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'EXPENSE'
+                                  ? 'bg-primary text-white shadow-xs'
+                                  : 'text-on-surface-variant hover:text-on-surface'
+                                  }`}
                               >
                                 Chi tiêu (-)
                               </button>
@@ -1072,22 +1063,20 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                     editableCategoryIcon: defaultCat?.icon,
                                   });
                                 }}
-                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                                  (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
-                                    ? 'bg-secondary text-white shadow-xs'
-                                    : 'text-on-surface-variant hover:text-on-surface'
-                                }`}
+                                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                  ? 'bg-secondary text-white shadow-xs'
+                                  : 'text-on-surface-variant hover:text-on-surface'
+                                  }`}
                               >
                                 Thu nhập (+)
                               </button>
                             </div>
                           ) : (
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                                (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
-                                  ? 'bg-secondary-container text-on-secondary-container'
-                                  : 'bg-primary-container/20 text-primary font-bold'
-                              }`}
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                ? 'bg-secondary-container text-on-secondary-container'
+                                : 'bg-primary-container/20 text-primary font-bold'
+                                }`}
                             >
                               {(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
                                 ? 'Thu nhập (+)'
@@ -1159,11 +1148,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                             </div>
                           ) : (
                             <span
-                              className={`font-bold text-sm ${
-                                (m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
-                                  ? 'text-secondary'
-                                  : 'text-primary'
-                              }`}
+                              className={`font-bold text-sm ${(m.parsedTransaction.editableType || m.parsedTransaction.type) === 'INCOME'
+                                ? 'text-secondary'
+                                : 'text-primary'
+                                }`}
                             >
                               {(m.parsedTransaction.editableAmount !== undefined
                                 ? m.parsedTransaction.editableAmount
@@ -1357,7 +1345,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                             type="button"
                           >
                             <span className="material-symbols-outlined text-[18px]">check</span>
-                            <span>Áp dụng & Lưu vào Sổ cái</span>
+                            <span>Áp dụng & Lưu vào lịch sử giao dịch</span>
                           </button>
                         </div>
                       )}
@@ -1398,9 +1386,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                         <div className="bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/10">
                           <div className="text-[11px] text-on-surface-variant font-medium">Tiết kiệm ròng</div>
                           <div
-                            className={`font-bold text-sm mt-0.5 ${
-                              m.insightsData.netSavings >= 0 ? 'text-secondary' : 'text-primary'
-                            }`}
+                            className={`font-bold text-sm mt-0.5 ${m.insightsData.netSavings >= 0 ? 'text-secondary' : 'text-primary'
+                              }`}
                           >
                             {m.insightsData.netSavings.toLocaleString('vi-VN')} ₫
                           </div>
@@ -1479,11 +1466,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
           <div className="shrink-0 p-3 md:p-3.5 bg-surface-container-low border-t border-surface-container-high/60 flex items-center gap-3">
             <button
               onClick={toggleVoiceInput}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 active:scale-95 ${
-                isListening
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : 'bg-surface-container-lowest hover:bg-surface-container text-tertiary border border-outline-variant/30'
-              }`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 active:scale-95 ${isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-surface-container-lowest hover:bg-surface-container text-tertiary border border-outline-variant/30'
+                }`}
               title="Nhập lệnh bằng giọng nói tiếng Việt"
               type="button"
             >
@@ -1537,9 +1523,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                 <div className="p-space-sm bg-surface-container-low rounded-xl border border-outline-variant/10">
                   <div className="text-[11px] text-on-surface-variant font-medium">Tiết kiệm ròng</div>
                   <div
-                    className={`font-bold text-lg mt-0.5 ${
-                      latestInsights.netSavings >= 0 ? 'text-secondary' : 'text-primary'
-                    }`}
+                    className={`font-bold text-lg mt-0.5 ${latestInsights.netSavings >= 0 ? 'text-secondary' : 'text-primary'
+                      }`}
                   >
                     {latestInsights.netSavings.toLocaleString('vi-VN')} ₫
                   </div>

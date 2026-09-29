@@ -84,13 +84,20 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
-  // Sync browser URL bar with active route on initial load or change
+  // Sync browser URL bar with active route or auth screen
   useEffect(() => {
-    const targetPath = currentRoute === 'giao-dich' ? '/' : `/${currentRoute}`;
-    if (window.location.pathname !== targetPath && !window.location.hash) {
-      window.history.replaceState(null, '', targetPath);
+    if (!isAuthenticated) {
+      const targetAuthPath = authScreen === 'register' ? '/dang-ky' : '/dang-nhap';
+      if (window.location.pathname !== targetAuthPath) {
+        window.history.replaceState(null, '', targetAuthPath);
+      }
+    } else {
+      const targetPath = currentRoute === 'giao-dich' ? '/' : `/${currentRoute}`;
+      if (window.location.pathname !== targetPath && !window.location.hash) {
+        window.history.replaceState(null, '', targetPath);
+      }
     }
-  }, [currentRoute]);
+  }, [isAuthenticated, currentRoute, authScreen]);
 
   // Fetch real data from backend when authenticated
   const loadData = useCallback(async () => {
@@ -194,9 +201,23 @@ const MainApp: React.FC = () => {
   // If not authenticated, render Login/Register
   if (!isAuthenticated) {
     if (authScreen === 'register') {
-      return <RegisterPage onNavigateToLogin={() => setAuthScreen('login')} />;
+      return (
+        <RegisterPage
+          onNavigateToLogin={() => {
+            setAuthScreen('login');
+            window.history.pushState(null, '', '/dang-nhap');
+          }}
+        />
+      );
     }
-    return <LoginPage onNavigateToRegister={() => setAuthScreen('register')} />;
+    return (
+      <LoginPage
+        onNavigateToRegister={() => {
+          setAuthScreen('register');
+          window.history.pushState(null, '', '/dang-ky');
+        }}
+      />
+    );
   }
 
   // Filter transactions by search query
