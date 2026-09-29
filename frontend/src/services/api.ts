@@ -27,10 +27,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      const originalUrl = error.config?.url || '';
+      const isLogoutOrAuth = originalUrl.includes('/users/logout') || originalUrl.includes('/auth/');
+
       localStorage.removeItem('finman_token');
       localStorage.removeItem('finman_user');
-      // Dispatch custom event or let AuthContext handle state
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+
+      // Only dispatch unauthorized event if it's NOT already an auth/logout request
+      if (!isLogoutOrAuth) {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
     }
     return Promise.reject(error);
   }

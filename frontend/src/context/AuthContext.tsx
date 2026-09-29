@@ -47,10 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const logout = useCallback(() => {
-    try {
-      api.post('/users/logout').catch(() => {});
-    } catch {
-      // ignore
+    const existingToken = localStorage.getItem('finman_token');
+    if (existingToken) {
+      try {
+        api.post('/users/logout').catch(() => { });
+      } catch {
+        // ignore
+      }
     }
     localStorage.removeItem('finman_token');
     localStorage.removeItem('finman_user');
@@ -80,12 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const merged = prev ? { ...prev, ...profile } : profile;
               try {
                 localStorage.setItem('finman_user', JSON.stringify(merged));
-              } catch {}
+              } catch { }
               return merged;
             });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [token]);
 
