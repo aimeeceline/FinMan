@@ -24,11 +24,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems: { route: NavRoute; label: string; icon: string }[] = [
     { route: 'giao-dich', label: 'Giao dịch', icon: 'receipt_long' },
-    { route: 'thong-ke-va-bao-cao', label: 'Thống kê & Báo cáo', icon: 'monitoring' },
-    { route: 'quan-ly-ngan-sach', label: 'Quản lý Ngân sách', icon: 'account_balance_wallet' },
-    { route: 'tai-khoan-va-tai-san', label: 'Tài khoản & Tài sản', icon: 'account_balance' },
+    { route: 'thong-ke-va-bao-cao', label: 'Thống kê - Báo cáo', icon: 'monitoring' },
+    { route: 'quan-ly-ngan-sach', label: 'Ngân sách', icon: 'account_balance_wallet' },
+    { route: 'tai-khoan-va-tai-san', label: 'Tài khoản - Tài sản', icon: 'account_balance' },
     { route: 'tro-ly-finman-ai', label: 'Trợ lý FinMan AI', icon: 'neurology' },
-    { route: 'cai-dat-va-danh-muc', label: 'Cài đặt & Danh mục', icon: 'tune' },
+    { route: 'cai-dat-va-danh-muc', label: 'Cài đặt', icon: 'tune' },
   ];
 
   return (

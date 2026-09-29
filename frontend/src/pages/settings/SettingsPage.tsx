@@ -158,7 +158,7 @@ export const SettingsPage: React.FC = () => {
 
   // --- Category State ---
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryTypeFilter, setCategoryTypeFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  const [categoryTypeFilter, setCategoryTypeFilter] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [categorySearch, setCategorySearch] = useState('');
   const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -385,10 +385,9 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  // Filtered categories
+  // Filtered categories (Chỉ phân loại Chi tiêu hoặc Thu nhập)
   const filteredCategories = categories.filter((c) => {
-    const matchesType =
-      categoryTypeFilter === 'ALL' || c.type === categoryTypeFilter;
+    const matchesType = c.type === categoryTypeFilter;
     const matchesSearch =
       !categorySearch.trim() ||
       c.name.toLowerCase().includes(categorySearch.toLowerCase().trim());
@@ -400,13 +399,6 @@ export const SettingsPage: React.FC = () => {
       {/* Page Title & Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-space-lg">
         <div>
-          <div className="flex items-center gap-space-xs mb-space-2xs">
-            <span className="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
-              Tùy chỉnh hệ thống
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-            <span className="text-xs text-on-surface-variant/70 font-medium">FinMan Platform</span>
-          </div>
           <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight">
             Cài đặt &amp; Tài khoản
           </h1>
@@ -429,11 +421,10 @@ export const SettingsPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-3 mb-space-lg overflow-x-auto">
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'profile'
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'profile'
               ? 'bg-primary text-white shadow-sm shadow-primary/20'
               : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-[18px]">person</span>
           <span>Hồ sơ cá nhân</span>
@@ -441,11 +432,10 @@ export const SettingsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'security'
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'security'
               ? 'bg-primary text-white shadow-sm shadow-primary/20'
               : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-[18px]">lock</span>
           <span>Bảo mật &amp; Mật khẩu</span>
@@ -453,11 +443,10 @@ export const SettingsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('categories')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'categories'
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'categories'
               ? 'bg-primary text-white shadow-sm shadow-primary/20'
               : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-[18px]">tune</span>
           <span>Danh mục thu chi</span>
@@ -547,11 +536,10 @@ export const SettingsPage: React.FC = () => {
                         type="button"
                         onClick={() => handleSelectPresetAvatar(item.url)}
                         title={item.label}
-                        className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                          isSelected
+                        className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${isSelected
                             ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
                             : 'border-outline-variant/30 hover:border-primary/50 bg-surface-container-lowest'
-                        }`}
+                          }`}
                       >
                         <img
                           src={item.url}
@@ -611,7 +599,7 @@ export const SettingsPage: React.FC = () => {
                     <span>{customAvatarError}</span>
                   </p>
                 )}
-                
+
               </div>
             </div>
           </div>
@@ -631,11 +619,10 @@ export const SettingsPage: React.FC = () => {
               {/* Feedback Alert */}
               {profileFeedback && (
                 <div
-                  className={`p-4 rounded-xl flex items-start gap-3 text-xs font-semibold ${
-                    profileFeedback.type === 'success'
+                  className={`p-4 rounded-xl flex items-start gap-3 text-xs font-semibold ${profileFeedback.type === 'success'
                       ? 'bg-secondary/10 text-secondary border border-secondary/20'
                       : 'bg-error-container/60 text-error border border-error/20'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px] shrink-0">
                     {profileFeedback.type === 'success' ? 'check_circle' : 'error'}
@@ -832,11 +819,10 @@ export const SettingsPage: React.FC = () => {
               {/* Password Feedback Alert */}
               {passwordFeedback && (
                 <div
-                  className={`p-4 rounded-xl flex items-start gap-3 text-xs font-semibold ${
-                    passwordFeedback.type === 'success'
+                  className={`p-4 rounded-xl flex items-start gap-3 text-xs font-semibold ${passwordFeedback.type === 'success'
                       ? 'bg-secondary/10 text-secondary border border-secondary/20'
                       : 'bg-error-container/60 text-error border border-error/20'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px] shrink-0">
                     {passwordFeedback.type === 'success' ? 'check_circle' : 'error'}
@@ -914,9 +900,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     {confirmPassword && (
                       <span
-                        className={`text-[11px] font-bold flex items-center gap-1 ${
-                          confirmPassword === newPassword ? 'text-secondary' : 'text-error'
-                        }`}
+                        className={`text-[11px] font-bold flex items-center gap-1 ${confirmPassword === newPassword ? 'text-secondary' : 'text-error'
+                          }`}
                       >
                         <span className="material-symbols-outlined text-[14px]">
                           {confirmPassword === newPassword ? 'check' : 'close'}
@@ -994,14 +979,17 @@ export const SettingsPage: React.FC = () => {
                 Danh mục thu chi
               </h3>
               <p className="text-xs text-on-surface-variant">
-                Quản lý các hạng mục phân loại tài chính trong sổ cái
+                Quản lý các hạng mục phân loại tài chính trong Giao dịch
               </p>
             </div>
 
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => setIsAddCatModalOpen(true)}
+                onClick={() => {
+                  setNewCatType(categoryTypeFilter);
+                  setIsAddCatModalOpen(true);
+                }}
                 className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary-container transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1015,34 +1003,21 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setCategoryTypeFilter('ALL')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  categoryTypeFilter === 'ALL'
-                    ? 'bg-on-surface text-surface'
-                    : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Tất cả ({categories.length})
-              </button>
-              <button
-                type="button"
                 onClick={() => setCategoryTypeFilter('EXPENSE')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  categoryTypeFilter === 'EXPENSE'
-                    ? 'bg-primary text-white'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${categoryTypeFilter === 'EXPENSE'
+                    ? 'bg-primary text-white shadow-sm'
                     : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                }`}
+                  }`}
               >
                 Chi tiêu ({categories.filter((c) => c.type === 'EXPENSE').length})
               </button>
               <button
                 type="button"
                 onClick={() => setCategoryTypeFilter('INCOME')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  categoryTypeFilter === 'INCOME'
-                    ? 'bg-secondary text-white'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${categoryTypeFilter === 'INCOME'
+                    ? 'bg-secondary text-white shadow-sm'
                     : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                }`}
+                  }`}
               >
                 Thu nhập ({categories.filter((c) => c.type === 'INCOME').length})
               </button>
@@ -1085,9 +1060,8 @@ export const SettingsPage: React.FC = () => {
                       {c.name}
                     </span>
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider ${
-                        c.type === 'INCOME' ? 'text-secondary' : 'text-primary'
-                      }`}
+                      className={`text-[10px] font-bold uppercase tracking-wider ${c.type === 'INCOME' ? 'text-secondary' : 'text-primary'
+                        }`}
                     >
                       {c.type === 'INCOME' ? 'Thu nhập' : 'Chi tiêu'}
                     </span>
@@ -1176,22 +1150,20 @@ export const SettingsPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setNewCatType('EXPENSE')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      newCatType === 'EXPENSE'
+                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${newCatType === 'EXPENSE'
                         ? 'bg-primary text-white'
                         : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                    }`}
+                      }`}
                   >
                     Chi tiêu
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCatType('INCOME')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      newCatType === 'INCOME'
+                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${newCatType === 'INCOME'
                         ? 'bg-secondary text-white'
                         : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                    }`}
+                      }`}
                   >
                     Thu nhập
                   </button>
@@ -1208,11 +1180,10 @@ export const SettingsPage: React.FC = () => {
                       key={icon}
                       type="button"
                       onClick={() => setNewCatIcon(icon)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                        newCatIcon === icon
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer ${newCatIcon === icon
                           ? 'bg-primary text-white shadow-sm'
                           : 'text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
+                        }`}
                     >
                       <span className="material-symbols-outlined text-[20px]">{icon}</span>
                     </button>
@@ -1232,9 +1203,8 @@ export const SettingsPage: React.FC = () => {
                       onClick={() => {
                         setNewCatColor(item.color);
                       }}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        newCatColor === item.color ? 'scale-125 ring-2 ring-primary/40' : ''
-                      }`}
+                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${newCatColor === item.color ? 'scale-125 ring-2 ring-primary/40' : ''
+                        }`}
                       style={{ backgroundColor: item.color }}
                     />
                   ))}

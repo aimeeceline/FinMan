@@ -14,6 +14,7 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { accountService } from './services/accountService';
 import { categoryService } from './services/categoryService';
 import { transactionService } from './services/transactionService';
+import { statisticsService } from './services/statisticsService';
 import type { Account, Category, Transaction } from './types';
 
 const VALID_ROUTES: NavRoute[] = [
@@ -246,7 +247,14 @@ const MainApp: React.FC = () => {
       <TopHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onExportExcel={() => alert('Đang trích xuất file Excel lịch sử giao dịch (.xlsx)...')}
+        onExportExcel={async () => {
+          try {
+            await statisticsService.exportExcel();
+          } catch (err) {
+            console.error('Lỗi xuất báo cáo Excel từ TopHeader:', err);
+            alert('Không thể xuất file Excel. Vui lòng kiểm tra lại kết nối máy chủ.');
+          }
+        }}
       />
 
       {/* 3. Main Stage Content Area (Offset pl-72 pt-20) */}

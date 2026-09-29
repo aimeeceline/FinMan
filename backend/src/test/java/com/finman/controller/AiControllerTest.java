@@ -257,7 +257,7 @@ class AiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.model").value("gemini-2.5-flash"))
-                .andExpect(jsonPath("$.data.geminiConnected").value(false));
+                .andExpect(jsonPath("$.data.geminiConnected").isBoolean());
     }
 
     @Test

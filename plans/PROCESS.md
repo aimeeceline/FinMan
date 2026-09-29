@@ -10,17 +10,17 @@
 # 1. Dashboard Tổng Quan Tiến Độ
 
 ```text
-Tiến độ dự án: [█████████████████░░░] 84.1% (37 / 44 Tasks hoàn thành)
-Trạng thái:    🟢 Hoàn thành Phase 7 — Sẵn sàng Phase 8: Statistics & Data Export Fullstack
+Tiến độ dự án: [███████████████████░] 93.2% (41 / 44 Tasks hoàn thành)
+Trạng thái:    🟢 Hoàn thành Task 8.1, Task 8.2 & Task 8.3 — Sẵn sàng Task 8.4: Tests Cho Statistics & Export
 Phase hiện tại: Phase 8 — Statistics & Data Export Fullstack (APIs + Stitch Statistics Screen + Excel Export)
 ```
 
 | Chỉ số | Số lượng | Ghi chú |
 |---|---|---|
 | **Tổng số Task** | 44 tasks | Được phân rã từ Phase 0 đến Phase 9 trong `CODE_PLAN.md` |
-| **Đã hoàn thành (Done)** | 37 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (4) + Phase 6 (4) + Phase 7 (4) |
-| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 8.1 (Backend Aggregation & Apache POI Excel Export Service) |
-| **Chưa thực hiện (Pending)** | 7 tasks | Phase 8 đến Phase 9 |
+| **Đã hoàn thành (Done)** | 41 tasks | Phase 0 (5) + Phase 1 (4) + Phase 2 (6) + Phase 3 (4) + Phase 4 (6) + Phase 5 (4) + Phase 6 (4) + Phase 7 (4) + Phase 8 (3: 8.1, 8.2, 8.3) |
+| **Đang thực hiện (In Progress)** | 0 tasks | Sẵn sàng cho Task 8.4 (Tests Cho Statistics & Export) |
+| **Chưa thực hiện (Pending)** | 3 tasks | Phase 8 (1) + Phase 9 (3) |
 | **Bugs / Issues còn mở** | 0 bugs | Được ghi nhận tại Bảng Issue Tracker |
 
 ---
@@ -87,7 +87,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 4.1** | Backend Transaction Service (`@Transactional`, cộng/trừ số dư, filter) | `Completed` | 2026-09-22 | Agent |
 | **Task 4.2** | Frontend Transactions Home Dashboard: Bóc tách từ `design/finman_web_giao_d_ch_dashboard` | `Completed` | 2026-09-22 | Agent |
 | **Task 4.3** | Frontend Add Transaction Modal: Bóc tách từ `design/finman_web_popup_th_m_giao_d_ch_m_i` | `Completed` | 2026-09-22 | Agent |
-| **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ sổ cái) | `Completed` | 2026-09-22 | Agent |
+| **Task 4.4** | Frontend Calendar & Time Filtering (Lọc thời gian & đồng bộ lịch sử) | `Completed` | 2026-09-22 | Agent |
 | **Task 4.5** | Kết nối Frontend Transactions với Backend API | `Completed` | 2026-09-23 | Agent |
 | **Task 4.6** | Tests cho Core Transaction Engine & Balance Consistency | `Completed` | 2026-09-23 | Agent |
 
@@ -118,9 +118,9 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 ### Phase 8: Statistics & Data Export Fullstack
 | Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
 |---|---|---|---|---|
-| **Task 8.1** | Backend Aggregation & Apache POI Excel Export Service | `Pending` | — | — |
-| **Task 8.2** | Frontend Statistics Screen: Bóc tách từ `design/finman_web_th_ng_k_b_o_c_o/code.html` | `Pending` | — | — |
-| **Task 8.3** | Kết nối Frontend Statistics & Kích hoạt tải file Excel | `Pending` | — | — |
+| **Task 8.1** | Backend Aggregation & Apache POI Excel Export Service | `Completed` | 2026-09-29 | Agent |
+| **Task 8.2** | Frontend Statistics Screen: Bóc tách từ `design/finman_web_th_ng_k_b_o_c_o/code.html` | `Completed` | 2026-09-29 | Agent |
+| **Task 8.3** | Kết nối Frontend Statistics & Kích hoạt tải file Excel | `Completed` | 2026-09-29 | Agent |
 | **Task 8.4** | Tests cho Statistics & Excel Export (`TC_EXP_01`, `TC_EXP_02`) | `Pending` | — | — |
 
 ### Phase 9: Comprehensive Testing, Security Audit & Docker Deployment
@@ -555,7 +555,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
     - `TC_ACC_01`: Tạo ví Tiền mặt / Ngân hàng thành công (`POST /api/v1/accounts`, 201 Created).
     - `TC_ACC_02`: Tạo Thẻ tín dụng thành công với hạn mức và dư nợ ban đầu (`POST /api/v1/accounts`, 201 Created).
     - `TC_ACC_03`: Tính toán Tài sản ròng chính xác (`Net Worth = Assets - Liabilities`) qua `GET /api/v1/accounts`.
-    - `TC_ACC_04`: Xóa tài khoản (Soft Delete chuyển `isArchived = true`, bảo toàn sổ cái) qua `DELETE /api/v1/accounts/{id}`.
+    - `TC_ACC_04`: Xóa tài khoản (Soft Delete chuyển `isArchived = true`, bảo toàn lịch sử giao dịch) qua `DELETE /api/v1/accounts/{id}`.
     - `TC_ACC_05`: Multi-tenant Isolation (User B không thể truy cập hoặc xóa tài khoản của User A, trả về 404 Not Found).
     - Cập nhật thông tin tài khoản thành công (`PUT /api/v1/accounts/{id}`).
     - Chặn tạo tài khoản trùng tên trong cùng một User (400 Bad Request kèm `BUSINESS_VALIDATION_ERROR`).
@@ -645,7 +645,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% — `npm run build` không lỗi, modal hiển thị đúng pixel theo Stitch.
 - **Trạng thái**: Completed.
 
-### [2026-09-22] Task 4.4: Frontend Calendar & Time Filtering (Lọc Thời Gian & Đồng Bộ Sổ Cái)
+### [2026-09-22] Task 4.4: Frontend Calendar & Time Filtering (Lọc Thời Gian & Đồng Bộ Lịch Sử Giao Dịch)
 - **Người thực hiện**: Agent
 - **Yêu cầu từ kế hoạch**:
   - Tích hợp bộ lọc thời gian trực quan: 1 tháng, 3 tháng, 6 tháng, Tự chọn (Custom date range), và Toàn bộ (All).
@@ -666,7 +666,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
     - **Chỉnh sửa**: `PUT /api/v1/transactions/{id}`, tái sử dụng `AddTransactionModal` với chế độ pre-fill form ("Chỉnh sửa giao dịch" & "Lưu thay đổi"), hoàn tác số dư cũ và áp dụng số dư mới chính xác.
     - **Xóa**: `DELETE /api/v1/transactions/{id}` kèm hộp thoại xác nhận an toàn, hoàn trả số dư ví tức thì.
     - **Tải & Xem**: `GET /api/v1/transactions` với phân trang và mapping đầy đủ dữ liệu tài khoản (`currentBalance`), danh mục (`icon`, `color`), thời gian.
-  - Tự động gọi `loadData()` re-fetch số dư ví và sổ cái tức thì sau mỗi thao tác thêm/sửa/xóa.
+  - Tự động gọi `loadData()` re-fetch số dư ví và lịch sử giao dịch tức thì sau mỗi thao tác thêm/sửa/xóa.
 - **Các file tạo mới / chỉnh sửa**:
   - `frontend/src/services/transactionService.ts`: Tinh chỉnh mapping fallback `account.currentBalance` và các methods CRUD.
   - `frontend/src/components/modals/AddTransactionModal.tsx`: Bổ sung props `editingTransaction`, `onUpdateTransaction`, effect đồng bộ form khi mở/sửa và nhãn nút cập nhật.
@@ -843,7 +843,7 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Yêu cầu từ kế hoạch**:
   - Tái sử dụng giao diện trợ lý ảo AI trên nền tảng Web Desktop theo thiết kế Fintech Prestige.
   - Xây dựng luồng hội thoại chat trực quan với bong bóng chat thông minh, typing indicator và hỗ trợ giọng nói Web Speech.
-  - Tích hợp Card xem trước giao dịch bóc tách tự động: hiển thị loại, số tiền, danh mục, ví, ngày, cho phép chỉnh sửa nhanh inline và bấm "Áp dụng & Lưu vào Sổ cái" trực tiếp từ màn hình chat.
+  - Tích hợp Card xem trước giao dịch bóc tách tự động: hiển thị loại, số tiền, danh mục, ví, ngày, cho phép chỉnh sửa nhanh inline và bấm "Áp dụng & Lưu vào lịch sử giao dịch" trực tiếp từ màn hình chat.
   - Tích hợp Card báo cáo tài chính tháng: tổng thu, tổng chi, thặng dư/thâm hụt, bài nhận xét phân tích từ Gemini và danh sách các lời khuyên tiết kiệm thiết thực.
   - Nối khung nhập liệu AI tại màn hình Dashboard sang Backend `aiService.quickAdd` để loại bỏ regex tĩnh cũ, có loading spinner và cơ chế fallback an toàn.
 - **Các file tạo mới / chỉnh sửa**:
@@ -944,6 +944,110 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **DoD Checklist**: Chuẩn xác 100% về bảng màu, typography và bố cục thiết kế.
 - **Trạng thái**: Completed.
 
+### [2026-09-29] Task 8.1: Backend Aggregation & Apache POI Excel Export Service
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Viết query tổng hợp số liệu thu/chi theo danh mục và service xuất file `.xlsx` lịch sử giao dịch.
+  - Xây dựng service tổng hợp dữ liệu tài chính (Backend Aggregation) cung cấp số liệu dòng tiền, phân bổ danh mục, xu hướng theo ngày, top khoản chi.
+  - Xây dựng endpoint `/api/v1/export/excel` stream file Excel chuẩn về client với Unicode tiếng Việt và định dạng tiền tệ chuyên nghiệp.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/service/StatisticsService.java`: Service tính toán tổng quan thống kê, phân bổ danh mục theo tỷ lệ % và xu hướng dòng tiền theo ngày.
+  - `backend/src/main/java/com/finman/controller/StatisticsController.java`: Controller cung cấp các endpoint `/api/v1/statistics/overview`, `/api/v1/statistics/categories`, `/api/v1/statistics/daily`.
+  - `backend/src/main/java/com/finman/service/ExportService.java`: Cập nhật truy vấn phân bổ danh mục đồng bộ với bộ lọc tài khoản và loại giao dịch.
+  - `backend/src/main/java/com/finman/controller/ExportController.java`: Endpoint `/api/v1/export/excel` tải file Excel `.xlsx` gồm 2 sheet ("Lịch sử Giao dịch" và "Tổng hợp theo Danh mục").
+  - `backend/src/main/java/com/finman/repository/TransactionRepository.java`: Nâng cấp các truy vấn tổng hợp `aggregateByCategory`, `aggregateDailyCashflow`, `findTopTransactionsByType`.
+  - `backend/src/main/java/com/finman/config/SecurityConfig.java`: Bổ sung header `Content-Disposition` vào danh sách `exposedHeaders` CORS.
+  - `backend/src/test/java/com/finman/service/ExportServiceTest.java`: Unit tests kiểm tra tính toàn vẹn của file Excel bằng thư viện Apache POI (`TC_EXP_01`, `TC_EXP_02`).
+  - `backend/src/test/java/com/finman/controller/ExportControllerTest.java`: Integration tests kiểm tra endpoint `/api/v1/export/excel`, mã phản hồi 200, Content-Type, Content-Disposition và tính bảo mật multi-tenant.
+  - `backend/src/test/java/com/finman/service/StatisticsServiceTest.java`: Unit tests cho các hàm tính toán tỷ lệ thặng dư, tỷ trọng danh mục và xu hướng ngày.
+  - `backend/src/test/java/com/finman/controller/StatisticsControllerTest.java`: Integration tests cho các endpoint `/api/v1/statistics`.
+- **Kết quả kiểm thử**: PASS 100% — Toàn bộ 157/157 tests của backend đều vượt qua (`BUILD SUCCESS`).
+- **DoD Checklist**: Endpoint `/api/v1/export/excel` stream file Excel chuẩn về client, dữ liệu tiếng Việt Unicode không bị lỗi, các query thống kê hoạt động chính xác.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 8.2: Frontend Statistics Screen (Bóc tách từ Stitch)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Đọc trực tiếp từ Stitch Web: `design/finman_web_th_ng_k_b_o_c_o/code.html`.
+  - Tái tạo trọn vẹn màn hình Thống kê & Báo cáo chuẩn Fintech Prestige:
+    - Sub-Navigation Tabs: Thống kê tổng hợp, Phân tích Thu - Chi, Dòng tiền theo thời gian.
+    - Bộ lọc chu kỳ linh hoạt: Tuần, Tháng, Hàng năm, Tùy chọn ngày (`PeriodFilter`).
+    - Thẻ Financial Health Banner (AI Intelligence Banner) với % thặng dư dòng tiền và 3 Highlight Pillars: Dòng tiền thuần, Tổng thu nhập, Tổng chi tiêu.
+    - Biểu đồ Cashflow Trend SVG mượt mà với vùng gradient, trần chi tiêu, đường cong bezier và đỉnh chi tiêu tương tác.
+    - Biểu đồ tròn Donut Chart SVG phân bổ tỷ trọng chi tiêu kèm danh sách chi tiết các danh mục chính.
+    - Thanh đo tiến độ hạn mức chi tiêu từng hạng mục (Category Threshold Progress Bars) với cảnh báo vượt ngưỡng an toàn.
+    - Bảng xếp hạng Top khoản chi lớn nhất (Top Expense Ranking Ledger Card) kiểm soát chi tiêu trọng yếu.
+    - Thẻ khuyến nghị tài chính thông minh từ FinMan AI Engine.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Thành phần giao diện Thống kê & Báo cáo hoàn chỉnh.
+- **Kết quả kiểm thử**: PASS 100% — Build frontend `npm run build` thành công, không phát sinh lỗi lint hay TypeScript (`vite v8.3.0 building for production... ✓ built`).
+- **DoD Checklist**: Biểu đồ hiển thị sắc nét, đồng bộ màu sắc và trải nghiệm với thiết kế Stitch Web.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 8.3: Kết Nối Frontend Statistics & Tải File Excel
+- **Người thực hiện**: Agent
+- **Yêu cầu từ kế hoạch**:
+  - Xây dựng service gọi API thống kê tổng hợp và kích hoạt tải file `.xlsx` trực tiếp về trình duyệt.
+  - Kết nối nút "Xuất Báo cáo Excel (.xlsx)" trên cả thanh công cụ `TopHeader` và trang `StatisticsPage`.
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/services/statisticsService.ts`: Cung cấp các hàm `getOverview`, `getCategories`, `getDailyTrends`, `exportExcel`.
+  - `frontend/src/App.tsx`: Tích hợp gọi `statisticsService.exportExcel()` từ nút "Excel" trên `TopHeader`.
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Tích hợp nạp dữ liệu thống kê từ backend với cơ chế dự phòng tự động tính toán từ danh sách giao dịch; hỗ trợ nút tải Excel kèm trạng thái loading spinner và thông báo thành công.
+- **Kết quả kiểm thử**: PASS 100% — Giao tiếp API trơn tru, tải file nhị phân blob Excel mượt mà và tự động đặt tên file định dạng `FinMan_BaoCao_TaiChinh_YYYYMM.xlsx`.
+- **DoD Checklist**: Tải về file Excel mở được trên máy tính với dữ liệu tiếng Việt chuẩn Unicode, số liệu đồng bộ chính xác.
+### [2026-09-29] Task 8.2 & 8.3 (Refinement): Tối Ưu Màn Hình Thống Kê & Liên Kết Biểu Đồ - Lịch Chi Tiêu
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Chuyển đổi biểu đồ dòng tiền sang biểu đồ 2 đường (Thu nhập & Chi tiêu) với nhãn cố định `T2 - CN`, căn chỉnh thẳng hàng 100% với các điểm nút SVG.
+  - Đưa component Lịch chi tiêu (`Spending Calendar`) từ `BudgetPage` sang `StatisticsPage`.
+  - Tối ưu lại `BudgetPage`: Gỡ bỏ lịch chi tiêu để mở rộng danh sách danh mục ngân sách ra toàn màn hình dạng lưới 2 cột (`grid grid-cols-1 lg:grid-cols-2 gap-space-md`), loại bỏ API call `monthTransactions` dư thừa.
+  - Tối giản `StatisticsPage`: Gỡ bỏ thanh Sub-Nav/bộ lọc trên cùng và thẻ chi tiết giao dịch cố định bên dưới theo yêu cầu người dùng.
+  - Thêm nút "Xem chi tiết" và Popup Modal kính mờ (backdrop-blur) hiển thị danh sách giao dịch theo ngày, tóm tắt tổng thu/chi trong ngày.
+  - Liên kết 2 chiều thông minh giữa Lịch chi tiêu và Biểu đồ tuần: khi chọn ngày nào trên lịch (kể cả khác tháng), biểu đồ tuần bên trái lập tức hiển thị tuần chứa ngày đó (từ T2 đến CN) và highlight trực quan ngày được chọn; ngược lại, click vào cột ngày trên biểu đồ cũng nhảy ngày trên lịch.
+- **Các file chỉnh sửa**:
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Cập nhật logic liên kết động 2 chiều, popup modal xem giao dịch ngày, biểu đồ 2 đường SVG căn chuẩn T2 - CN.
+  - `frontend/src/pages/budget/BudgetPage.tsx`: Mở rộng layout danh mục ngân sách full-width lưới 2 cột, dọn dẹp các state và service không dùng.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` thành công xuất sắc (Exit code 0, 0 lỗi TypeScript).
+- **DoD Checklist**: Biểu đồ hiển thị sắc nét, đồng bộ nhịp nhàng với lịch chi tiêu, thao tác mượt mà, layout 2 trang cân đối chuẩn Fintech Prestige.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 8.2 & 8.3 (Refinement 2): Tích Hợp Popover Chọn Tháng & Năm Trên Lịch Chi Tiêu Trang Thống Kê
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Xử lý tương tác khi bấm vào nút "Tháng" trên thanh điều hướng `< Tháng >` của thẻ Lịch chi tiêu: mở popover chọn Tháng và Năm giống hệt bên trang Ngân sách.
+  - Hỗ trợ đổi năm nhanh qua nút Chevron trước/sau hoặc dropdown chọn năm (2015-2045).
+  - Lưới 12 tháng trực quan (Tháng 1 đến Tháng 12) với tháng đang chọn được highlight nền đỏ (`bg-primary text-white`), chấm xanh báo hiệu tháng thực tế.
+  - Phím tắt "Tháng hiện tại" nhảy nhanh về tháng hiện tại, nút "Đóng" và sự kiện click ra ngoài để đóng popover.
+  - Khi chọn tháng/năm mới: tự động nạp dữ liệu giao dịch tháng đó, đồng thời kích hoạt cập nhật biểu đồ tuần T2-CN liên kết tương ứng.
+- **Các file chỉnh sửa**:
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Bổ sung state `isMonthPickerOpen`, `pickerYear`, `pickerRef`, xử lý đóng popover khi click ngoài và giao diện popover chuẩn xác.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` thành công xuất sắc (Exit code 0, 0 lỗi TypeScript).
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 8.2 (Refinement 3): Bổ Sung Chấm Xanh Đánh Dấu Ngày Hiện Tại Trên Lịch Chi Tiêu
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Bổ sung chấm xanh (`green dot`) báo hiệu ngày hiện tại (`Today`) trên ma trận ô ngày của thẻ Lịch chi tiêu.
+  - Phân định rõ ràng ngày hôm nay ngay cả khi người dùng đang click chọn duyệt xem các ngày khác trong tháng.
+- **Các file chỉnh sửa**:
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Tính toán trạng thái `isToday` cho từng ô lịch; thêm chấm tròn xanh ngọc (`w-2 h-2 rounded-full bg-secondary ring-1 ring-white`) tại góc trên bên phải, cùng hiệu ứng màu chữ và nền nhẹ nhàng (`bg-secondary/10`).
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` thành công xuất sắc (Exit code 0, 0 lỗi TypeScript).
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 8.2 (Refinement 4): Nâng Cấp Biểu Đồ Tròn Phân Bổ (Donut Chart) Đa Chiều (Thu/Chi & Chọn Tháng/Năm)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Bổ sung logic chọn linh hoạt giữa Thu nhập (`INCOME`) và Chi tiêu (`EXPENSE`) trực tiếp trên biểu đồ phân bổ tròn.
+  - Tích hợp bộ chọn Tháng & Năm tương tác với popover đầy đủ tính năng: lướt tháng qua nút chevron hoặc mở lưới 12 tháng/năm, hỗ trợ phím tắt "Tháng hiện tại" và đóng khi click ra ngoài.
+  - Tự động đồng bộ số liệu qua API `statisticsService.getCategories({ month, type })` cùng cơ chế dự phòng tổng hợp giao dịch local thông minh.
+  - Chuyển đổi linh hoạt màu sắc và nội dung:
+    - Khi chọn **Chi tiêu**: Thẻ hiển thị "Phân bổ chi tiêu", màu đỏ/hổ phách chủ đạo, chỉ số "Tổng chi tiêu ghi nhận" và "Tiến độ chi tiêu các hạng mục chính".
+    - Khi chọn **Thu nhập**: Thẻ hiển thị "Phân bổ thu nhập", màu xanh ngọc/xanh lá chủ đạo, chỉ số "Tổng thu nhập ghi nhận" và "Đóng góp thu nhập các hạng mục chính".
+- **Các file chỉnh sửa**:
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Bổ sung state `breakdownType`, `breakdownMonth`, `isBreakdownMonthPickerOpen`, `breakdownPickerYear`, `breakdownPickerRef`, các hàm tính toán SVG donut động và giao diện điều khiển chuẩn Fintech.
+- **Kết quả kiểm thử**: PASS 100% — `npm run build` thành công xuất sắc (Exit code 0, 0 lỗi TypeScript).
+- **Trạng thái**: Completed.
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)
@@ -953,4 +1057,5 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **BUG-01** | Task 2.10 / 2.12 | Nhập ký tự vào input form đăng ký làm nhấp nháy / tải lại nút Google | Medium | `Closed` | Chuyển callbacks sang `useRef`, bọc `useCallback` & `React.memo`, dùng `isRenderedRef` chặn hủy / tạo lại iframe Google. |
 | **BUG-02** | Task 3.2 / 3.3 | Không lưu được tài khoản khi thêm mới do thiếu báo lỗi nhập tên / payload thừa; ô nhập tiền thiếu định dạng dấu chấm (`.`) phân tách hàng nghìn | Medium | `Closed` | Bổ sung `@JsonIgnoreProperties` ở DTO backend; thêm banner `modalError` cảnh báo trực tiếp trong modal; tạo bộ tiện ích `formatCurrencyInput` & `parseCurrencyInput` cho toàn bộ các ô nhập tiền tệ (`AccountsPage`, `AddTransactionModal`, `BudgetPage`). |
 | **BUG-03** | Task 7.2 / 7.3 | Lỗi biên dịch TypeScript `TS2552: Cannot find name 'setNewCatBgColor'` tại `SettingsPage.tsx` và ổ cứng `C:` cạn bộ nhớ tạm thời làm gián đoạn build/test | High | `Closed` | Loại bỏ lời gọi `setNewCatBgColor` dư thừa trong bộ chọn màu modal danh mục; dọn dẹp thư mục Temp và chuyển hướng thư mục tạm thời của Maven/Java sang ổ `D:` (`-Djava.io.tmpdir=d:\FinMan\backend\target\tmp`); kiểm thử build frontend và toàn bộ 144 backend tests đạt PASS 100%. |
+| **BUG-04** | Task 8.2 | Trục ngày dưới biểu đồ dòng tiền xuất hiện 2 ô tô nền đỏ đồng thời gây nhầm lẫn | Low | `Closed` | Gỡ bỏ khối tô màu nền đỏ (`#fee2e2`) và font chữ đỏ của ngày Đỉnh chi (`isPeak`) trên trục hoành; chỉ duy trì duy nhất 1 ô tô đỏ (`#ffdad6`) cho ngày đang được người dùng chọn (`isSelected`). |
 

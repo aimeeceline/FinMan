@@ -332,16 +332,19 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
   - Tạo `frontend/src/pages/statistics/StatisticsPage.tsx`.
   - Tái sử dụng:
     - Tab lọc thời gian: Tuần, Tháng, Hàng năm, Tùy chọn (Period).
-    - Biểu đồ tỷ trọng chi tiêu theo danh mục (tỷ lệ % và số tiền).
-    - Danh sách chi tiết chi tiêu kèm thanh màu sắc tương ứng.
-    - Nút tải file Excel xuất báo cáo.
+    - Biểu đồ tỷ trọng chi tiêu theo danh mục (tỷ lệ % và số tiền) với Donut Chart SVG và Legend.
+    - Cashflow Trend Over Time Card: Biểu đồ đường SVG với vùng gradient mịn màng và đỉnh chi tiêu tương tác.
+    - AI Financial Health Banner: Trạng thái tài chính (Khả quan/Cảnh báo), % thặng dư, 3 highlight pillars (Dòng tiền thuần, Tổng thu, Tổng chi).
+    - Detailed Category Threshold Progress Bars: Thanh tiến độ theo từng danh mục.
+    - Top khoản chi lớn nhất tháng: Bảng xếp hạng chi tiêu trọng yếu.
+    - Nút tải file Excel xuất báo cáo trực tiếp.
 - **Files**: `frontend/src/pages/statistics/StatisticsPage.tsx`.
 - **DoD**: Biểu đồ hiển thị sắc nét, đồng bộ màu sắc với thiết kế Stitch.
 
 ### Task 8.3: Kết Nối Frontend Statistics & Tải File Excel
 - **Mục tiêu**: Gọi API thống kê đổ dữ liệu vào biểu đồ và kích hoạt tải file `.xlsx` trực tiếp về trình duyệt khi bấm nút Xuất.
-- **Files**: `frontend/src/services/statisticsService.ts`.
-- **DoD**: Tải về file Excel mở được trên máy tính với dữ liệu tiếng Việt chuẩn Unicode.
+- **Files**: `frontend/src/services/statisticsService.ts`, `frontend/src/App.tsx`.
+- **DoD**: Tải về file Excel mở được trên máy tính với dữ liệu tiếng Việt chuẩn Unicode. Kết nối với `/api/v1/statistics/overview` và `/api/v1/export/excel`.
 
 ### Task 8.4: Tests Cho Statistics & Export
 - **Mục tiêu**: Kiểm thử test cases `TC_EXP_01`, `TC_EXP_02`.

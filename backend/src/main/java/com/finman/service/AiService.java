@@ -54,12 +54,12 @@ public class AiService {
     private final ObjectMapper objectMapper;
 
     public AiService(GeminiClient geminiClient,
-                     GeminiConfig geminiConfig,
-                     CategoryRepository categoryRepository,
-                     AccountRepository accountRepository,
-                     TransactionRepository transactionRepository,
-                     BudgetRepository budgetRepository,
-                     ObjectMapper objectMapper) {
+            GeminiConfig geminiConfig,
+            CategoryRepository categoryRepository,
+            AccountRepository accountRepository,
+            TransactionRepository transactionRepository,
+            BudgetRepository budgetRepository,
+            ObjectMapper objectMapper) {
         this.geminiClient = geminiClient;
         this.geminiConfig = geminiConfig;
         this.categoryRepository = categoryRepository;
@@ -109,8 +109,8 @@ public class AiService {
      * Gọi Gemini API với structured prompt và ánh xạ kết quả JSON trả về.
      */
     private AiQuickAddResponse parseWithGemini(Long userId, String text,
-                                               List<Category> userCategories,
-                                               List<Account> userAccounts) {
+            List<Category> userCategories,
+            List<Account> userAccounts) {
         String currentDate = LocalDate.now().toString();
         String yesterdayDate = LocalDate.now().minusDays(1).toString();
 
@@ -124,44 +124,46 @@ public class AiService {
             accList.append(String.format("- %s [%s]\n", a.getName(), a.getType()));
         }
 
-        String prompt = String.format("""
-                Bạn là trợ lý AI trích xuất dữ liệu giao dịch tài chính cho ứng dụng FinMan tại Việt Nam.
-                Hôm nay là: %s. Hôm qua là: %s.
+        String prompt = String.format(
+                """
+                        Bạn là trợ lý AI trích xuất dữ liệu giao dịch tài chính cho ứng dụng FinMan tại Việt Nam.
+                        Hôm nay là: %s. Hôm qua là: %s.
 
-                DANH SÁCH DANH MỤC KHẢ DỤNG:
-                %s
+                        DANH SÁCH DANH MỤC KHẢ DỤNG:
+                        %s
 
-                DANH SÁCH TÀI KHOẢN VÍ KHẢ DỤNG:
-                %s
+                        DANH SÁCH TÀI KHOẢN VÍ KHẢ DỤNG:
+                        %s
 
-                NHIỆM VỤ:
-                Phân tích câu nói tiếng Việt của người dùng. Người dùng CÓ THỂ NHẬP 1 HOẶC NHIỀU GIAO DỊCH trong cùng một câu (ngăn cách bởi dấu phẩy, từ "và", "rồi", "sau đó", hoặc từng vế độc lập).
-                Ví dụ: "Ăn phở 50k ví tiền mặt và đổ xăng 70k thẻ techcombank" -> có 2 giao dịch.
-                "%s"
+                        NHIỆM VỤ:
+                        Phân tích câu nói tiếng Việt của người dùng. Người dùng CÓ THỂ NHẬP 1 HOẶC NHIỀU GIAO DỊCH trong cùng một câu (ngăn cách bởi dấu phẩy, từ "và", "rồi", "sau đó", hoặc từng vế độc lập).
+                        Ví dụ: "Ăn phở 50k ví tiền mặt và đổ xăng 70k thẻ techcombank" -> có 2 giao dịch.
+                        "%s"
 
-                Hãy trích xuất thành mảng các giao dịch trong JSON:
-                {
-                  "isRecognized": true,
-                  "transactions": [
-                    {
-                      "type": "EXPENSE" hoặc "INCOME",
-                      "amount": số nguyên dương (đơn vị VNĐ, ví dụ: 45k -> 45000, 350k -> 350000, 1.5tr -> 1500000),
-                      "categoryName": tên danh mục gợi ý phù hợp nhất từ danh sách trên,
-                      "accountName": tên tài khoản ví được nhắc tới (nếu người dùng không nói rõ, mặc định là "Tiền mặt"),
-                      "note": mô tả ngắn gọn nội dung chi tiêu/thu nhập (ví dụ: Ăn phở, Đổ xăng, Mẹ cho tiền...),
-                      "transactionDate": ngày theo định dạng YYYY-MM-DD
-                    }
-                  ]
-                }
+                        Hãy trích xuất thành mảng các giao dịch trong JSON:
+                        {
+                          "isRecognized": true,
+                          "transactions": [
+                            {
+                              "type": "EXPENSE" hoặc "INCOME",
+                              "amount": số nguyên dương (đơn vị VNĐ, ví dụ: 45k -> 45000, 350k -> 350000, 1.5tr -> 1500000),
+                              "categoryName": tên danh mục gợi ý phù hợp nhất từ danh sách trên,
+                              "accountName": tên tài khoản ví được nhắc tới (nếu người dùng không nói rõ, mặc định là "Tiền mặt"),
+                              "note": mô tả ngắn gọn nội dung chi tiêu/thu nhập (ví dụ: Ăn phở, Đổ xăng, Mẹ cho tiền...),
+                              "transactionDate": ngày theo định dạng YYYY-MM-DD
+                            }
+                          ]
+                        }
 
-                NẾU CÂU NÓI KHÔNG CÓ SỐ TIỀN HOẶC KHÔNG PHẢI LÀ GIAO DỊCH THU/CHI (ví dụ chào hỏi, thời tiết, câu không liên quan), HÃY TRẢ VỀ:
-                {
-                  "isRecognized": false,
-                  "error": "Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung."
-                }
+                        NẾU CÂU NÓI KHÔNG CÓ SỐ TIỀN HOẶC KHÔNG PHẢI LÀ GIAO DỊCH THU/CHI (ví dụ chào hỏi, thời tiết, câu không liên quan), HÃY TRẢ VỀ:
+                        {
+                          "isRecognized": false,
+                          "error": "Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung."
+                        }
 
-                LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
-                """, currentDate, yesterdayDate, catList, accList, text);
+                        LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
+                        """,
+                currentDate, yesterdayDate, catList, accList, text);
 
         String jsonResult = geminiClient.generateContent(prompt, true);
 
@@ -170,7 +172,8 @@ public class AiService {
             boolean isRecognized = root.path("isRecognized").asBoolean(true);
 
             if (!isRecognized) {
-                String errorMsg = root.path("error").asText("Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
+                String errorMsg = root.path("error")
+                        .asText("Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
                 throw new BusinessValidationException(errorMsg);
             }
 
@@ -180,7 +183,8 @@ public class AiService {
             if (txnsNode.isArray() && !txnsNode.isEmpty()) {
                 for (JsonNode node : txnsNode) {
                     long amount = node.path("amount").asLong(0);
-                    if (amount <= 0) continue;
+                    if (amount <= 0)
+                        continue;
 
                     String typeStr = node.path("type").asText("EXPENSE").toUpperCase();
                     TransactionType type = typeStr.equals("INCOME") ? TransactionType.INCOME : TransactionType.EXPENSE;
@@ -193,7 +197,8 @@ public class AiService {
                     LocalDate txnDate;
                     try {
                         txnDate = (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("null"))
-                                ? LocalDate.now() : LocalDate.parse(dateStr);
+                                ? LocalDate.now()
+                                : LocalDate.parse(dateStr);
                     } catch (Exception e) {
                         txnDate = LocalDate.now();
                     }
@@ -212,8 +217,7 @@ public class AiService {
                             matchedAccount.getType(),
                             txnDate,
                             note,
-                            "GEMINI_2.5_FLASH"
-                    ));
+                            "GEMINI_2.5_FLASH"));
                 }
             } else if (root.has("amount") && root.path("amount").asLong(0) > 0) {
                 long amount = root.path("amount").asLong(0);
@@ -228,7 +232,8 @@ public class AiService {
                 LocalDate txnDate;
                 try {
                     txnDate = (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("null"))
-                            ? LocalDate.now() : LocalDate.parse(dateStr);
+                            ? LocalDate.now()
+                            : LocalDate.parse(dateStr);
                 } catch (Exception e) {
                     txnDate = LocalDate.now();
                 }
@@ -247,12 +252,12 @@ public class AiService {
                         matchedAccount.getType(),
                         txnDate,
                         note,
-                        "GEMINI_2.5_FLASH"
-                ));
+                        "GEMINI_2.5_FLASH"));
             }
 
             if (items.isEmpty()) {
-                String errorMsg = root.path("error").asText("Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
+                String errorMsg = root.path("error")
+                        .asText("Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
                 throw new BusinessValidationException(errorMsg);
             }
 
@@ -271,8 +276,10 @@ public class AiService {
     }
 
     /**
-     * Bộ phân tích cú pháp ngôn ngữ tự nhiên tài chính tiếng Việt cục bộ (Local Fallback Parser).
-     * Hỗ trợ cả câu đơn và câu chứa nhiều giao dịch (ngăn cách bởi dấu phẩy, từ "và", "rồi", "sau đó").
+     * Bộ phân tích cú pháp ngôn ngữ tự nhiên tài chính tiếng Việt cục bộ (Local
+     * Fallback Parser).
+     * Hỗ trợ cả câu đơn và câu chứa nhiều giao dịch (ngăn cách bởi dấu phẩy, từ
+     * "và", "rồi", "sau đó").
      */
     public AiQuickAddResponse parseLocally(String text, List<Category> userCategories, List<Account> userAccounts) {
         String[] clauses = text.split("(?i)(?:\\s+và\\s+|\\s+rồi\\s+|\\s+sau đó\\s+|,\\s*|;\\s*|\\n+)");
@@ -280,7 +287,8 @@ public class AiService {
 
         for (String clause : clauses) {
             String clauseTrimmed = clause.trim();
-            if (clauseTrimmed.isEmpty()) continue;
+            if (clauseTrimmed.isEmpty())
+                continue;
 
             String norm = removeAccents(clauseTrimmed).toLowerCase(Locale.ROOT);
             Long amt = extractAmount(clauseTrimmed, norm);
@@ -317,8 +325,7 @@ public class AiService {
                         matchedAccount.getType(),
                         txnDate,
                         note,
-                        "LOCAL_FALLBACK"
-                ));
+                        "LOCAL_FALLBACK"));
             }
         }
 
@@ -326,12 +333,14 @@ public class AiService {
             String normalized = removeAccents(text).toLowerCase(Locale.ROOT);
             Long amount = extractAmount(text, normalized);
             if (amount == null || amount <= 0) {
-                throw new BusinessValidationException("Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
+                throw new BusinessValidationException(
+                        "Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung.");
             }
 
             TransactionType type = TransactionType.EXPENSE;
             if (normalized.contains("luong") || normalized.contains("thuong") || normalized.contains("nhan tien")
-                    || normalized.contains("thu nhap") || normalized.contains("freelance") || normalized.contains("lai suat")
+                    || normalized.contains("thu nhap") || normalized.contains("freelance")
+                    || normalized.contains("lai suat")
                     || normalized.contains("dau tu") || normalized.contains("ban hang")
                     || normalized.contains("cho") || normalized.contains("tang") || normalized.contains("li xi")
                     || normalized.contains("mung tuoi")) {
@@ -360,8 +369,7 @@ public class AiService {
                     matchedAccount.getType(),
                     txnDate,
                     note,
-                    "LOCAL_FALLBACK"
-            ));
+                    "LOCAL_FALLBACK"));
         }
 
         AiQuickAddResponse response = new AiQuickAddResponse();
@@ -372,7 +380,8 @@ public class AiService {
     }
 
     private Long extractAmount(String originalText, String normalized) {
-        // Regex tìm số tiền dạng: 45k, 350k, 1.5tr, 1.5 triệu, 50 nghìn, 500.000, 500000đ...
+        // Regex tìm số tiền dạng: 45k, 350k, 1.5tr, 1.5 triệu, 50 nghìn, 500.000,
+        // 500000đ...
         Pattern pattern = Pattern.compile("(?i)(\\d+(?:[.,]\\d+)?)\\s*(k|nghin|ngan|tr|trieu|m|d|dong|vnd)?");
         Matcher matcher = pattern.matcher(normalized);
 
@@ -411,7 +420,9 @@ public class AiService {
         // Loại bỏ các cụm từ chỉ tài khoản và số tiền ra khỏi text để làm note
         String cleaned = originalText;
         cleaned = cleaned.replaceAll("(?i)(\\d+(?:[.,]\\d+)?)\\s*(k|nghìn|ngàn|tr|triệu|m|đ|d|đồng|vnd)?", "");
-        cleaned = cleaned.replaceAll("(?i)(bằng|qua|từ|vao|vào)?\\s*(tiền mặt|ngân hàng|the ngan hang|thẻ ngân hàng|thẻ tín dụng|ví|vi|the|credit|bank|cash)", "");
+        cleaned = cleaned.replaceAll(
+                "(?i)(bằng|qua|từ|vao|vào)?\\s*(tiền mặt|ngân hàng|the ngan hang|thẻ ngân hàng|thẻ tín dụng|ví|vi|the|credit|bank|cash)",
+                "");
         cleaned = cleaned.replaceAll("(?i)(hôm nay|hôm qua|hom nay|hom qua)", "");
         cleaned = cleaned.trim();
         cleaned = cleaned.replaceAll("^[\\s,.-]+|[\\s,.-]+$", "");
@@ -424,15 +435,21 @@ public class AiService {
 
     private Category detectCategoryLocally(String normalized, TransactionType type, List<Category> userCategories) {
         if (type == TransactionType.INCOME) {
-            if (hasWord(normalized, "luong")) return findCategoryByName(userCategories, "Lương");
-            if (hasWord(normalized, "thuong", "tang", "cho", "li xi", "mung tuoi")) return findCategoryByName(userCategories, "Thưởng");
-            if (hasWord(normalized, "dau tu", "co phieu", "chung khoan")) return findCategoryByName(userCategories, "Đầu tư");
-            if (hasWord(normalized, "freelance")) return findCategoryByName(userCategories, "Freelance");
+            if (hasWord(normalized, "luong"))
+                return findCategoryByName(userCategories, "Lương");
+            if (hasWord(normalized, "thuong", "tang", "cho", "li xi", "mung tuoi"))
+                return findCategoryByName(userCategories, "Thưởng");
+            if (hasWord(normalized, "dau tu", "co phieu", "chung khoan"))
+                return findCategoryByName(userCategories, "Đầu tư");
+            if (hasWord(normalized, "freelance"))
+                return findCategoryByName(userCategories, "Freelance");
             return findCategoryByName(userCategories, "Thu nhập khác");
         }
 
-        // Loại bỏ cụm từ chỉ tài khoản khỏi câu để không gây nhầm lẫn (ví dụ: "ngan hang" có chứa "an")
-        String textNoAccount = normalized.replaceAll("(?i)\\b(ngan hang|the ngan hang|the tin dung|tin dung|tien mat|the|vi|bank|cash)\\b", " ");
+        // Loại bỏ cụm từ chỉ tài khoản khỏi câu để không gây nhầm lẫn (ví dụ: "ngan
+        // hang" có chứa "an")
+        String textNoAccount = normalized
+                .replaceAll("(?i)\\b(ngan hang|the ngan hang|the tin dung|tin dung|tien mat|the|vi|bank|cash)\\b", " ");
 
         // 1. Áo quần
         if (hasWord(textNoAccount, "ao", "quan", "vay", "giay", "dep", "ao so mi", "quan jean", "so mi")) {
@@ -440,7 +457,8 @@ public class AiService {
         }
 
         // 2. Ăn uống
-        if (hasWord(textNoAccount, "bun bo", "pho", "com", "ca phe", "cafe", "an", "an uong", "uong", "banh mi", "tra sua")) {
+        if (hasWord(textNoAccount, "bun bo", "pho", "com", "ca phe", "cafe", "an", "an uong", "uong", "banh mi",
+                "tra sua")) {
             return findCategoryByName(userCategories, "Ăn uống");
         }
 
@@ -490,18 +508,21 @@ public class AiService {
         if (normalized.contains("ngan hang") || normalized.contains("bank") || normalized.contains("vcb")
                 || normalized.contains("mb") || normalized.contains("tpbank") || normalized.contains("vietcombank")) {
             Account bank = findAccountByType(userAccounts, AccountType.BANK);
-            if (bank != null) return bank;
+            if (bank != null)
+                return bank;
         }
 
         if (normalized.contains("the tin dung") || normalized.contains("tin dung")
                 || normalized.contains("credit") || normalized.contains("the")) {
             Account credit = findAccountByType(userAccounts, AccountType.CREDIT_CARD);
-            if (credit != null) return credit;
+            if (credit != null)
+                return credit;
         }
 
         // Mặc định hoặc khi có chữ "tiền mặt", "ví", "cash"
         Account cash = findAccountByType(userAccounts, AccountType.CASH);
-        if (cash != null) return cash;
+        if (cash != null)
+            return cash;
 
         return userAccounts.get(0);
     }
@@ -509,7 +530,8 @@ public class AiService {
     private Category matchCategory(String suggestedName, TransactionType type, List<Category> categories, String text) {
         if (suggestedName != null && !suggestedName.isBlank()) {
             Category found = findCategoryByName(categories, suggestedName);
-            if (found != null) return found;
+            if (found != null)
+                return found;
         }
 
         String normalizedText = removeAccents(text).toLowerCase(Locale.ROOT);
@@ -558,7 +580,8 @@ public class AiService {
     }
 
     /**
-     * Tạo nhận xét tài chính hàng tháng bằng Gemini AI (hoặc bộ phân tích thông minh).
+     * Tạo nhận xét tài chính hàng tháng bằng Gemini AI (hoặc bộ phân tích thông
+     * minh).
      */
     public AiInsightsResponse generateMonthlyInsights(Long userId, String month) {
         if (month == null || !month.matches("^\\d{4}-\\d{2}$")) {
@@ -581,25 +604,27 @@ public class AiService {
 
         if (geminiConfig.hasApiKey()) {
             try {
-                String prompt = String.format("""
-                        Bạn là chuyên gia tư vấn tài chính cá nhân cho ứng dụng FinMan tại Việt Nam.
-                        Phân tích tài chính tháng: %s
-                        Tổng thu nhập: %,d VNĐ
-                        Tổng chi tiêu: %,d VNĐ
-                        Tiết kiệm ròng: %,d VNĐ
+                String prompt = String.format(
+                        """
+                                Bạn là chuyên gia tư vấn tài chính cá nhân cho ứng dụng FinMan tại Việt Nam.
+                                Phân tích tài chính tháng: %s
+                                Tổng thu nhập: %,d VNĐ
+                                Tổng chi tiêu: %,d VNĐ
+                                Tiết kiệm ròng: %,d VNĐ
 
-                        NHIỆM VỤ:
-                        Đưa ra nhận xét khách quan, hữu ích bằng tiếng Việt và 2-3 gợi ý hành động tiết kiệm cụ thể theo định dạng JSON sau:
-                        {
-                          "overview": "Đoạn văn ngắn nhận xét tổng quan tình hình thu chi tháng...",
-                          "recommendations": [
-                            "Lời khuyên thiết thực 1...",
-                            "Lời khuyên thiết thực 2..."
-                          ]
-                        }
+                                NHIỆM VỤ:
+                                Đưa ra nhận xét khách quan, hữu ích bằng tiếng Việt và 2-3 gợi ý hành động tiết kiệm cụ thể theo định dạng JSON sau:
+                                {
+                                  "overview": "Đoạn văn ngắn nhận xét tổng quan tình hình thu chi tháng...",
+                                  "recommendations": [
+                                    "Lời khuyên thiết thực 1...",
+                                    "Lời khuyên thiết thực 2..."
+                                  ]
+                                }
 
-                        LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
-                        """, month, totalIncome, totalExpense, netSavings);
+                                LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
+                                """,
+                        month, totalIncome, totalExpense, netSavings);
 
                 String jsonResult = geminiClient.generateContent(prompt, true);
                 JsonNode root = objectMapper.readTree(jsonResult);
@@ -611,7 +636,8 @@ public class AiService {
                     }
                 }
             } catch (Exception ex) {
-                log.warn("Gemini monthly insights generation failed, falling back to local rule-based insights: {}", ex.getMessage());
+                log.warn("Gemini monthly insights generation failed, falling back to local rule-based insights: {}",
+                        ex.getMessage());
             }
         }
 
@@ -623,10 +649,13 @@ public class AiService {
                 recommendations.add("Thiết lập ngân sách tháng cho các nhu cầu thiết yếu như Ăn uống và Sinh hoạt.");
             } else if (netSavings > 0) {
                 double savingsRate = totalIncome > 0 ? ((double) netSavings / totalIncome) * 100 : 0;
-                overview = String.format("Tình hình tài chính tháng %s rất tích cực! Bạn đã tiết kiệm được %,d đ (đạt tỷ lệ thặng dư %.1f%%).",
+                overview = String.format(
+                        "Tình hình tài chính tháng %s rất tích cực! Bạn đã tiết kiệm được %,d đ (đạt tỷ lệ thặng dư %.1f%%).",
                         month, netSavings, savingsRate);
-                recommendations.add("Cân nhắc chuyển một phần thặng dư vào tài khoản tiết kiệm hoặc quỹ dự phòng khẩn cấp.");
-                recommendations.add("Duy trì việc kiểm soát hạn mức chi tiêu ăn uống và giải trí để gia tăng tích lũy.");
+                recommendations
+                        .add("Cân nhắc chuyển một phần thặng dư vào tài khoản tiết kiệm hoặc quỹ dự phòng khẩn cấp.");
+                recommendations
+                        .add("Duy trì việc kiểm soát hạn mức chi tiêu ăn uống và giải trí để gia tăng tích lũy.");
             } else {
                 overview = String.format("Cảnh báo: Dòng tiền tháng %s đang bị thâm hụt %,d đ so với tổng thu nhập.",
                         month, Math.abs(netSavings));
@@ -642,13 +671,13 @@ public class AiService {
                 totalIncome,
                 totalExpense,
                 netSavings,
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     /**
      * Xử lý câu lệnh hoặc câu hỏi từ người dùng:
-     * - Tự động nhận diện ý định (Intent): Báo cáo nhận xét tháng, Truy vấn số liệu, hoặc Ghi nhận giao dịch.
+     * - Tự động nhận diện ý định (Intent): Báo cáo nhận xét tháng, Truy vấn số
+     * liệu, hoặc Ghi nhận giao dịch.
      */
     public AiChatResponse processUserChat(Long userId, String message) {
         if (message == null || message.trim().isEmpty()) {
@@ -658,7 +687,8 @@ public class AiService {
         String norm = removeAccents(text).toLowerCase(Locale.ROOT);
 
         // 1. Kiểm tra yêu cầu phân tích / nhận xét tháng
-        if ((norm.contains("nhan xet") || norm.contains("phan tich") || norm.contains("tu van") || norm.contains("tong ket"))
+        if ((norm.contains("nhan xet") || norm.contains("phan tich") || norm.contains("tu van")
+                || norm.contains("tong ket"))
                 && (norm.contains("thang") || norm.contains("chi tieu") || norm.contains("tai chinh"))) {
             String targetMonth = YearMonth.now().toString();
             Matcher m = Pattern.compile("thang\\s*(\\d{1,2})").matcher(norm);
@@ -688,7 +718,8 @@ public class AiService {
             log.info("Quick add parse not matched, falling back to data query: {}", ex.getMessage());
         }
 
-        // 4. Nếu không thể bóc tách thành giao dịch, chuyển sang trả lời theo dạng trợ lý trò chuyện / tra cứu
+        // 4. Nếu không thể bóc tách thành giao dịch, chuyển sang trả lời theo dạng trợ
+        // lý trò chuyện / tra cứu
         return executeDataQuery(userId, text);
     }
 
@@ -696,17 +727,20 @@ public class AiService {
      * Nhận diện ý định câu hỏi tra cứu thông tin
      */
     private boolean isQueryIntent(String norm) {
-        if (norm.contains("?")) return true;
+        if (norm.contains("?"))
+            return true;
         return norm.contains("bao nhieu") || norm.contains("the nao") || norm.contains("nhung gi")
                 || norm.contains("sao") || norm.contains("co gi") || norm.contains("liet ke")
                 || norm.contains("danh sach") || norm.contains("kiem tra") || norm.contains("xem so du")
                 || norm.contains("cho toi biet") || norm.contains("con bao nhieu") || norm.contains("da tieu bao nhieu")
-                || norm.contains("da chi bao nhieu") || norm.contains("toi co bao nhieu") || norm.contains("con tien khong")
+                || norm.contains("da chi bao nhieu") || norm.contains("toi co bao nhieu")
+                || norm.contains("con tien khong")
                 || norm.contains("so du") || norm.contains("con lai") || norm.contains("tien con");
     }
 
     /**
-     * Thực thi truy vấn dữ liệu tài chính người dùng (qua Gemini RAG hoặc Local Fallback)
+     * Thực thi truy vấn dữ liệu tài chính người dùng (qua Gemini RAG hoặc Local
+     * Fallback)
      */
     public AiChatResponse executeDataQuery(Long userId, String query) {
         if (geminiConfig.hasApiKey()) {
@@ -728,27 +762,30 @@ public class AiService {
      */
     public String queryFinancialDataWithGemini(Long userId, String userQuery) {
         String context = buildUserFinancialContext(userId);
-        String prompt = String.format("""
-                Bạn là Trợ lý Tài chính cá nhân FinMan AI thông minh, tận tâm và chính xác tại Việt Nam.
-                Dưới đây là DỮ LIỆU TÀI CHÍNH THỰC TẾ của người dùng tại thời điểm hiện tại:
+        String prompt = String.format(
+                """
+                        Bạn là Trợ lý Tài chính cá nhân FinMan AI thông minh, tận tâm và chính xác tại Việt Nam.
+                        Dưới đây là DỮ LIỆU TÀI CHÍNH THỰC TẾ của người dùng tại thời điểm hiện tại:
 
-                %s
+                        %s
 
-                CÂU HỎI / YÊU CẦU CỦA NGƯỜI DÙNG: "%s"
+                        CÂU HỎI / YÊU CẦU CỦA NGƯỜI DÙNG: "%s"
 
-                NHIỆM VỤ:
-                1. Trả lời trực tiếp, chính xác, ngắn gọn, lịch sự và thân thiện bằng tiếng Việt.
-                2. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
-                3. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
-                4. Sử dụng định dạng markdown (in đậm **số tiền**, danh sách gạch đầu dòng) để câu trả lời trực quan, chuyên nghiệp.
-                5. Nếu người dùng hỏi điều gì mà dữ liệu chưa có (ví dụ: ngày đó chưa có giao dịch), hãy giải thích lịch sự dựa trên dữ liệu hiện có.
-                """, context, userQuery);
+                        NHIỆM VỤ:
+                        1. Trả lời trực tiếp, chính xác, ngắn gọn, lịch sự và thân thiện bằng tiếng Việt.
+                        2. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
+                        3. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
+                        4. Sử dụng định dạng markdown (in đậm **số tiền**, danh sách gạch đầu dòng) để câu trả lời trực quan, chuyên nghiệp.
+                        5. Nếu người dùng hỏi điều gì mà dữ liệu chưa có (ví dụ: ngày đó chưa có giao dịch), hãy giải thích lịch sự dựa trên dữ liệu hiện có.
+                        """,
+                context, userQuery);
 
         return geminiClient.generateContent(prompt, false);
     }
 
     /**
-     * Bộ giải đáp truy vấn cục bộ (Local Rule-based Query Solver) khi không có mạng hoặc chưa có Gemini Key.
+     * Bộ giải đáp truy vấn cục bộ (Local Rule-based Query Solver) khi không có mạng
+     * hoặc chưa có Gemini Key.
      */
     public String queryFinancialDataLocally(Long userId, String userQuery) {
         String norm = removeAccents(userQuery).toLowerCase(Locale.ROOT);
@@ -764,7 +801,8 @@ public class AiService {
             for (Account acc : accounts) {
                 String accNorm = removeAccents(acc.getName()).toLowerCase(Locale.ROOT);
                 if (norm.contains(accNorm)) {
-                    return String.format("Số dư hiện tại của tài khoản **%s** là **%,d ₫** (Tổng số dư tất cả các ví: **%,d ₫**).",
+                    return String.format(
+                            "Số dư hiện tại của tài khoản **%s** là **%,d ₫** (Tổng số dư tất cả các ví: **%,d ₫**).",
                             acc.getName(), acc.getCurrentBalance(), totalBalance);
                 }
             }
@@ -784,16 +822,19 @@ public class AiService {
                     userId, TransactionType.EXPENSE, today, today);
             Long todayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.INCOME, today, today);
-            List<Transaction> todayTxns = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
-                    userId, today, today);
+            List<Transaction> todayTxns = transactionRepository
+                    .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                            userId, today, today);
 
             if (todayTxns.isEmpty()) {
-                return String.format("Hôm nay (%s), bạn **chưa có giao dịch chi tiêu hoặc thu nhập nào** được ghi nhận.",
+                return String.format(
+                        "Hôm nay (%s), bạn **chưa có giao dịch chi tiêu hoặc thu nhập nào** được ghi nhận.",
                         today.toString());
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%,d ₫**", today.toString(), todayExpense));
+            sb.append(
+                    String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%,d ₫**", today.toString(), todayExpense));
             if (todayIncome > 0) {
                 sb.append(String.format(" (thu nhập: **%,d ₫**)", todayIncome));
             }
@@ -808,7 +849,8 @@ public class AiService {
         }
 
         // 3. Câu hỏi về Chi tiêu / Thu nhập Tháng này
-        if (norm.contains("thang nay") || norm.contains("thang") || norm.contains("tong chi") || norm.contains("tong thu")) {
+        if (norm.contains("thang nay") || norm.contains("thang") || norm.contains("tong chi")
+                || norm.contains("tong thu")) {
             LocalDate start = currentMonth.atDay(1);
             LocalDate end = currentMonth.atEndOfMonth();
             Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
@@ -831,7 +873,8 @@ public class AiService {
         }
 
         // 4. Câu hỏi về Giao dịch gần đây
-        if (norm.contains("gan day") || norm.contains("moi nhat") || norm.contains("lich su") || norm.contains("giao dich")) {
+        if (norm.contains("gan day") || norm.contains("moi nhat") || norm.contains("lich su")
+                || norm.contains("giao dich")) {
             Page<Transaction> page = transactionRepository.findByUserId(
                     userId, PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "transactionDate", "createdAt")));
             List<Transaction> list = page.getContent();
@@ -857,16 +900,19 @@ public class AiService {
         Long todayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.EXPENSE, today, today);
 
-        return String.format("""
-                Dưới đây là tóm tắt nhanh tình hình tài chính của bạn:
-                - **Tổng tài sản/số dư hiện tại**: %,d ₫ (trên %d tài khoản ví)
-                - **Chi tiêu hôm nay (%s)**: %,d ₫
-                - Bạn có thể hỏi tôi cụ thể: *"Hôm nay tôi đã tiêu bao nhiêu?"*, *"Số dư các ví hiện tại"*, hoặc *"Tháng này chi tiêu ăn uống bao nhiêu?"*.
-                """, totalBalance, accounts.size(), today.toString(), todayExpense);
+        return String.format(
+                """
+                        Dưới đây là tóm tắt nhanh tình hình tài chính của bạn:
+                        - **Tổng tài sản/số dư hiện tại**: %,d ₫ (trên %d tài khoản ví)
+                        - **Chi tiêu hôm nay (%s)**: %,d ₫
+                        - Bạn có thể hỏi tôi cụ thể: *"Hôm nay tôi đã tiêu bao nhiêu?"*, *"Số dư các ví hiện tại"*, hoặc *"Tháng này chi tiêu ăn uống bao nhiêu?"*.
+                        """,
+                totalBalance, accounts.size(), today.toString(), todayExpense);
     }
 
     /**
-     * Tổng hợp dữ liệu tài chính thực tế của người dùng làm ngữ cảnh cho Gemini RAG.
+     * Tổng hợp dữ liệu tài chính thực tế của người dùng làm ngữ cảnh cho Gemini
+     * RAG.
      */
     private String buildUserFinancialContext(Long userId) {
         LocalDate today = LocalDate.now();
@@ -897,8 +943,9 @@ public class AiService {
                 userId, TransactionType.EXPENSE, today, today);
         Long todayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.INCOME, today, today);
-        List<Transaction> todayTxns = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
-                userId, today, today);
+        List<Transaction> todayTxns = transactionRepository
+                .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                        userId, today, today);
 
         sb.append(String.format("2. TÌNH HÌNH HÔM NAY (%s):\n", today));
         sb.append(String.format("- Tổng chi tiêu hôm nay: %,d ₫\n", todayExpense));
@@ -935,7 +982,7 @@ public class AiService {
         List<Transaction> recentTxns = recentPage.getContent();
         sb.append("4. GIAO DỊCH GẦN ĐÂY NHẤT:\n");
         if (recentTxns.isEmpty()) {
-            sb.append("- Chưa có giao dịch nào trong sổ cái.\n");
+            sb.append("- Chưa có giao dịch nào được ghi nhận trong lịch sử.\n");
         } else {
             for (Transaction t : recentTxns) {
                 sb.append(String.format("  + %s | %s: %,d ₫ | %s | %s | Ví: %s\n",
@@ -965,7 +1012,8 @@ public class AiService {
 
     private String getCategoryNameSafe(Transaction t) {
         try {
-            if (t == null) return "Khác";
+            if (t == null)
+                return "Khác";
             Category c = t.getCategory();
             return (c != null && c.getName() != null) ? c.getName() : "Khác";
         } catch (Exception e) {
@@ -975,7 +1023,8 @@ public class AiService {
 
     private String getAccountNameSafe(Transaction t) {
         try {
-            if (t == null) return "Ví";
+            if (t == null)
+                return "Ví";
             Account a = t.getAccount();
             return (a != null && a.getName() != null) ? a.getName() : "Ví";
         } catch (Exception e) {
@@ -984,7 +1033,8 @@ public class AiService {
     }
 
     private static String removeAccents(String s) {
-        if (s == null) return "";
+        if (s == null)
+            return "";
         String normalized = Normalizer.normalize(s, Normalizer.Form.NFD);
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         return pattern.matcher(normalized).replaceAll("").replace('đ', 'd').replace('Đ', 'D').trim();

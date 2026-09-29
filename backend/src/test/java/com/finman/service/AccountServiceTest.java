@@ -74,7 +74,8 @@ class AccountServiceTest {
     @Test
     @DisplayName("TC_ACC_02: Tạo Thẻ tín dụng thành công với hạn mức và dư nợ ban đầu")
     void testCreateAccount_CreditCard_Success() {
-        AccountCreateRequest request = new AccountCreateRequest("Techcombank Visa", AccountType.CREDIT_CARD, 0L, 20_000_000L);
+        AccountCreateRequest request = new AccountCreateRequest("Techcombank Visa", AccountType.CREDIT_CARD, 0L,
+                20_000_000L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Techcombank Visa")).thenReturn(false);
@@ -142,13 +143,13 @@ class AccountServiceTest {
 
         assertNotNull(summary);
         assertEquals(3, summary.getAccounts().size());
-        assertEquals(7_000_000L, summary.getTotalAssets());      // 2M + 5M
+        assertEquals(7_000_000L, summary.getTotalAssets()); // 2M + 5M
         assertEquals(1_500_000L, summary.getTotalLiabilities()); // 1.5M
-        assertEquals(5_500_000L, summary.getNetWorth());         // 7M - 1.5M
+        assertEquals(5_500_000L, summary.getNetWorth()); // 7M - 1.5M
     }
 
     @Test
-    @DisplayName("TC_ACC_04: Xóa tài khoản (chuyển isArchived = true) bảo toàn sổ cái")
+    @DisplayName("TC_ACC_04: Xóa tài khoản (chuyển isArchived = true) bảo toàn lịch sử giao dịch")
     void testDeleteAccount_SoftDeleteArchive() {
         Account account = new Account(testUser, "Ví cũ", AccountType.CASH, 1_000_000L);
         account.setId(20L);

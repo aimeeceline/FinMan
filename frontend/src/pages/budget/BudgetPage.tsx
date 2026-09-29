@@ -2,8 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { categoryService } from '../../services/categoryService';
 import { budgetService } from '../../services/budgetService';
 import type { BudgetSummary } from '../../services/budgetService';
-import { transactionService } from '../../services/transactionService';
-import type { Budget, Category, Transaction } from '../../types';
+import type { Budget, Category } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 const PASTEL_PALETTES = [
   'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
@@ -85,14 +84,11 @@ export const BudgetPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
-  const [monthTransactions, setMonthTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // State: Filter Tabs for Category List ('ALL' | 'WARNING' | 'SAFE')
   const [filterTab, setFilterTab] = useState<'ALL' | 'WARNING' | 'SAFE'>('ALL');
 
-  // State: Calendar Interactive Selection
-  const [selectedDay, setSelectedDay] = useState<number>(16);
 
   // State: Modal for Adding / Editing Budget
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -185,18 +181,16 @@ export const BudgetPage: React.FC = () => {
       .catch((err) => console.error('Error loading expense categories:', err));
   }, []);
 
-  // 2. Load Budgets, Summary, and Month Transactions when selectedMonth changes
+  // 2. Load Budgets and Summary when selectedMonth changes
   const loadBudgetData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [budgetList, summaryData, txns] = await Promise.all([
+      const [budgetList, summaryData] = await Promise.all([
         budgetService.getBudgets(selectedMonth),
         budgetService.getBudgetSummary(selectedMonth).catch(() => null),
-        transactionService.getTransactions({ month: selectedMonth }).catch(() => []),
       ]);
       setBudgets(budgetList);
       setSummary(summaryData);
-      setMonthTransactions(txns);
     } catch (err) {
       console.error('Error loading budget data:', err);
     } finally {
@@ -281,11 +275,6 @@ export const BudgetPage: React.FC = () => {
     return new Date(calendarYear, calendarMonth, 0).getDate();
   }, [calendarYear, calendarMonth]);
 
-  // Weekday offset for the 1st of month (0 = Mon, 6 = Sun)
-  const startDayOfWeek = useMemo(() => {
-    const day = new Date(calendarYear, calendarMonth - 1, 1).getDay(); // 0 is Sun, 1 is Mon...
-    return (day + 6) % 7;
-  }, [calendarYear, calendarMonth]);
 
   const remainingDays = useMemo(() => {
     const today = new Date();
@@ -299,30 +288,6 @@ export const BudgetPage: React.FC = () => {
     return Math.round(totalRemaining / remainingDays);
   }, [totalRemaining, remainingDays]);
 
-  // Daily aggregate map for Calendar heatmap
-  const dailyCashflows = useMemo(() => {
-    const map = new Map<number, { income: number; expense: number; list: Transaction[] }>();
-    monthTransactions.forEach((txn) => {
-      if (!txn.date) return;
-      const day = parseInt(txn.date.split('-')[2], 10);
-      if (!map.has(day)) {
-        map.set(day, { income: 0, expense: 0, list: [] });
-      }
-      const item = map.get(day)!;
-      if (txn.type === 'INCOME') {
-        item.income += txn.amount;
-      } else if (txn.type === 'EXPENSE') {
-        item.expense += txn.amount;
-      }
-      item.list.push(txn);
-    });
-    return map;
-  }, [monthTransactions]);
-
-  // Selected Day Transactions
-  const selectedDayTransactions = useMemo(() => {
-    return dailyCashflows.get(selectedDay)?.list || [];
-  }, [dailyCashflows, selectedDay]);
 
   // Filtered detailed budget list
   const filteredBudgets = useMemo(() => {
@@ -455,13 +420,7 @@ export const BudgetPage: React.FC = () => {
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
       {/* 1. Top Command Action Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-lg">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-space-xs mb-space-2xs">
-            <span className="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
-              Kiểm soát rủi ro dòng tiền
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-          </div>
+        <div className="flex flex-col">          
           <div className="flex items-center gap-space-sm flex-wrap">
             <h2 className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
               Quản lý Ngân sách chi tiêu
@@ -796,10 +755,8 @@ export const BudgetPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Main Split Layout: Left Category Budgets (7 cols), Right Spending Calendar Ledger (5 cols) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
-        {/* Left Column: Categories List & Alerts (7 cols) */}
-        <div className="xl:col-span-7 flex flex-col gap-space-md">
+      {/* 3. Main Category Budgets Section (Full Width Grid) */}
+      <div className="flex flex-col gap-space-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-space-xs">
               <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">
@@ -874,7 +831,7 @@ export const BudgetPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-space-md">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
               {filteredBudgets.map((b, idx) => {
                 const budgetColor = getBudgetColor(idx, b.category?.id);
                 const allocated = b.amount ?? b.allocatedAmount;
@@ -1038,140 +995,6 @@ export const BudgetPage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Right Column: Interactive Spending Calendar & Daily Ledger Drilldown (5 cols) */}
-        <div className="xl:col-span-5 flex flex-col gap-space-md">
-          {/* Interactive Heatmap / Calendar Block (From Stitch Reference) */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-outline-variant/20">
-            <div className="flex items-center justify-between mb-space-md">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-primary text-[22px]">calendar_month</span>
-                <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                  Lịch chi tiêu {formatMonthLabel(selectedMonth)}
-                </span>
-              </div>
-              <div className="flex items-center bg-surface-container rounded-lg p-0.5">
-                <span className="px-2.5 py-1 rounded-md bg-surface-container-lowest font-label-sm text-label-sm text-on-surface font-semibold shadow-xs">
-                  Tháng
-                </span>
-              </div>
-            </div>
-
-            {/* Weekdays Header */}
-            <div className="grid grid-cols-7 text-center font-label-sm text-label-sm text-on-surface-variant font-bold mb-2">
-              <span>T2</span>
-              <span>T3</span>
-              <span>T4</span>
-              <span>T5</span>
-              <span>T6</span>
-              <span>T7</span>
-              <span className="text-primary">CN</span>
-            </div>
-
-            {/* Days Grid with micro cashflows */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px]">
-              {/* Preceding weekday alignment empty cells */}
-              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
-                <div key={`empty-${idx}`} className="p-1 min-h-[50px] rounded-xl opacity-20 pointer-events-none" />
-              ))}
-
-              {Array.from({ length: daysInMonth }).map((_, idx) => {
-                const day = idx + 1;
-                const flow = dailyCashflows.get(day);
-                const isSelected = selectedDay === day;
-
-                return (
-                  <div
-                    key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`p-1 min-h-[50px] rounded-xl flex flex-col items-center justify-start cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-error-container/60 shadow-xs scale-105 z-10 ring-2 ring-primary-container'
-                        : 'hover:bg-surface-container-low'
-                    }`}
-                  >
-                    <span
-                      className={`font-medium ${
-                        isSelected
-                          ? 'w-5 h-5 rounded-full bg-primary-container text-on-primary-container font-bold text-[10px] flex items-center justify-center'
-                          : 'text-on-surface'
-                      }`}
-                    >
-                      {day}
-                    </span>
-
-                    {/* Micro Cashflows on calendar cell */}
-                    {flow && flow.income > 0 && (
-                      <span className="text-secondary font-bold text-[9px] leading-tight mt-0.5">
-                        +{flow.income >= 1_000_000 ? `${(flow.income / 1_000_000).toFixed(1)}M` : `${Math.round(flow.income / 1000)}k`}
-                      </span>
-                    )}
-                    {flow && flow.expense > 0 && (
-                      <span className="text-primary font-bold text-[9px] leading-tight mt-0.5">
-                        -{flow.expense >= 1_000_000 ? `${(flow.expense / 1_000_000).toFixed(1)}M` : `${Math.round(flow.expense / 1000)}k`}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Detail Ledger Card for Selected Date */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/20">
-            <div className="flex items-center justify-between mb-space-sm border-b border-surface-container-high/60 pb-space-xs">
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[20px] text-primary">receipt_long</span>
-                <span className="font-title-md text-title-md font-bold text-on-surface">
-                  Giao dịch ngày {selectedDay}/{selectedMonth.split('-')[1]}
-                </span>
-              </div>
-              <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                {selectedDayTransactions.length} giao dịch
-              </span>
-            </div>
-
-            {selectedDayTransactions.length === 0 ? (
-              <div className="py-6 text-center text-xs text-on-surface-variant">
-                Không phát sinh giao dịch nào vào ngày {selectedDay}.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
-                {selectedDayTransactions.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low/50 hover:bg-surface-container-low transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-sm">
-                        <span className="material-symbols-outlined text-base">
-                          {t.category.icon || 'payments'}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-xs text-on-surface">
-                          {t.note || t.category.name}
-                        </div>
-                        <div className="text-[11px] text-on-surface-variant">
-                          {t.account.name} • {t.category.name}
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      className={`font-currency-row text-xs font-bold ${
-                        t.type === 'INCOME' ? 'text-secondary' : 'text-primary'
-                      }`}
-                    >
-                      {t.type === 'INCOME' ? '+' : '-'}
-                      {t.amount.toLocaleString('vi-VN')} ₫
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* 4. Modal Thiết Lập / Sửa Ngân Sách Mới (Glassmorphism Modal) */}
       {isModalOpen && (

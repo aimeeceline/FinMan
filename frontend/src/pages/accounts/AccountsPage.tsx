@@ -275,13 +275,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
       <div className="flex flex-col w-full gap-space-xl">
         {/* 1. Top Command & Action Bar (Stitch lines 4-22) */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-space-xs">
-              <span className="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
-                Cơ cấu tài sản
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-            </div>
+          <div className="flex flex-col">            
             <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight mt-space-2xs">
               Quản lý Tài khoản &amp; Tài sản ròng
             </h1>
