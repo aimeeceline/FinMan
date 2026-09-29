@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     localStorage.removeItem('finman_token');
     localStorage.removeItem('finman_user');
+    localStorage.setItem('finman_current_route', 'giao-dich');
     setToken(null);
     setUser(null);
   }, []);
@@ -118,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
+        localStorage.setItem('finman_current_route', 'giao-dich');
         setToken(receivedToken);
         setUser(receivedUser);
         setIsLoading(false);
@@ -155,6 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
+        localStorage.setItem('finman_current_route', 'giao-dich');
         setToken(receivedToken);
         setUser(receivedUser);
         setIsLoading(false);
@@ -192,6 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         localStorage.setItem('finman_token', receivedToken);
         localStorage.setItem('finman_user', JSON.stringify(receivedUser));
+        localStorage.setItem('finman_current_route', 'giao-dich');
         if (receivedUser.email) {
           localStorage.setItem('finman_last_google_email', receivedUser.email);
         }

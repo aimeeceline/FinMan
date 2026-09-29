@@ -29,6 +29,12 @@ const VALID_ROUTES: NavRoute[] = [
 const getInitialRoute = (): NavRoute => {
   if (typeof window === 'undefined') return 'giao-dich';
 
+  // If user is not authenticated (no token stored), route MUST always be 'giao-dich'
+  const token = localStorage.getItem('finman_token');
+  if (!token) {
+    return 'giao-dich';
+  }
+
   // 1. Check pathname (e.g. /tai-khoan-va-tai-san)
   const path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
   if (VALID_ROUTES.includes(path as NavRoute)) {
@@ -60,6 +66,22 @@ const MainApp: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Always reset to 'giao-dich' upon logout and when logging back in
+  const prevAuthRef = React.useRef(isAuthenticated);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setCurrentRoute('giao-dich');
+      localStorage.setItem('finman_current_route', 'giao-dich');
+    } else if (!prevAuthRef.current && isAuthenticated) {
+      setCurrentRoute('giao-dich');
+      localStorage.setItem('finman_current_route', 'giao-dich');
+      if (window.location.pathname !== '/' || window.location.hash) {
+        window.history.replaceState(null, '', '/');
+      }
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const handleNavigate = useCallback((route: NavRoute) => {
     setCurrentRoute(route);

@@ -33,45 +33,40 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
   });
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Category Breakdown State: Type & Month
-  const [breakdownType, setBreakdownType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
-  const [breakdownMonth, setBreakdownMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const [isBreakdownMonthPickerOpen, setIsBreakdownMonthPickerOpen] = useState(false);
-  const [breakdownPickerYear, setBreakdownPickerYear] = useState<number>(() => {
-    return new Date().getFullYear();
-  });
-  const breakdownPickerRef = useRef<HTMLDivElement>(null);
-  const [breakdownData, setBreakdownData] = useState<CategoryBreakdownItem[]>([]);
-  const [breakdownMonthTransactions, setBreakdownMonthTransactions] = useState<Transaction[]>([]);
+  // Cashflow Trend Mode: 'WEEK' | 'MONTH' | 'YEAR' (all synchronized with calendar date & month)
+  const [trendViewMode, setTrendViewMode] = useState<'WEEK' | 'MONTH' | 'YEAR'>('WEEK');
+  const [yearTransactions, setYearTransactions] = useState<Transaction[]>([]);
 
-  // Close breakdown month picker popover when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (breakdownPickerRef.current && !breakdownPickerRef.current.contains(e.target as Node)) {
-        setIsBreakdownMonthPickerOpen(false);
-      }
-    };
-    if (isBreakdownMonthPickerOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isBreakdownMonthPickerOpen]);
-
-  // Sync breakdownPickerYear with breakdownMonth
-  useEffect(() => {
-    const [y] = breakdownMonth.split('-').map(Number);
-    if (y) setBreakdownPickerYear(y);
-  }, [breakdownMonth]);
-
-  // Fetch breakdown data and transactions when breakdownMonth or breakdownType changes
+  // Fetch full year transactions for YEAR view mode
   useEffect(() => {
     let isMounted = true;
-    statisticsService.getCategories({ month: breakdownMonth, type: breakdownType })
+    const year = calMonth.split('-')[0];
+    transactionService.getTransactions({
+      startDate: `${year}-01-01`,
+      endDate: `${year}-12-31`,
+      size: 500,
+    })
+      .then((txs) => {
+        if (isMounted) setYearTransactions(txs || []);
+      })
+      .catch((err) => {
+        console.warn('Could not load full year transactions:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [calMonth]);
+
+  // Category Breakdown State: Type & Active Hover (Month is synced directly with calMonth from Interactive Calendar)
+  const [breakdownType, setBreakdownType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [breakdownData, setBreakdownData] = useState<CategoryBreakdownItem[]>([]);
+  const [hoveredCategoryName, setHoveredCategoryName] = useState<string | null>(null);
+
+  // Fetch breakdown data when calMonth or breakdownType changes
+  useEffect(() => {
+    let isMounted = true;
+    statisticsService.getCategories({ month: calMonth, type: breakdownType })
       .then((items) => {
         if (isMounted) setBreakdownData(items || []);
       })
@@ -79,30 +74,10 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
         console.warn('Could not load category breakdown from API:', err);
       });
 
-    transactionService.getTransactions({ month: breakdownMonth })
-      .then((txs) => {
-        if (isMounted) setBreakdownMonthTransactions(txs || []);
-      })
-      .catch((err) => {
-        console.warn('Could not load breakdown month transactions:', err);
-      });
-
     return () => {
       isMounted = false;
     };
-  }, [breakdownMonth, breakdownType]);
-
-  const handlePrevBreakdownMonth = () => {
-    const [y, m] = breakdownMonth.split('-').map(Number);
-    const prev = new Date(y, m - 2, 1);
-    setBreakdownMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`);
-  };
-
-  const handleNextBreakdownMonth = () => {
-    const [y, m] = breakdownMonth.split('-').map(Number);
-    const next = new Date(y, m, 1);
-    setBreakdownMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
-  };
+  }, [calMonth, breakdownType]);
 
   // Close month picker popover when clicking outside
   useEffect(() => {
@@ -166,7 +141,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     }
   }, [daysInMonth, selectedDay]);
 
-  // Merge transactions from props and calMonthTransactions
+  // Merge transactions from props, calMonthTransactions, and yearTransactions
   const allTransactions = useMemo(() => {
     const map = new Map<number, Transaction>();
     transactions.forEach((t) => {
@@ -175,8 +150,11 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     calMonthTransactions.forEach((t) => {
       if (t.id != null) map.set(t.id, t);
     });
+    yearTransactions.forEach((t) => {
+      if (t.id != null) map.set(t.id, t);
+    });
     return Array.from(map.values());
-  }, [transactions, calMonthTransactions]);
+  }, [transactions, calMonthTransactions, yearTransactions]);
 
   // Daily aggregate map for Calendar heatmap
   const dailyCashflows = useMemo(() => {
@@ -224,13 +202,22 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     return `Th ${parseInt(mon, 10)}/${y}`;
   };
 
-  const handleChartDayClick = (d: { dateStr: string }) => {
-    const [y, m, dayNum] = d.dateStr.split('-').map(Number);
-    const newMonthStr = `${y}-${String(m).padStart(2, '0')}`;
-    if (newMonthStr !== calMonth) {
-      setCalMonth(newMonthStr);
+  const handleChartPointClick = (d: { dateStr: string; label: string }) => {
+    if (trendViewMode === 'YEAR') {
+      const [y, m] = d.dateStr.split('-').map(Number);
+      const newMonthStr = `${y}-${String(m).padStart(2, '0')}`;
+      if (newMonthStr !== calMonth) {
+        setCalMonth(newMonthStr);
+      }
+      setSelectedDay(1);
+    } else {
+      const [y, m, dayNum] = d.dateStr.split('-').map(Number);
+      const newMonthStr = `${y}-${String(m).padStart(2, '0')}`;
+      if (newMonthStr !== calMonth) {
+        setCalMonth(newMonthStr);
+      }
+      setSelectedDay(dayNum);
     }
-    setSelectedDay(dayNum);
   };
 
   // Fetch backend statistics overview
@@ -271,16 +258,16 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
   const savingsRate = serverOverview?.savingsRate ?? (totalIncome > 0 ? Math.round((surplus / totalIncome) * 100) : 0);
   const expenseRate = serverOverview?.expenseRate ?? (totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 1000) / 10 : 0);
 
-  // Effective transactions for breakdown card
+  // Effective transactions for breakdown card (synced with calMonth)
   const effectiveBreakdownTransactions = useMemo(() => {
-    const list = [...breakdownMonthTransactions];
+    const list = [...calMonthTransactions];
     allTransactions.forEach((t) => {
-      if (t.date?.startsWith(breakdownMonth) && !list.some((item) => item.id === t.id)) {
+      if (t.date?.startsWith(calMonth) && !list.some((item) => item.id === t.id)) {
         list.push(t);
       }
     });
     return list.filter((t) => t.type === breakdownType);
-  }, [breakdownMonthTransactions, allTransactions, breakdownMonth, breakdownType]);
+  }, [calMonthTransactions, allTransactions, calMonth, breakdownType]);
 
   const totalBreakdownAmount = useMemo(() => {
     if (breakdownData.length > 0) {
@@ -370,13 +357,95 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     return `${year}-${month}-${day}`;
   };
 
-  // 7-day cashflow trend calculation for SVG chart: TUẦN CỦA NGÀY ĐANG CHỌN TRÊN LỊCH (T2 - CN)
+  // Selected date string YYYY-MM-DD from calendar
   const selectedDateStr = useMemo(() => {
     return `${calMonth}-${String(selectedDay).padStart(2, '0')}`;
   }, [calMonth, selectedDay]);
 
-  const weeklyTrends = useMemo(() => {
-    const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  // Cashflow trend calculation for SVG chart: TUẦN / THÁNG / NĂM (đồng bộ với thời điểm trên lịch)
+  const trendPoints = useMemo(() => {
+    const [calYear, calMonthNum] = calMonth.split('-').map(Number);
+    const todayStr = formatLocalDate(new Date());
+
+    if (trendViewMode === 'WEEK') {
+      const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      const result: {
+        label: string;
+        dateStr: string;
+        displayDate: string;
+        isToday: boolean;
+        isSelected: boolean;
+        expense: number;
+        income: number;
+      }[] = [];
+
+      const safeDay = Math.min(selectedDay, new Date(calYear, calMonthNum, 0).getDate());
+      const targetDate = new Date(calYear, calMonthNum - 1, safeDay);
+
+      // Thứ Hai của tuần chứa ngày đang chọn
+      const dayOfWeek = targetDate.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(targetDate);
+      monday.setDate(targetDate.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dateStr = formatLocalDate(d);
+        const displayDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        const dayTxs = allTransactions.filter((t) => t.date === dateStr);
+        const dayExpense = dayTxs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+        const dayIncome = dayTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+
+        result.push({
+          label: dayLabels[i],
+          dateStr,
+          displayDate,
+          isToday: dateStr === todayStr,
+          isSelected: dateStr === selectedDateStr,
+          expense: dayExpense,
+          income: dayIncome,
+        });
+      }
+      return result;
+    }
+
+    if (trendViewMode === 'MONTH') {
+      const daysCount = new Date(calYear, calMonthNum, 0).getDate();
+      const result: {
+        label: string;
+        dateStr: string;
+        displayDate: string;
+        isToday: boolean;
+        isSelected: boolean;
+        expense: number;
+        income: number;
+      }[] = [];
+
+      for (let day = 1; day <= daysCount; day++) {
+        const dateStr = `${calYear}-${String(calMonthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const displayDate = `${String(day).padStart(2, '0')}/${String(calMonthNum).padStart(2, '0')}`;
+
+        const dayTxs = allTransactions.filter((t) => t.date === dateStr);
+        const dayExpense = dayTxs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+        const dayIncome = dayTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+
+        result.push({
+          label: String(day),
+          dateStr,
+          displayDate,
+          isToday: dateStr === todayStr,
+          isSelected: day === selectedDay,
+          expense: dayExpense,
+          income: dayIncome,
+        });
+      }
+      return result;
+    }
+
+    // trendViewMode === 'YEAR'
     const result: {
       label: string;
       dateStr: string;
@@ -387,91 +456,100 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
       income: number;
     }[] = [];
 
-    // Lấy ngày đang chọn từ Lịch chi tiêu
-    const [calYear, calMonthNum] = calMonth.split('-').map(Number);
-    const safeDay = Math.min(selectedDay, new Date(calYear, calMonthNum, 0).getDate());
-    const targetDate = new Date(calYear, calMonthNum - 1, safeDay);
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
 
-    // Tìm ngày Thứ Hai của tuần chứa ngày đang chọn (0: CN, 1: T2, 2: T3, ..., 6: T7)
-    const dayOfWeek = targetDate.getDay();
-    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(targetDate);
-    monday.setDate(targetDate.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-
-    const todayStr = formatLocalDate(new Date());
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateStr = formatLocalDate(d);
-      const displayDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-
-      const dayTxs = allTransactions.filter((t) => t.date === dateStr);
-      const dayExpense = dayTxs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
-      const dayIncome = dayTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+    for (let m = 1; m <= 12; m++) {
+      const monthPrefix = `${calYear}-${String(m).padStart(2, '0')}`;
+      const monthTxs = allTransactions.filter((t) => t.date?.startsWith(monthPrefix));
+      const mExpense = monthTxs.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+      const mIncome = monthTxs.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
 
       result.push({
-        label: dayLabels[i],
-        dateStr,
-        displayDate,
-        isToday: dateStr === todayStr,
-        isSelected: dateStr === selectedDateStr,
-        expense: dayExpense,
-        income: dayIncome,
+        label: `Th ${m}`,
+        dateStr: monthPrefix,
+        displayDate: `Tháng ${m}/${calYear}`,
+        isToday: calYear === curYear && m === curMonth,
+        isSelected: m === calMonthNum,
+        expense: mExpense,
+        income: mIncome,
       });
     }
     return result;
-  }, [calMonth, selectedDay, selectedDateStr, allTransactions]);
+  }, [trendViewMode, calMonth, selectedDay, selectedDateStr, allTransactions]);
+
+  const trendTitle = useMemo(() => {
+    if (trendViewMode === 'WEEK') {
+      return `Xu hướng dòng tiền tuần ${trendPoints[0]?.displayDate} – ${trendPoints[6]?.displayDate}`;
+    }
+    if (trendViewMode === 'MONTH') {
+      const [y, m] = calMonth.split('-');
+      return `Xu hướng dòng tiền Tháng ${parseInt(m, 10)}/${y}`;
+    }
+    const [y] = calMonth.split('-');
+    return `Xu hướng dòng tiền Năm ${y}`;
+  }, [trendViewMode, trendPoints, calMonth]);
+
+  const trendSubtitle = useMemo(() => {
+    const [y, m] = calMonth.split('-');
+    if (trendViewMode === 'WEEK') {
+      return `Biến động thu chi tuần chứa ngày ${String(selectedDay).padStart(2, '0')}/${m}`;
+    }
+    if (trendViewMode === 'MONTH') {
+      return `Biến động thu chi ${trendPoints.length} ngày trong tháng (ngày chọn: ${String(selectedDay).padStart(2, '0')}/${m})`;
+    }
+    return `Biến động thu chi 12 tháng năm ${y} (tháng đang chọn: Th ${parseInt(m, 10)})`;
+  }, [trendViewMode, trendPoints, calMonth, selectedDay]);
 
   const maxDailyValue = Math.max(
-    ...weeklyTrends.map((d) => Math.max(d.expense, d.income)),
+    ...trendPoints.map((d) => Math.max(d.expense, d.income)),
     100000
   );
   const ceilingValue = maxDailyValue * 1.25;
   const baselineY = 175;
 
-  const totalWeeklyExpense = weeklyTrends.reduce((s, d) => s + d.expense, 0);
-  const totalWeeklyIncome = weeklyTrends.reduce((s, d) => s + d.income, 0);
-  const netWeeklyCashflow = totalWeeklyIncome - totalWeeklyExpense;
-  const avgExpense = Math.round(totalWeeklyExpense / 7);
-  const avgIncome = Math.round(totalWeeklyIncome / 7);
+  const totalPeriodExpense = trendPoints.reduce((s, d) => s + d.expense, 0);
+  const totalPeriodIncome = trendPoints.reduce((s, d) => s + d.income, 0);
+  const netPeriodCashflow = totalPeriodIncome - totalPeriodExpense;
+  const avgExpense = Math.round(totalPeriodExpense / (trendPoints.length || 1));
+  const avgIncome = Math.round(totalPeriodIncome / (trendPoints.length || 1));
 
-  const peakExpenseIndex = weeklyTrends.reduce(
+  const peakExpenseIndex = trendPoints.reduce(
     (maxIdx, curr, idx, arr) => (curr.expense > arr[maxIdx].expense ? idx : maxIdx),
     0
   );
-  const peakExpense = weeklyTrends[peakExpenseIndex]?.expense || 0;
+  const peakExpense = trendPoints[peakExpenseIndex]?.expense || 0;
 
-  const peakIncomeIndex = weeklyTrends.reduce(
+  const peakIncomeIndex = trendPoints.reduce(
     (maxIdx, curr, idx, arr) => (curr.income > arr[maxIdx].income ? idx : maxIdx),
     0
   );
-  const peakIncome = weeklyTrends[peakIncomeIndex]?.income || 0;
+  const peakIncome = trendPoints[peakIncomeIndex]?.income || 0;
 
   // Chart SVG Coordinates computation
   const svgWidth = 680;
-  const marginX = 50;
+  const marginX = trendViewMode === 'MONTH' ? 24 : 50;
   const availableWidth = svgWidth - marginX * 2;
-  const stepX = availableWidth / 6;
+  const stepX = availableWidth / Math.max(1, trendPoints.length - 1);
 
   const expensePoints = useMemo(() => {
-    return weeklyTrends.map((d, i) => {
+    return trendPoints.map((d, i) => {
       const x = Math.round(marginX + i * stepX);
       const normalizedY = d.expense / (ceilingValue || 1);
       const y = Math.round(baselineY - normalizedY * 135);
       return { x, y, value: d.expense, ...d };
     });
-  }, [weeklyTrends, ceilingValue, stepX, baselineY]);
+  }, [trendPoints, ceilingValue, stepX, baselineY, marginX]);
 
   const incomePoints = useMemo(() => {
-    return weeklyTrends.map((d, i) => {
+    return trendPoints.map((d, i) => {
       const x = Math.round(marginX + i * stepX);
       const normalizedY = d.income / (ceilingValue || 1);
       const y = Math.round(baselineY - normalizedY * 135);
       return { x, y, value: d.income, ...d };
     });
-  }, [weeklyTrends, ceilingValue, stepX, baselineY]);
+  }, [trendPoints, ceilingValue, stepX, baselineY, marginX]);
 
   // Generate smooth SVG bezier path
   const generateBezier = (pts: { x: number; y: number }[]) => {
@@ -508,28 +586,33 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     return `${incomeCurvePath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
   }, [incomeCurvePath, incomePoints, baselineY]);
 
-  // Donut chart SVG calculations
+  // Donut chart SVG calculations (Supports any number of categories dynamically)
   const circumference = 2 * Math.PI * 64; // ~402.12
   const topBreakdownCategory = categoryBreakdownList[0];
-  const secondBreakdownCategory = categoryBreakdownList[1];
 
-  const primaryStrokeDash = useMemo(() => {
-    if (!topBreakdownCategory || totalBreakdownAmount === 0) return `0 ${circumference}`;
-    const strokeLen = (topBreakdownCategory.amount / totalBreakdownAmount) * circumference;
-    return `${strokeLen} ${circumference - strokeLen}`;
-  }, [topBreakdownCategory, totalBreakdownAmount, circumference]);
+  const donutSegments = useMemo(() => {
+    if (!totalBreakdownAmount || categoryBreakdownList.length === 0) return [];
+    let accumulatedLength = 0;
+    return categoryBreakdownList.map((cat) => {
+      const ratio = cat.amount / totalBreakdownAmount;
+      const strokeLen = ratio * circumference;
+      const offset = -accumulatedLength;
+      accumulatedLength += strokeLen;
+      return {
+        ...cat,
+        ratio,
+        strokeDasharray: `${strokeLen} ${Math.max(0, circumference - strokeLen)}`,
+        strokeDashoffset: offset,
+      };
+    });
+  }, [categoryBreakdownList, totalBreakdownAmount, circumference]);
 
-  const secondaryStrokeDash = useMemo(() => {
-    if (!secondBreakdownCategory || totalBreakdownAmount === 0) return `0 ${circumference}`;
-    const strokeLen = (secondBreakdownCategory.amount / totalBreakdownAmount) * circumference;
-    return `${strokeLen} ${circumference - strokeLen}`;
-  }, [secondBreakdownCategory, totalBreakdownAmount, circumference]);
-
-  const topCategoryOffset = useMemo(() => {
-    if (!topBreakdownCategory || totalBreakdownAmount === 0) return 0;
-    const strokeLen = (topBreakdownCategory.amount / totalBreakdownAmount) * circumference;
-    return -strokeLen;
-  }, [topBreakdownCategory, totalBreakdownAmount, circumference]);
+  const activeCategory = useMemo(() => {
+    if (hoveredCategoryName) {
+      return categoryBreakdownList.find((c) => c.name === hoveredCategoryName) || topBreakdownCategory;
+    }
+    return topBreakdownCategory;
+  }, [hoveredCategoryName, categoryBreakdownList, topBreakdownCategory]);
 
 
   return (
@@ -630,36 +713,77 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
         <div className="lg:col-span-7 flex flex-col gap-space-lg">
           {/* Cashflow Trend Over Time Card */}
           <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col border border-outline-variant/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md border-b border-outline-variant/20 gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between pb-space-md border-b border-outline-variant/20 gap-3">
+              {/* Left: Icon, Title, Subtitle */}
               <div className="flex items-center gap-space-xs">
-                <div className="w-9 h-9 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shadow-sm">
+                <div className="w-9 h-9 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shadow-sm shrink-0">
                   <span className="material-symbols-outlined text-[20px]">show_chart</span>
                 </div>
                 <div>
                   <h2 className="font-title-md text-title-md text-on-surface font-bold">
-                    Xu hướng dòng tiền tuần {weeklyTrends[0]?.displayDate} - {weeklyTrends[6]?.displayDate}
+                    {trendTitle}
                   </h2>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Biến động thu chi tuần chứa ngày {String(selectedDay).padStart(2, '0')}/{calMonth.split('-')[1]}
+                    {trendSubtitle}
                   </p>
                 </div>
               </div>
 
-              {/* Legend & Average */}
-              <div className="flex flex-col sm:items-end gap-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-secondary">
-                    <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
-                    <span>Thu nhập</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                    <span>Chi tiêu</span>
-                  </div>
+              {/* Right: View Mode Toggle & Legend */}
+              <div className="flex flex-wrap items-center gap-3 md:justify-end">
+                {/* View Mode Toggle: Tuần / Tháng / Năm */}
+                <div className="flex items-center bg-surface-container rounded-xl p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setTrendViewMode('WEEK')}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      trendViewMode === 'WEEK'
+                        ? 'bg-surface-container-lowest text-primary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Tuần
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrendViewMode('MONTH')}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      trendViewMode === 'MONTH'
+                        ? 'bg-surface-container-lowest text-primary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Tháng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrendViewMode('YEAR')}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      trendViewMode === 'YEAR'
+                        ? 'bg-surface-container-lowest text-primary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Năm
+                  </button>
                 </div>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  Trung bình: <span className="font-bold text-secondary">+{avgIncome.toLocaleString('vi-VN')}₫</span> / <span className="font-bold text-primary">-{avgExpense.toLocaleString('vi-VN')}₫</span>
-                </span>
+
+                {/* Legend & Average */}
+                <div className="flex flex-col sm:items-end gap-0.5 border-l border-outline-variant/30 pl-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-secondary">
+                      <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+                      <span>Thu nhập</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
+                      <span>Chi tiêu</span>
+                    </div>
+                  </div>
+                  <span className="font-body-sm text-body-sm text-on-surface-variant text-[11px]">
+                    TB: <span className="font-bold text-secondary">+{avgIncome.toLocaleString('vi-VN')}₫</span> / <span className="font-bold text-primary">-{avgExpense.toLocaleString('vi-VN')}₫</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -671,13 +795,13 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                   {peakIncome > 0 && (
                     <span className="text-secondary flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                      <span>Đỉnh thu: {weeklyTrends[peakIncomeIndex]?.label} ({peakIncome.toLocaleString('vi-VN')}₫)</span>
+                      <span>Đỉnh thu: {trendPoints[peakIncomeIndex]?.label} ({peakIncome.toLocaleString('vi-VN')}₫)</span>
                     </span>
                   )}
                   {peakExpense > 0 && (
                     <span className="text-primary flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                      <span>Đỉnh chi: {weeklyTrends[peakExpenseIndex]?.label} ({peakExpense.toLocaleString('vi-VN')}₫)</span>
+                      <span>Đỉnh chi: {trendPoints[peakExpenseIndex]?.label} ({peakExpense.toLocaleString('vi-VN')}₫)</span>
                     </span>
                   )}
                 </div>
@@ -711,7 +835,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                 <line x1="0" y1="125" x2="680" y2="125" stroke="#dae2fd" strokeWidth="1" strokeDasharray="4 4"></line>
                 <line x1="0" y1="175" x2="680" y2="175" stroke="#dae2fd" strokeWidth="1"></line>
 
-                {/* Income Area & Curve (Rendered first so Expense stays sharp on top) */}
+                {/* Income Area & Curve */}
                 {incomeAreaPath && <path d={incomeAreaPath} fill="url(#incomeAreaGrad)"></path>}
                 {incomeCurvePath && (
                   <path
@@ -736,6 +860,8 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                 {/* Milestone Key Data Points for Income */}
                 {incomePoints.map((pt, i) => {
                   const isHovered = hoveredPoint === i;
+                  const shouldShow = trendViewMode !== 'MONTH' || pt.value > 0 || pt.isSelected || isHovered;
+                  if (!shouldShow) return null;
                   return (
                     <circle
                       key={`inc-${i}`}
@@ -746,6 +872,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                       stroke="#006c4a"
                       strokeWidth="2.5"
                       className="cursor-pointer transition-all"
+                      onClick={() => handleChartPointClick(trendPoints[i])}
                     />
                   );
                 })}
@@ -753,6 +880,8 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                 {/* Milestone Key Data Points for Expense */}
                 {expensePoints.map((pt, i) => {
                   const isHovered = hoveredPoint === i;
+                  const shouldShow = trendViewMode !== 'MONTH' || pt.value > 0 || pt.isSelected || isHovered;
+                  if (!shouldShow) return null;
                   return (
                     <circle
                       key={`exp-${i}`}
@@ -763,29 +892,33 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                       stroke="#dc2626"
                       strokeWidth="2.5"
                       className="cursor-pointer transition-all"
+                      onClick={() => handleChartPointClick(trendPoints[i])}
                     />
                   );
                 })}
 
-                {/* Day Labels rendered directly inside SVG for 100% mathematical vertical alignment */}
-                {weeklyTrends.map((d, i) => {
+                {/* Labels rendered directly inside SVG for 100% mathematical vertical alignment */}
+                {trendPoints.map((d, i) => {
                   const pt = expensePoints[i];
                   const isHovered = hoveredPoint === i;
+                  const isMonthMode = trendViewMode === 'MONTH';
+                  const isMajorDay = i === 0 || i === trendPoints.length - 1 || Number(d.label) % 5 === 0;
+                  const shouldShowText = !isMonthMode || d.isSelected || isHovered || isMajorDay;
 
                   return (
                     <g
-                      key={`day-${i}`}
+                      key={`pt-${i}`}
                       className="cursor-pointer select-none"
                       onMouseEnter={() => setHoveredPoint(i)}
                       onMouseLeave={() => setHoveredPoint(null)}
-                      onClick={() => handleChartDayClick(d)}
+                      onClick={() => handleChartPointClick(d)}
                     >
-                      {/* Active/Hover/Selected highlight pill behind day label */}
+                      {/* Active/Hover/Selected highlight pill behind label */}
                       {(isHovered || d.isSelected || d.isToday) && (
                         <rect
-                          x={pt.x - 22}
+                          x={pt.x - (isMonthMode ? 14 : 22)}
                           y={186}
-                          width={44}
+                          width={isMonthMode ? 28 : 44}
                           height={22}
                           rx={6}
                           fill={
@@ -797,50 +930,66 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                               ? '#eaedff'
                               : 'transparent'
                           }
+                          className="transition-colors"
                         />
                       )}
 
-                      {/* Day Label Text (T2, T3, T4, T5, T6, T7, CN) - perfectly aligned on pt.x */}
-                      <text
-                        x={pt.x}
-                        y={202}
-                        textAnchor="middle"
-                        fontFamily="Inter"
-                        fontSize="12"
-                        fontWeight={isHovered || d.isSelected || d.isToday ? '700' : '600'}
-                        fill={
-                          isHovered
-                            ? '#ffffff'
-                            : d.isSelected
-                            ? '#ba1a1a'
-                            : d.isToday
-                            ? '#004ed0'
-                            : '#5c403c'
-                        }
-                      >
-                        {d.label}
-                      </text>
+                      {/* Day / Month Label */}
+                      {shouldShowText ? (
+                        <>
+                          <text
+                            x={pt.x}
+                            y={trendViewMode === 'WEEK' ? 200 : 202}
+                            textAnchor="middle"
+                            fontFamily="Inter"
+                            fontSize={isMonthMode ? '10' : '11'}
+                            fontWeight={isHovered || d.isSelected || d.isToday ? '700' : '600'}
+                            fill={
+                              isHovered
+                                ? '#ffffff'
+                                : d.isSelected
+                                ? '#ba1a1a'
+                                : d.isToday
+                                ? '#006c4a'
+                                : '#5c403c'
+                            }
+                          >
+                            {d.label}
+                          </text>
 
-                      {/* Date subtext (e.g. 29/09) - centered directly below */}
-                      <text
-                        x={pt.x}
-                        y={220}
-                        textAnchor="middle"
-                        fontFamily="Plus Jakarta Sans"
-                        fontSize="11"
-                        fontWeight={d.isSelected ? '700' : '500'}
-                        fill={d.isSelected ? '#ba1a1a' : '#857371'}
-                      >
-                        {d.displayDate}
-                      </text>
+                          {/* Extra date line for Week view */}
+                          {trendViewMode === 'WEEK' && (
+                            <text
+                              x={pt.x}
+                              y={218}
+                              textAnchor="middle"
+                              fontFamily="Plus Jakarta Sans"
+                              fontSize="10"
+                              fontWeight={d.isSelected ? '700' : '500'}
+                              fill={d.isSelected ? '#ba1a1a' : '#857371'}
+                            >
+                              {d.displayDate}
+                            </text>
+                          )}
+                        </>
+                      ) : (
+                        /* Subtle tick dot for days in Month mode */
+                        <circle
+                          cx={pt.x}
+                          cy={197}
+                          r={1.5}
+                          fill="#94a3b8"
+                          opacity={0.6}
+                        />
+                      )}
                     </g>
                   );
                 })}
 
-                {/* Vertical Cursor Guide & Unified Tooltip for Hovered Day */}
+                {/* Vertical Cursor Guide & Unified Tooltip for Hovered Node */}
                 {hoveredPoint !== null && expensePoints[hoveredPoint] && incomePoints[hoveredPoint] && (
                   <g className="transition-all pointer-events-none">
-                    {/* Vertical guideline passing directly through the nodes and day label */}
+                    {/* Vertical guideline passing directly through the node and label */}
                     <line
                       x1={expensePoints[hoveredPoint].x}
                       y1="25"
@@ -872,7 +1021,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                         filter="drop-shadow(0 4px 6px rgba(0,0,0,0.15))"
                       />
                       <text x="10" y="16" fill="#94a3b8" fontFamily="Inter" fontSize="10" fontWeight="600">
-                        {weeklyTrends[hoveredPoint].label} ({weeklyTrends[hoveredPoint].dateStr})
+                        {trendPoints[hoveredPoint].label} ({trendPoints[hoveredPoint].displayDate})
                       </text>
                       <text x="10" y="33" fill="#34d399" fontFamily="Inter" fontSize="11" fontWeight="700">
                         +Thu: {incomePoints[hoveredPoint].income.toLocaleString('vi-VN')}₫
@@ -884,7 +1033,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                   </g>
                 )}
 
-                {/* Invisible hover trigger columns for each day */}
+                {/* Invisible hover trigger columns for each item */}
                 {expensePoints.map((pt, i) => (
                   <rect
                     key={`trigger-${i}`}
@@ -896,33 +1045,40 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                     className="cursor-pointer"
                     onMouseEnter={() => setHoveredPoint(i)}
                     onMouseLeave={() => setHoveredPoint(null)}
+                    onClick={() => handleChartPointClick(trendPoints[i])}
                   />
                 ))}
               </svg>
             </div>
 
-            {/* Weekly Summary Micro Metrics */}
+            {/* Summary Micro Metrics (adaptive to Week / Month / Year) */}
             <div className="grid grid-cols-3 gap-space-sm pt-space-md mt-space-sm bg-surface-container-low/50 rounded-xl p-space-sm border border-outline-variant/10">
               <div className="flex flex-col">
-                <span className="font-body-sm text-body-sm text-on-surface-variant">Tổng thu 7 ngày</span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  {trendViewMode === 'WEEK' ? 'Tổng thu 7 ngày' : trendViewMode === 'MONTH' ? 'Tổng thu tháng' : 'Tổng thu cả năm'}
+                </span>
                 <span className="font-title-md text-title-md text-secondary font-bold">
-                  +{totalWeeklyIncome.toLocaleString('vi-VN')}₫
+                  +{totalPeriodIncome.toLocaleString('vi-VN')}₫
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="font-body-sm text-body-sm text-on-surface-variant">Tổng chi 7 ngày</span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  {trendViewMode === 'WEEK' ? 'Tổng chi 7 ngày' : trendViewMode === 'MONTH' ? 'Tổng chi tháng' : 'Tổng chi cả năm'}
+                </span>
                 <span className="font-title-md text-title-md text-primary font-bold">
-                  -{totalWeeklyExpense.toLocaleString('vi-VN')}₫
+                  -{totalPeriodExpense.toLocaleString('vi-VN')}₫
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="font-body-sm text-body-sm text-on-surface-variant">Dòng tiền thuần 7 ngày</span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  {trendViewMode === 'WEEK' ? 'Dòng tiền thuần 7 ngày' : trendViewMode === 'MONTH' ? 'Dòng tiền thuần tháng' : 'Dòng tiền thuần năm'}
+                </span>
                 <span
                   className={`font-title-md text-title-md font-bold ${
-                    netWeeklyCashflow >= 0 ? 'text-secondary' : 'text-primary'
+                    netPeriodCashflow >= 0 ? 'text-secondary' : 'text-primary'
                   }`}
                 >
-                  {netWeeklyCashflow >= 0 ? '+' : ''}{netWeeklyCashflow.toLocaleString('vi-VN')}₫
+                  {netPeriodCashflow >= 0 ? '+' : ''}{netPeriodCashflow.toLocaleString('vi-VN')}₫
                 </span>
               </div>
             </div>
@@ -946,8 +1102,12 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                   <h2 className="font-title-md text-title-md text-on-surface font-bold">
                     {breakdownType === 'EXPENSE' ? 'Phân bổ chi tiêu' : 'Phân bổ thu nhập'}
                   </h2>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Tỷ trọng các danh mục trong Tháng {parseInt(breakdownMonth.split('-')[1], 10)}/{breakdownMonth.split('-')[0]}
+                  <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5">
+                    <span>Tỷ trọng các danh mục trong Tháng {parseInt(calMonth.split('-')[1], 10)}/{calMonth.split('-')[0]}</span>
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-secondary/10 text-secondary text-[11px] font-semibold">
+                      <span className="material-symbols-outlined text-[13px]">sync</span>
+                      Theo lịch
+                    </span>
                   </p>
                 </div>
               </div>
@@ -982,131 +1142,6 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                   </button>
                 </div>
 
-                {/* Month/Year Navigator with Popover */}
-                <div className="flex items-center gap-1 bg-surface-container rounded-lg p-0.5 relative" ref={breakdownPickerRef}>
-                  <button
-                    type="button"
-                    onClick={handlePrevBreakdownMonth}
-                    title="Tháng trước"
-                    className="p-1 rounded hover:bg-surface-container-high transition-colors cursor-pointer text-on-surface-variant flex items-center justify-center"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsBreakdownMonthPickerOpen(!isBreakdownMonthPickerOpen)}
-                    title="Chọn tháng và năm"
-                    className="px-2.5 py-1 rounded-md bg-surface-container-lowest font-label-sm text-label-sm text-on-surface font-semibold shadow-xs hover:bg-surface-container-highest transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <span>Th {parseInt(breakdownMonth.split('-')[1], 10)}/{breakdownMonth.split('-')[0]}</span>
-                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_drop_down</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextBreakdownMonth}
-                    title="Tháng sau"
-                    className="p-1 rounded hover:bg-surface-container-high transition-colors cursor-pointer text-on-surface-variant flex items-center justify-center"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                  </button>
-
-                  {/* Year & Month Popover for Donut Chart */}
-                  {isBreakdownMonthPickerOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95">
-                      {/* Year Selector Bar */}
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-container-high/60">
-                        <button
-                          type="button"
-                          onClick={() => setBreakdownPickerYear((prev) => prev - 1)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
-                          title="Năm trước"
-                        >
-                          <span className="material-symbols-outlined text-lg">chevron_left</span>
-                        </button>
-
-                        <div className="flex items-center gap-1.5 font-bold text-on-surface text-base">
-                          <span>Năm</span>
-                          <select
-                            value={breakdownPickerYear}
-                            onChange={(e) => setBreakdownPickerYear(Number(e.target.value))}
-                            className="bg-surface-container-low px-2 py-0.5 rounded-lg border border-outline-variant/40 font-bold text-primary cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 text-sm"
-                          >
-                            {Array.from({ length: 31 }, (_, i) => 2015 + i).map((y) => (
-                              <option key={y} value={y}>
-                                {y}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setBreakdownPickerYear((prev) => prev + 1)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
-                          title="Năm sau"
-                        >
-                          <span className="material-symbols-outlined text-lg">chevron_right</span>
-                        </button>
-                      </div>
-
-                      {/* 12 Months Grid */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                          const mStr = `${breakdownPickerYear}-${String(m).padStart(2, '0')}`;
-                          const isSelected = breakdownMonth === mStr;
-                          const now = new Date();
-                          const isCurrentMonth = now.getFullYear() === breakdownPickerYear && now.getMonth() + 1 === m;
-
-                          return (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => {
-                                setBreakdownMonth(mStr);
-                                setIsBreakdownMonthPickerOpen(false);
-                              }}
-                              className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${
-                                isSelected
-                                  ? 'bg-primary text-white shadow-sm font-bold scale-105'
-                                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                              }`}
-                            >
-                              Tháng {m}
-                              {isCurrentMonth && !isSelected && (
-                                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Footer Quick Action */}
-                      <div className="mt-3 pt-2 border-t border-surface-container-high/60 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const now = new Date();
-                            const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                            setBreakdownPickerYear(now.getFullYear());
-                            setBreakdownMonth(cur);
-                            setIsBreakdownMonthPickerOpen(false);
-                          }}
-                          className="text-xs font-bold text-secondary hover:underline cursor-pointer"
-                        >
-                          Tháng hiện tại
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsBreakdownMonthPickerOpen(false)}
-                          className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer"
-                        >
-                          Đóng
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Total Recorded Amount */}
                 <div className="flex flex-col items-end pl-2 border-l border-outline-variant/30">
                   <span className="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap">
@@ -1138,53 +1173,56 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                       stroke="#f2f3ff"
                       strokeWidth="20"
                     ></circle>
-                    {/* Segment 1: Largest Category */}
-                    {topBreakdownCategory && totalBreakdownAmount > 0 && (
-                      <circle
-                        cx="80"
-                        cy="80"
-                        r="64"
-                        fill="transparent"
-                        stroke={topBreakdownCategory.color || (breakdownType === 'EXPENSE' ? '#dc2626' : '#006c4a')}
-                        strokeWidth="20"
-                        strokeDasharray={primaryStrokeDash}
-                        strokeLinecap="round"
-                      ></circle>
-                    )}
-                    {/* Segment 2: Second Category */}
-                    {secondBreakdownCategory && totalBreakdownAmount > 0 && (
-                      <circle
-                        cx="80"
-                        cy="80"
-                        r="64"
-                        fill="transparent"
-                        stroke={secondBreakdownCategory.color || (breakdownType === 'EXPENSE' ? '#f59e0b' : '#10b981')}
-                        strokeWidth="20"
-                        strokeDasharray={secondaryStrokeDash}
-                        strokeDashoffset={topCategoryOffset}
-                        strokeLinecap="round"
-                      ></circle>
-                    )}
+
+                    {/* All Category Donut Segments (Render every single recorded category) */}
+                    {totalBreakdownAmount > 0 && donutSegments.map((segment) => {
+                      const isHovered = hoveredCategoryName === segment.name;
+                      const isAnyHovered = Boolean(hoveredCategoryName);
+                      return (
+                        <circle
+                          key={segment.name}
+                          cx="80"
+                          cy="80"
+                          r="64"
+                          fill="transparent"
+                          stroke={segment.color}
+                          strokeWidth={isHovered ? 23 : 20}
+                          strokeDasharray={segment.strokeDasharray}
+                          strokeDashoffset={segment.strokeDashoffset}
+                          strokeLinecap="butt"
+                          opacity={isAnyHovered && !isHovered ? 0.45 : 1}
+                          className="transition-all duration-200 cursor-pointer"
+                          onMouseEnter={() => setHoveredCategoryName(segment.name)}
+                          onMouseLeave={() => setHoveredCategoryName(null)}
+                        >
+                          <title>{`${segment.name}: ${segment.amount.toLocaleString('vi-VN')}₫ (${segment.percent}%)`}</title>
+                        </circle>
+                      );
+                    })}
                   </svg>
                   {/* Donut Inside Center Data */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      {topBreakdownCategory?.name || 'Tổng quan'}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2 text-center">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant truncate max-w-[110px]">
+                      {activeCategory?.name || 'Tổng quan'}
                     </span>
                     <span
                       className={`font-currency-display text-currency-display leading-none ${
                         breakdownType === 'EXPENSE' ? 'text-primary' : 'text-secondary'
                       }`}
                     >
-                      {topBreakdownCategory ? `${topBreakdownCategory.percent}%` : '0%'}
+                      {activeCategory ? `${activeCategory.percent}%` : '0%'}
                     </span>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">Tập trung</span>
+                    <span className="font-body-sm text-body-sm text-on-surface-variant text-[11px] truncate max-w-[110px]">
+                      {hoveredCategoryName && activeCategory
+                        ? `${activeCategory.amount.toLocaleString('vi-VN')}₫`
+                        : 'Tập trung'}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Donut Summary Chips */}
-              <div className="md:col-span-7 flex flex-col gap-space-sm">
+              <div className="md:col-span-7 flex flex-col gap-space-sm max-h-[300px] overflow-y-auto pr-1">
                 {categoryBreakdownList.length === 0 ? (
                   <div className="p-space-md rounded-xl bg-surface-container-low text-center text-sm text-on-surface-variant">
                     {breakdownType === 'EXPENSE'
@@ -1192,42 +1230,51 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                       : 'Chưa có giao dịch thu nhập nào trong kỳ này.'}
                   </div>
                 ) : (
-                  categoryBreakdownList.slice(0, 4).map((c, idx) => (
-                    <div
-                      key={idx}
-                      className="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between border border-outline-variant/10 hover:bg-surface-container transition-colors"
-                    >
-                      <div className="flex items-center gap-space-xs">
-                        <div
-                          className="w-3.5 h-3.5 rounded-full"
-                          style={{ backgroundColor: c.color }}
-                        ></div>
-                        <span className="font-label-md text-label-md text-on-surface font-semibold">
-                          {c.name}
-                        </span>
+                  categoryBreakdownList.map((c, idx) => {
+                    const isHovered = hoveredCategoryName === c.name;
+                    return (
+                      <div
+                        key={idx}
+                        onMouseEnter={() => setHoveredCategoryName(c.name)}
+                        onMouseLeave={() => setHoveredCategoryName(null)}
+                        className={`p-space-sm rounded-xl flex items-center justify-between border transition-all cursor-pointer ${
+                          isHovered
+                            ? 'bg-surface-container-high border-outline-variant shadow-xs scale-[1.01]'
+                            : 'bg-surface-container-low border-outline-variant/10 hover:bg-surface-container'
+                        }`}
+                      >
+                        <div className="flex items-center gap-space-xs">
+                          <div
+                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
+                            style={{ backgroundColor: c.color }}
+                          ></div>
+                          <span className="font-label-md text-label-md text-on-surface font-semibold">
+                            {c.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-space-sm">
+                          <span
+                            className={`font-currency-row text-currency-row font-bold ${
+                              breakdownType === 'EXPENSE' ? 'text-on-surface' : 'text-secondary'
+                            }`}
+                          >
+                            {breakdownType === 'INCOME' ? '+' : ''}{c.amount.toLocaleString('vi-VN')}₫
+                          </span>
+                          <span
+                            className={`px-space-xs py-0.5 rounded font-label-sm text-label-sm font-bold ${
+                              idx === 0
+                                ? breakdownType === 'EXPENSE'
+                                  ? 'bg-primary-fixed text-on-primary-fixed'
+                                  : 'bg-secondary-fixed text-on-secondary-fixed'
+                                : 'bg-surface-container-high text-on-surface-variant'
+                            }`}
+                          >
+                            {c.percent}%
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-space-sm">
-                        <span
-                          className={`font-currency-row text-currency-row font-bold ${
-                            breakdownType === 'EXPENSE' ? 'text-on-surface' : 'text-secondary'
-                          }`}
-                        >
-                          {breakdownType === 'INCOME' ? '+' : ''}{c.amount.toLocaleString('vi-VN')}₫
-                        </span>
-                        <span
-                          className={`px-space-xs py-0.5 rounded font-label-sm text-label-sm font-bold ${
-                            idx === 0
-                              ? breakdownType === 'EXPENSE'
-                                ? 'bg-primary-fixed text-on-primary-fixed'
-                                : 'bg-secondary-fixed text-on-secondary-fixed'
-                              : 'bg-surface-container-high text-on-surface-variant'
-                          }`}
-                        >
-                          {c.percent}%
-                        </span>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1247,7 +1294,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                     : 'Không có dữ liệu thu nhập để phân tích hạng mục.'}
                 </div>
               ) : (
-                categoryBreakdownList.slice(0, 3).map((cat, idx) => {
+                categoryBreakdownList.map((cat, idx) => {
                   const isOver = breakdownType === 'EXPENSE' && cat.percent > 80;
                   return (
                     <div key={idx} className="flex flex-col gap-space-2xs">
@@ -1302,10 +1349,11 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                       </div>
                       <div className="w-full h-2.5 rounded-full bg-surface-container-high overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isOver ? 'bg-primary' : 'bg-secondary'
-                          }`}
-                          style={{ width: `${Math.min(100, Math.max(5, cat.percent))}%` }}
+                          className={`h-full rounded-full transition-all duration-500`}
+                          style={{
+                            width: `${Math.min(100, Math.max(3, cat.percent))}%`,
+                            backgroundColor: cat.color || (isOver ? '#dc2626' : '#006c4a'),
+                          }}
                         ></div>
                       </div>
                       <div
@@ -1321,7 +1369,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                             ? isOver
                               ? 'Cần cân đối chi tiêu'
                               : 'Dư địa dòng tiền ổn định'
-                            : 'Đóng góp tăng trưởng dòng tiền'}
+                            : 'Đóng góp dòng tiền tốt'}
                         </span>
                       </div>
                     </div>
