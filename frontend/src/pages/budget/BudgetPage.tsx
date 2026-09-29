@@ -2,8 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { categoryService } from '../../services/categoryService';
 import { budgetService } from '../../services/budgetService';
 import type { BudgetSummary } from '../../services/budgetService';
-import type { Budget, Category } from '../../types';
+import type { Budget, Category, Transaction } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
+
+export interface BudgetPageProps {
+  transactions?: Transaction[];
+  onOpenAddTransaction?: () => void;
+  onRefreshData?: () => Promise<void> | void;
+}
 const PASTEL_PALETTES = [
   'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
   'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
@@ -69,16 +75,26 @@ const getBudgetColor = (index: number, categoryId?: number): BudgetColor => {
   return BUDGET_COLORS[index % BUDGET_COLORS.length];
 };
 
-export const BudgetPage: React.FC = () => {
-  // State: Month Selection (Defaults to September 2026 or current month)
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-09');
+export const BudgetPage: React.FC<BudgetPageProps> = ({
+  transactions = [],
+  onOpenAddTransaction: _onOpenAddTransaction,
+  onRefreshData: _onRefreshData,
+}) => {
+  // Current local month YYYY-MM
+  const currentMonthStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  // State: Month Selection (Defaults to current month)
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState<number>(() => {
-    const [y] = '2026-09'.split('-').map(Number);
-    return y || 2026;
+    const [y] = currentMonthStr.split('-').map(Number);
+    return y || new Date().getFullYear();
   });
   const pickerRef = useRef<HTMLDivElement>(null);
-  const [formMonth, setFormMonth] = useState<string>('2026-09');
+  const [formMonth, setFormMonth] = useState<string>(currentMonthStr);
 
   // State: Core Data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -181,10 +197,10 @@ export const BudgetPage: React.FC = () => {
       .catch((err) => console.error('Error loading expense categories:', err));
   }, []);
 
-  // 2. Load Budgets and Summary when selectedMonth changes
-  const loadBudgetData = useCallback(async () => {
+  // 2. Load Budgets and Summary when selectedMonth changes or transactions update
+  const loadBudgetData = useCallback(async (isSilent = false) => {
     try {
-      setIsLoading(true);
+      if (!isSilent) setIsLoading(true);
       const [budgetList, summaryData] = await Promise.all([
         budgetService.getBudgets(selectedMonth),
         budgetService.getBudgetSummary(selectedMonth).catch(() => null),
@@ -194,13 +210,41 @@ export const BudgetPage: React.FC = () => {
     } catch (err) {
       console.error('Error loading budget data:', err);
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, [selectedMonth]);
 
   useEffect(() => {
     loadBudgetData();
   }, [loadBudgetData]);
+
+  // Silently re-sync when transactions prop changes (e.g. after adding/editing/deleting transaction)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    loadBudgetData(true);
+  }, [transactions, loadBudgetData]);
+
+  // Listen for global transaction update events (from App.tsx or modals)
+  useEffect(() => {
+    const handleTxUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ date?: string; month?: string }>;
+      const txMonth = customEvent.detail?.month;
+      // If the transaction belongs to another month that user just entered, switch to it so they see it immediately
+      if (txMonth && txMonth !== selectedMonth) {
+        setSelectedMonth(txMonth);
+      } else {
+        loadBudgetData(true);
+      }
+    };
+    window.addEventListener('finman_transactions_updated', handleTxUpdate);
+    return () => {
+      window.removeEventListener('finman_transactions_updated', handleTxUpdate);
+    };
+  }, [loadBudgetData, selectedMonth]);
 
   // Derived Metrics
   const totalAllocated = useMemo(() => {
@@ -675,7 +719,9 @@ export const BudgetPage: React.FC = () => {
                 -{totalSpent.toLocaleString('vi-VN')} đ
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                {selectedMonth === '2026-09' ? '16 Tháng 09, 2026' : `Chu kỳ ${selectedMonth}`}
+                {selectedMonth === currentMonthStr
+                  ? `${new Date().getDate()} Tháng ${String(new Date().getMonth() + 1).padStart(2, '0')}, ${new Date().getFullYear()}`
+                  : `Chu kỳ ${formatMonthLabel(selectedMonth)}`}
               </span>
             </div>
             <div className="flex flex-col">

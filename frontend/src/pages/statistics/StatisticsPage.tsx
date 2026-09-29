@@ -587,25 +587,50 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
   }, [incomeCurvePath, incomePoints, baselineY]);
 
   // Donut chart SVG calculations (Supports any number of categories dynamically)
-  const circumference = 2 * Math.PI * 64; // ~402.12
+  // Pure vector SVG arc path generator (starts at 12 o'clock, moving clockwise)
+  const getDonutArcPath = (cx: number, cy: number, r: number, startRatio: number, endRatio: number, hasGap: boolean) => {
+    const diffRatio = endRatio - startRatio;
+    if (diffRatio >= 0.999) {
+      return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`;
+    }
+    const totalAngle = 2 * Math.PI;
+    const rawStart = startRatio * totalAngle;
+    const rawEnd = endRatio * totalAngle;
+    const gap = hasGap ? Math.min(0.04, (rawEnd - rawStart) * 0.25) : 0;
+    const startAngle = rawStart + gap / 2;
+    const endAngle = rawEnd - gap / 2;
+
+    const x1 = cx + r * Math.sin(startAngle);
+    const y1 = cy - r * Math.cos(startAngle);
+    const x2 = cx + r * Math.sin(endAngle);
+    const y2 = cy - r * Math.cos(endAngle);
+    const largeArcFlag = endAngle - startAngle > Math.PI ? 1 : 0;
+
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  };
+
   const topBreakdownCategory = categoryBreakdownList[0];
 
   const donutSegments = useMemo(() => {
     if (!totalBreakdownAmount || categoryBreakdownList.length === 0) return [];
-    let accumulatedLength = 0;
+    let accumulatedRatio = 0;
+    const hasGap = categoryBreakdownList.length > 1;
+
     return categoryBreakdownList.map((cat) => {
       const ratio = cat.amount / totalBreakdownAmount;
-      const strokeLen = ratio * circumference;
-      const offset = -accumulatedLength;
-      accumulatedLength += strokeLen;
+      const startRatio = accumulatedRatio;
+      const endRatio = accumulatedRatio + ratio;
+      accumulatedRatio = endRatio;
+
+      const pathData = getDonutArcPath(80, 80, 64, startRatio, endRatio, hasGap);
+
       return {
         ...cat,
         ratio,
-        strokeDasharray: `${strokeLen} ${Math.max(0, circumference - strokeLen)}`,
-        strokeDashoffset: offset,
+        pathData,
       };
     });
-  }, [categoryBreakdownList, totalBreakdownAmount, circumference]);
+  }, [categoryBreakdownList, totalBreakdownAmount]);
 
   const activeCategory = useMemo(() => {
     if (hoveredCategoryName) {
@@ -613,6 +638,15 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
     }
     return topBreakdownCategory;
   }, [hoveredCategoryName, categoryBreakdownList, topBreakdownCategory]);
+
+  const sortedDonutSegments = useMemo(() => {
+    if (!hoveredCategoryName) return donutSegments;
+    return [...donutSegments].sort((a, b) => {
+      if (a.name === hoveredCategoryName) return 1;
+      if (b.name === hoveredCategoryName) return -1;
+      return 0;
+    });
+  }, [donutSegments, hoveredCategoryName]);
 
 
   return (
@@ -1163,7 +1197,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
               {/* Donut Graphic */}
               <div className="md:col-span-5 flex items-center justify-center relative">
                 <div className="relative w-44 h-44 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
+                  <svg className="w-full h-full" viewBox="0 0 160 160">
                     {/* Background track */}
                     <circle
                       cx="80"
@@ -1175,20 +1209,16 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                     ></circle>
 
                     {/* All Category Donut Segments (Render every single recorded category) */}
-                    {totalBreakdownAmount > 0 && donutSegments.map((segment) => {
+                    {totalBreakdownAmount > 0 && sortedDonutSegments.map((segment) => {
                       const isHovered = hoveredCategoryName === segment.name;
                       const isAnyHovered = Boolean(hoveredCategoryName);
                       return (
-                        <circle
+                        <path
                           key={segment.name}
-                          cx="80"
-                          cy="80"
-                          r="64"
-                          fill="transparent"
+                          d={segment.pathData}
+                          fill="none"
                           stroke={segment.color}
-                          strokeWidth={isHovered ? 23 : 20}
-                          strokeDasharray={segment.strokeDasharray}
-                          strokeDashoffset={segment.strokeDashoffset}
+                          strokeWidth={isHovered ? 24 : 20}
                           strokeLinecap="butt"
                           opacity={isAnyHovered && !isHovered ? 0.45 : 1}
                           className="transition-all duration-200 cursor-pointer"
@@ -1196,7 +1226,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({ transactions = [
                           onMouseLeave={() => setHoveredCategoryName(null)}
                         >
                           <title>{`${segment.name}: ${segment.amount.toLocaleString('vi-VN')}₫ (${segment.percent}%)`}</title>
-                        </circle>
+                        </path>
                       );
                     })}
                   </svg>

@@ -161,6 +161,11 @@ const MainApp: React.FC = () => {
         note: newTx.note,
       });
       await loadData();
+      window.dispatchEvent(
+        new CustomEvent('finman_transactions_updated', {
+          detail: { date: newTx.date, month: newTx.date?.slice(0, 7) },
+        })
+      );
     } catch (err: any) {
       console.error('Error saving transaction to database:', err);
       alert(err.response?.data?.message || 'Không thể lưu giao dịch vào cơ sở dữ liệu');
@@ -179,6 +184,11 @@ const MainApp: React.FC = () => {
         note: updatedTx.note,
       });
       await loadData();
+      window.dispatchEvent(
+        new CustomEvent('finman_transactions_updated', {
+          detail: { date: updatedTx.date, month: updatedTx.date?.slice(0, 7) },
+        })
+      );
     } catch (err: any) {
       console.error('Error updating transaction in database:', err);
       alert(err.response?.data?.message || 'Không thể cập nhật giao dịch');
@@ -190,6 +200,11 @@ const MainApp: React.FC = () => {
     try {
       await transactionService.deleteTransaction(id);
       await loadData();
+      window.dispatchEvent(
+        new CustomEvent('finman_transactions_updated', {
+          detail: {},
+        })
+      );
     } catch (err: any) {
       console.error('Error deleting transaction from database:', err);
       alert(err.response?.data?.message || 'Không thể xóa giao dịch khỏi cơ sở dữ liệu');
@@ -295,7 +310,13 @@ const MainApp: React.FC = () => {
           />
         )}
 
-        {currentRoute === 'quan-ly-ngan-sach' && <BudgetPage />}
+        {currentRoute === 'quan-ly-ngan-sach' && (
+          <BudgetPage
+            transactions={transactions}
+            onOpenAddTransaction={handleOpenAddModal}
+            onRefreshData={loadData}
+          />
+        )}
 
         {currentRoute === 'tai-khoan-va-tai-san' && (
           <AccountsPage

@@ -89,7 +89,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [amount, setAmount] = useState<number>(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const getTodayLocalDateStr = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [date, setDate] = useState<string>(getTodayLocalDateStr);
   const [time, setTime] = useState<string>(new Date().toTimeString().slice(0, 5));
   const [note, setNote] = useState<string>('');
   const [internalBudgets, setInternalBudgets] = useState<Budget[]>([]);
@@ -139,7 +147,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     } else {
       setType('EXPENSE');
       setAmount(0);
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getTodayLocalDateStr());
       setTime(new Date().toTimeString().slice(0, 5));
       setNote('');
     }

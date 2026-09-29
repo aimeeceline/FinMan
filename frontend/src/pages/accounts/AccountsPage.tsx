@@ -318,11 +318,6 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                   <span className="font-label-md text-label-md uppercase tracking-wider text-slate-300 font-bold">
                     TÀI SẢN RÒNG HIỆN TẠI (NET WORTH)
                   </span>
-                  {loading && (
-                    <span className="font-label-sm text-label-sm text-amber-300 ml-2 animate-pulse font-normal">
-                      (Đang đồng bộ...)
-                    </span>
-                  )}
                 </div>
                 <button
                   onClick={toggleHideBalance}
