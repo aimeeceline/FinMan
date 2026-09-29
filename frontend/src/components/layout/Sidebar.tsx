@@ -46,9 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface font-extrabold">
                 FinMan
               </span>
-              <span className="text-[10px] tracking-widest text-on-surface-variant/80 uppercase font-semibold">
-                Fintech Prestige
-              </span>
+              
             </div>
           </div>
         </div>

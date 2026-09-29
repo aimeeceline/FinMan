@@ -39,10 +39,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             onNavigateToRegister();
           }
         }}
-        onSendResetLink={(emailSent) => {
-          alert(`Đã gửi liên kết khôi phục mật khẩu đến: ${emailSent}`);
-          setShowForgotPassword(false);
-        }}
       />
     );
   }
@@ -68,18 +64,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
             </div>
 
             {/* Typography Statement */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm uppercase tracking-wider mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-              Fintech Prestige Web Platform
-            </div>
 
             <h1 className="font-display-lg text-display-lg font-extrabold text-on-surface tracking-tight mb-4 leading-tight">
               Quản lý tài chính cá nhân thông minh
             </h1>
-
-            <p className="font-body-md text-body-md text-on-surface-variant mb-8">
-              Bảo mật cấp ngân hàng, kiểm soát dòng tiền minh bạch và phân tích chi tiêu thông minh cùng FinMan AI.
-            </p>
 
             {/* Feature List */}
             <div className="w-full space-y-3 font-body-md text-body-md text-on-surface-variant">

@@ -6,7 +6,7 @@ interface DashboardPageProps {
   transactions: Transaction[];
   accounts?: Account[];
   categories?: Category[];
-  onOpenAddModal: () => void;
+  onOpenAddModal: (initialData?: Partial<Transaction>) => void;
   onNavigateToAccounts: () => void;
   onNavigateToReports: () => void;
   onDeleteTransaction?: (id: number) => void;
@@ -55,6 +55,15 @@ const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE') => {
     return <span className="text-base leading-none">{icon}</span>;
   }
   return <span className="material-symbols-outlined text-[18px]">{icon}</span>;
+};
+
+// Get today YYYY-MM-DD in local timezone
+const getTodayLocalDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Format YYYY-MM-DD to DD/MM/YYYY
@@ -133,6 +142,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     categoryIcon: string;
     accountName: string;
     note: string;
+    transactionDate?: string;
     source?: string;
   } | null>(null);
   const [aiParsedItems, setAiParsedItems] = useState<Array<{
@@ -142,6 +152,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     categoryIcon: string;
     accountName: string;
     note: string;
+    transactionDate?: string;
     source?: string;
   }> | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
@@ -570,6 +581,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const res = await aiService.quickAdd(aiText.trim());
       const items = res.items && res.items.length > 0 ? res.items : [res];
+      const parsedDate = res.transactionDate || (items[0] && items[0].transactionDate) || getTodayLocalDate();
       if (items.length > 1) {
         setAiParsedItems(
           items.map((it) => ({
@@ -579,6 +591,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             categoryIcon: it.categoryIcon || (it.type === 'INCOME' ? 'payments' : 'restaurant'),
             accountName: it.accountName,
             note: it.note,
+            transactionDate: it.transactionDate || parsedDate,
             source: it.source || res.source,
           }))
         );
@@ -592,6 +605,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         categoryIcon: res.categoryIcon || (res.type === 'INCOME' ? 'payments' : 'restaurant'),
         accountName: res.accountName,
         note: res.note || aiText.trim(),
+        transactionDate: parsedDate,
         source: res.source,
       });
     } catch (err: any) {
@@ -627,9 +641,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       lower.includes('thưởng') ||
       lower.includes('nhận') ||
       lower.includes('thu nhập') ||
-      lower.includes('bán')
+      lower.includes('bán') ||
+      lower.includes('lì xì') ||
+      lower.includes('mừng tuổi') ||
+      lower.includes('cho') ||
+      lower.includes('tặng')
     ) {
       type = 'INCOME';
+    }
+
+    // Determine date
+    let transactionDate = getTodayLocalDate();
+    const now = new Date();
+    if (lower.includes('hôm qua') || lower.includes('hom qua')) {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      transactionDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (lower.includes('hôm kia') || lower.includes('hom kia')) {
+      const d = new Date();
+      d.setDate(d.getDate() - 2);
+      transactionDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (lower.includes('tuần trước') || lower.includes('tuan truoc')) {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      transactionDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else {
+      const matchSlash = aiText.match(/(?:ngày\s+|vao\s+|vào\s+)?\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}|\d{2}))?\b/i);
+      const matchTextDate = aiText.match(/(?:ngày\s+|hôm\s+)?(\d{1,2})\s*(?:tháng|thang)\s*(\d{1,2})(?:\s*(?:năm|nam)\s*(\d{4}|\d{2}))?/i);
+      const m = matchSlash || matchTextDate;
+      if (m) {
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10);
+        let year = now.getFullYear();
+        if (m[3]) {
+          const y = parseInt(m[3], 10);
+          year = y < 100 ? 2000 + y : y;
+        }
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          transactionDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
     }
 
     // Determine category with intelligent keyword mapping & fallback to "Khác"
@@ -666,7 +717,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (lower.includes('lương')) {
         categoryName = 'Lương';
         categoryIcon = 'payments';
-      } else if (lower.includes('thưởng') || lower.includes('quà')) {
+      } else if (lower.includes('thưởng') || lower.includes('quà') || lower.includes('lì xì') || lower.includes('mừng tuổi')) {
         categoryName = 'Thưởng';
         categoryIcon = 'featured_seasonal_and_gifts';
       } else if (lower.includes('cổ phiếu') || lower.includes('lãi') || lower.includes('đầu tư') || lower.includes('crypto') || lower.includes('chứng khoán')) {
@@ -687,7 +738,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
 
     // Clean note
-    const note = aiText.trim();
+    let note = aiText
+      .replace(/(\d+(?:[.,]\d+)?)\s*(k|nghìn|ngan|tr|triệu|trieu)?/gi, '')
+      .replace(/(bằng|qua|từ|vao|vào)?\s*(tiền mặt|ngân hàng|vcb|vietcombank|thẻ|credit|techcombank|ví)/gi, '')
+      .replace(/(hôm nay|hôm qua|hôm kia|hom nay|hom qua|hom kia|tuần trước|tuan truoc)/gi, '')
+      .replace(/(?:ngày|vao|vào)?\s*\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/gi, '')
+      .replace(/(?:ngày|hôm)?\s*\d{1,2}\s*(?:tháng|thang)\s*\d{1,2}(?:\s*(?:năm|nam)\s*\d{2,4})?/gi, '')
+      .trim()
+      .replace(/^[\s,.-]+|[\s,.-]+$/g, '');
+    if (!note) note = aiText.trim();
 
     setAiParsed({
       amount,
@@ -696,6 +755,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       categoryIcon,
       accountName,
       note,
+      transactionDate,
     });
   };
 
@@ -714,11 +774,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           categoryIcon: 'restaurant',
           accountName: 'Tiền mặt ví',
           note: 'Cà phê sáng cùng đồng nghiệp',
+          transactionDate: getTodayLocalDate(),
         });
       }, 1800);
     } else {
       setIsListening(false);
     }
+  };
+
+  // Handle editing AI parsed item in the full transaction modal
+  const handleEditAiParsed = (itemToEdit: typeof aiParsed) => {
+    if (!itemToEdit) return;
+
+    const matchedAccount =
+      displayAccounts.find((a) =>
+        a.name.toLowerCase().includes(itemToEdit.accountName.toLowerCase()) ||
+        itemToEdit.accountName.toLowerCase().includes(a.name.toLowerCase())
+      ) || displayAccounts[0];
+
+    const matchedCategory =
+      categories.find(
+        (c) =>
+          c.name.toLowerCase() === itemToEdit.categoryName.toLowerCase() &&
+          c.type === itemToEdit.type
+      ) ||
+      categories.find(
+        (c) =>
+          c.name.toLowerCase().includes(itemToEdit.categoryName.toLowerCase()) &&
+          c.type === itemToEdit.type
+      ) ||
+      categories.find((c) => c.type === itemToEdit.type);
+
+    onOpenAddModal({
+      amount: itemToEdit.amount,
+      type: itemToEdit.type,
+      category: matchedCategory,
+      account: matchedAccount,
+      date: itemToEdit.transactionDate || getTodayLocalDate(),
+      time: new Date().toTimeString().slice(0, 5),
+      note: itemToEdit.note,
+    });
   };
 
   // Apply parsed AI transaction (supports batch if multiple items)
@@ -767,7 +862,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         type: item.type,
         category: matchedCategory,
         account: matchedAccount,
-        date: new Date().toISOString().split('T')[0],
+        date: item.transactionDate || getTodayLocalDate(),
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         note: item.note,
       };
@@ -1014,22 +1109,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   {aiParsedItems.map((item, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 text-xs bg-surface-container-lowest/80 px-2.5 py-1.5 rounded-lg border border-outline-variant/15 flex-wrap"
+                      className="flex items-center justify-between gap-3 text-xs bg-surface-container-lowest/80 px-2.5 py-1.5 rounded-lg border border-outline-variant/15 flex-wrap"
                     >
-                      <span className="w-4 h-4 rounded-full bg-tertiary/10 text-tertiary font-bold text-[10px] flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                      <span
-                        className={`font-bold ${
-                          item.type === 'INCOME' ? 'text-secondary' : 'text-primary-container'
-                        }`}
+                      <div className="flex items-center gap-2 flex-wrap flex-1">
+                        <span className="w-4 h-4 rounded-full bg-tertiary/10 text-tertiary font-bold text-[10px] flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            item.type === 'INCOME' ? 'text-secondary' : 'text-primary-container'
+                          }`}
+                        >
+                          {item.type === 'INCOME' ? '+' : '-'}
+                          {item.amount.toLocaleString('vi-VN')} ₫
+                        </span>
+                        <span className="text-on-surface-variant font-medium">• {item.categoryName}</span>
+                        <span className="text-on-surface-variant font-medium">• {item.accountName}</span>
+                        <span className="text-on-surface-variant font-medium flex items-center gap-0.5">
+                          • <span className="material-symbols-outlined text-[13px] text-tertiary">calendar_today</span>
+                          {formatVNDate(item.transactionDate)}
+                        </span>
+                        <span className="text-on-surface italic truncate max-w-xs">"{item.note}"</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleEditAiParsed(item)}
+                        className="text-tertiary hover:text-primary transition-colors p-1 rounded-md hover:bg-surface-container-high cursor-pointer flex items-center gap-1 text-[11px] font-semibold"
+                        title="Chỉnh sửa chi tiết giao dịch này"
                       >
-                        {item.type === 'INCOME' ? '+' : '-'}
-                        {item.amount.toLocaleString('vi-VN')} ₫
-                      </span>
-                      <span className="text-on-surface-variant font-medium">• {item.categoryName}</span>
-                      <span className="text-on-surface-variant font-medium">• {item.accountName}</span>
-                      <span className="text-on-surface italic truncate max-w-xs">"{item.note}"</span>
+                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                        <span>Sửa</span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1062,6 +1172,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <span className="text-on-surface-variant">Ngày:</span>
+                    <span className="px-space-xs py-0.5 rounded bg-surface-container-high font-semibold text-on-surface text-xs flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px] text-tertiary">calendar_today</span>
+                      {formatVNDate(aiParsed.transactionDate)}
+                      {aiParsed.transactionDate === getTodayLocalDate() && (
+                        <span className="text-tertiary text-[11px] font-normal">(Hôm nay)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <span className="text-on-surface-variant">Ghi chú:</span>
                     <span className="italic text-on-surface font-medium truncate max-w-xs">
                       "{aiParsed.note}"
@@ -1073,11 +1193,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             <div className="flex items-center gap-space-xs shrink-0 self-end md:self-auto">
               <button
-                onClick={onOpenAddModal}
-                className="px-space-sm py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-container text-on-surface font-label-md text-label-md transition-colors cursor-pointer"
+                onClick={() => handleEditAiParsed(aiParsed)}
+                className="px-space-sm py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-container text-on-surface font-label-md text-label-md transition-colors cursor-pointer flex items-center gap-1"
                 type="button"
+                title="Chỉnh sửa chi tiết giao dịch này trong bảng nhập liệu"
               >
-                Chỉnh sửa
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+                <span>Chỉnh sửa</span>
               </button>
               <button
                 onClick={handleApplyAi}
@@ -1928,7 +2050,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </button>
                   )}
                   <button
-                    onClick={onOpenAddModal}
+                    onClick={() => onOpenAddModal()}
                     className="px-4 py-2 rounded-xl bg-primary text-white font-label-md text-label-md font-bold shadow-sm hover:bg-primary-container transition-all cursor-pointer"
                   >
                     + Thêm giao dịch mới

@@ -345,9 +345,6 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                 </div>
               </div>
 
-              <p className="font-body-sm text-body-sm text-slate-400 mt-space-2xs">
-                Cập nhật đồng bộ trực tiếp qua Cổng Napas 24/7 &amp; Open Banking API vừa xong.
-              </p>
             </div>
 
             {/* Financial Equation Breakdown Strip */}
@@ -643,8 +640,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="font-label-sm text-label-sm text-on-surface-variant font-mono">
-                        {acc.napasLinked || meta.displayName.toUpperCase().includes('VCB') || meta.displayName.toUpperCase().includes('VIETCOMBANK') ? 'VCB - 24/7' : 'Napas 24/7'}
-                      </span>
+  Napas 24/7
+</span>
+
                       <button
                         onClick={() => setAccountToArchive(acc)}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"

@@ -211,12 +211,16 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const handleOpenAddModal = () => {
+  const [initialTransaction, setInitialTransaction] = useState<Partial<Transaction> | null>(null);
+
+  const handleOpenAddModal = (initialData?: Partial<Transaction>) => {
     setEditingTransaction(null);
+    setInitialTransaction(initialData || null);
     setIsAddModalOpen(true);
   };
 
   const handleOpenEditModal = (tx: Transaction) => {
+    setInitialTransaction(null);
     setEditingTransaction(tx);
     setIsAddModalOpen(true);
   };
@@ -224,6 +228,7 @@ const MainApp: React.FC = () => {
   const handleCloseModal = () => {
     setIsAddModalOpen(false);
     setEditingTransaction(null);
+    setInitialTransaction(null);
   };
 
   const handleAddAccount = (newAcc: Account) => {
@@ -349,6 +354,7 @@ const MainApp: React.FC = () => {
         onAddTransaction={handleAddTransaction}
         onUpdateTransaction={handleUpdateTransaction}
         editingTransaction={editingTransaction}
+        initialTransaction={initialTransaction}
         accounts={accounts}
         categories={categories}
         transactions={transactions}

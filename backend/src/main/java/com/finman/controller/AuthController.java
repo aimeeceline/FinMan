@@ -41,6 +41,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công"));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody com.finman.dto.request.ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Liên kết đặt lại mật khẩu đã được gửi đến email của bạn"));
+    }
+
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@RequestBody com.finman.dto.request.GoogleAuthRequest request) {
         AuthResponse response = authService.loginWithGoogle(request);

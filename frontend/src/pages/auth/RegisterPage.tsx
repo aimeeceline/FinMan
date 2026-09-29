@@ -58,19 +58,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigateToLogin })
                 </div>
               </div>
             </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary font-label-sm text-label-sm uppercase tracking-wider mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-              Khởi đầu thịnh vượng
-            </div>
-
+            
             <h1 className="font-display-lg text-display-lg font-extrabold text-on-surface tracking-tight mb-4 leading-tight">
               Tạo tài khoản quản lý tài chính
             </h1>
-
-            <p className="font-body-md text-body-md text-on-surface-variant mb-6">
-              Bắt đầu hành trình minh bạch dòng tiền, thiết lập hạn mức ngân sách và gia tăng tài sản ròng bền vững.
-            </p>
 
             <ul className="space-y-3 font-body-sm text-body-sm text-on-surface-variant">
               <li className="flex items-center gap-2.5">

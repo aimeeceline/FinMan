@@ -24,6 +24,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthResult>;
   register: (email: string, fullName: string, password: string) => Promise<AuthResult>;
   loginWithGoogle: (data: GoogleAuthData) => Promise<AuthResult>;
+  forgotPassword: (email: string) => Promise<AuthResult>;
   logout: () => void;
   updateUser: (updated: Partial<User>) => void;
 }
@@ -216,6 +217,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const forgotPassword = useCallback(async (email: string): Promise<AuthResult> => {
+    setIsLoading(true);
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      setIsLoading(false);
+      return {
+        success: true,
+        message: res.data?.message || 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn',
+      };
+    } catch (err: any) {
+      setIsLoading(false);
+      let msg = 'Không thể gửi liên kết khôi phục mật khẩu. Vui lòng thử lại sau.';
+      if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err.response?.data?.error?.details) {
+        msg = Object.values(err.response.data.error.details).join(', ');
+      }
+      return { success: false, message: msg };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -226,6 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         loginWithGoogle,
+        forgotPassword,
         logout,
         updateUser,
       }}

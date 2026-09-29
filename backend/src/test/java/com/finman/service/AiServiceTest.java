@@ -336,4 +336,34 @@ class AiServiceTest {
         assertFalse(response.getItems().isEmpty());
         assertEquals(50_000L, response.getItems().get(0).getAmount());
     }
+
+    @Test
+    @DisplayName("Local Fallback Date: Bóc tách ngày tháng cụ thể ngày 25/09")
+    void testParseLocally_WithSpecificDate() {
+        when(categoryRepository.findAllAvailableForUser(1L)).thenReturn(categories);
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(accounts);
+
+        AiQuickAddResponse response = aiService.parseTransactionFromText(1L, "Ăn bún bò 45k ngày 25/09 ví tiền mặt");
+
+        assertNotNull(response);
+        assertEquals(45_000L, response.getAmount());
+        assertEquals("Ăn uống", response.getCategoryName());
+        assertEquals(LocalDate.of(LocalDate.now().getYear(), 9, 25), response.getTransactionDate());
+        assertFalse(response.getNote().toLowerCase().contains("25/09"));
+    }
+
+    @Test
+    @DisplayName("Local Fallback Date: Bóc tách ngày hôm qua")
+    void testParseLocally_WithYesterday() {
+        when(categoryRepository.findAllAvailableForUser(1L)).thenReturn(categories);
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(accounts);
+
+        AiQuickAddResponse response = aiService.parseTransactionFromText(1L, "Đổ xăng 50k hôm qua tiền mặt");
+
+        assertNotNull(response);
+        assertEquals(50_000L, response.getAmount());
+        assertEquals(LocalDate.now().minusDays(1), response.getTransactionDate());
+        assertFalse(response.getNote().toLowerCase().contains("hôm qua"));
+    }
 }
+

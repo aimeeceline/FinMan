@@ -21,10 +21,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +50,7 @@ import java.util.regex.Pattern;
 public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
+    private static final String PARSE_TRANSACTION_PROMPT_TEMPLATE = loadPromptTemplate();
 
     private final GeminiClient geminiClient;
     private final GeminiConfig geminiConfig;
@@ -111,8 +118,10 @@ public class AiService {
     private AiQuickAddResponse parseWithGemini(Long userId, String text,
             List<Category> userCategories,
             List<Account> userAccounts) {
-        String currentDate = LocalDate.now().toString();
-        String yesterdayDate = LocalDate.now().minusDays(1).toString();
+        LocalDate today = LocalDate.now();
+        String currentDate = today.toString();
+        String yesterdayDate = today.minusDays(1).toString();
+        int currentYear = today.getYear();
 
         StringBuilder catList = new StringBuilder();
         for (Category c : userCategories) {
@@ -125,45 +134,18 @@ public class AiService {
         }
 
         String prompt = String.format(
-                """
-                        Bạn là trợ lý AI trích xuất dữ liệu giao dịch tài chính cho ứng dụng FinMan tại Việt Nam.
-                        Hôm nay là: %s. Hôm qua là: %s.
-
-                        DANH SÁCH DANH MỤC KHẢ DỤNG:
-                        %s
-
-                        DANH SÁCH TÀI KHOẢN VÍ KHẢ DỤNG:
-                        %s
-
-                        NHIỆM VỤ:
-                        Phân tích câu nói tiếng Việt của người dùng. Người dùng CÓ THỂ NHẬP 1 HOẶC NHIỀU GIAO DỊCH trong cùng một câu (ngăn cách bởi dấu phẩy, từ "và", "rồi", "sau đó", hoặc từng vế độc lập).
-                        Ví dụ: "Ăn phở 50k ví tiền mặt và đổ xăng 70k thẻ techcombank" -> có 2 giao dịch.
-                        "%s"
-
-                        Hãy trích xuất thành mảng các giao dịch trong JSON:
-                        {
-                          "isRecognized": true,
-                          "transactions": [
-                            {
-                              "type": "EXPENSE" hoặc "INCOME",
-                              "amount": số nguyên dương (đơn vị VNĐ, ví dụ: 45k -> 45000, 350k -> 350000, 1.5tr -> 1500000),
-                              "categoryName": tên danh mục gợi ý phù hợp nhất từ danh sách trên,
-                              "accountName": tên tài khoản ví được nhắc tới (nếu người dùng không nói rõ, mặc định là "Tiền mặt"),
-                              "note": mô tả ngắn gọn nội dung chi tiêu/thu nhập (ví dụ: Ăn phở, Đổ xăng, Mẹ cho tiền...),
-                              "transactionDate": ngày theo định dạng YYYY-MM-DD
-                            }
-                          ]
-                        }
-
-                        NẾU CÂU NÓI KHÔNG CÓ SỐ TIỀN HOẶC KHÔNG PHẢI LÀ GIAO DỊCH THU/CHI (ví dụ chào hỏi, thời tiết, câu không liên quan), HÃY TRẢ VỀ:
-                        {
-                          "isRecognized": false,
-                          "error": "Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung."
-                        }
-
-                        LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
-                        """,
-                currentDate, yesterdayDate, catList, accList, text);
+                PARSE_TRANSACTION_PROMPT_TEMPLATE,
+                currentDate,
+                yesterdayDate,
+                currentYear,
+                catList,
+                accList,
+                text,
+                currentDate,
+                yesterdayDate,
+                currentDate,
+                currentDate
+        );
 
         String jsonResult = geminiClient.generateContent(prompt, true);
 
@@ -193,15 +175,7 @@ public class AiService {
                     String accountName = node.path("accountName").asText("");
                     String note = node.path("note").asText(text);
                     String dateStr = node.path("transactionDate").asText("");
-
-                    LocalDate txnDate;
-                    try {
-                        txnDate = (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("null"))
-                                ? LocalDate.now()
-                                : LocalDate.parse(dateStr);
-                    } catch (Exception e) {
-                        txnDate = LocalDate.now();
-                    }
+                    LocalDate txnDate = parseFlexibleDate(dateStr);
 
                     Category matchedCategory = matchCategory(categoryName, type, userCategories, note);
                     Account matchedAccount = matchAccount(accountName, userAccounts, note);
@@ -228,15 +202,7 @@ public class AiService {
                 String accountName = root.path("accountName").asText("");
                 String note = root.path("note").asText(text);
                 String dateStr = root.path("transactionDate").asText("");
-
-                LocalDate txnDate;
-                try {
-                    txnDate = (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("null"))
-                            ? LocalDate.now()
-                            : LocalDate.parse(dateStr);
-                } catch (Exception e) {
-                    txnDate = LocalDate.now();
-                }
+                LocalDate txnDate = parseFlexibleDate(dateStr);
 
                 Category matchedCategory = matchCategory(categoryName, type, userCategories, text);
                 Account matchedAccount = matchAccount(accountName, userAccounts, text);
@@ -306,13 +272,7 @@ public class AiService {
                 Category matchedCategory = detectCategoryLocally(norm, type, userCategories);
                 Account matchedAccount = detectAccountLocally(norm, userAccounts);
                 String note = extractNoteLocally(clauseTrimmed, norm);
-
-                LocalDate txnDate = LocalDate.now();
-                if (norm.contains("hom qua")) {
-                    txnDate = txnDate.minusDays(1);
-                } else if (norm.contains("hom kia")) {
-                    txnDate = txnDate.minusDays(2);
-                }
+                LocalDate txnDate = extractDateLocally(clauseTrimmed, norm);
 
                 items.add(new AiQuickAddItem(
                         type,
@@ -350,13 +310,7 @@ public class AiService {
             Category matchedCategory = detectCategoryLocally(normalized, type, userCategories);
             Account matchedAccount = detectAccountLocally(normalized, userAccounts);
             String note = extractNoteLocally(text, normalized);
-
-            LocalDate txnDate = LocalDate.now();
-            if (normalized.contains("hom qua")) {
-                txnDate = txnDate.minusDays(1);
-            } else if (normalized.contains("hom kia")) {
-                txnDate = txnDate.minusDays(2);
-            }
+            LocalDate txnDate = extractDateLocally(text, normalized);
 
             items.add(new AiQuickAddItem(
                     type,
@@ -377,6 +331,115 @@ public class AiService {
         response.setSource("LOCAL_FALLBACK");
         response.setItems(items);
         return response;
+    }
+
+    private LocalDate parseFlexibleDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("null")) {
+            return LocalDate.now();
+        }
+        String trimmed = dateStr.trim();
+        // 1. ISO format (YYYY-MM-DD)
+        try {
+            return LocalDate.parse(trimmed);
+        } catch (Exception ignored) {
+        }
+        // 2. Format DD/MM/YYYY or DD-MM-YYYY
+        try {
+            DateTimeFormatter dmy = DateTimeFormatter.ofPattern("d/M/yyyy");
+            return LocalDate.parse(trimmed.replace("-", "/"), dmy);
+        } catch (Exception ignored) {
+        }
+        // 3. Format YYYY/MM/DD
+        try {
+            DateTimeFormatter ymd = DateTimeFormatter.ofPattern("yyyy/M/d");
+            return LocalDate.parse(trimmed.replace("-", "/"), ymd);
+        } catch (Exception ignored) {
+        }
+        // 4. Format DD/MM or DD-MM (gán năm hiện tại)
+        try {
+            Pattern p = Pattern.compile("^(\\d{1,2})[/-](\\d{1,2})$");
+            Matcher m = p.matcher(trimmed);
+            if (m.find()) {
+                int day = Integer.parseInt(m.group(1));
+                int month = Integer.parseInt(m.group(2));
+                return LocalDate.of(LocalDate.now().getYear(), month, day);
+            }
+        } catch (Exception ignored) {
+        }
+        return LocalDate.now();
+    }
+
+    private LocalDate extractDateLocally(String originalClause, String norm) {
+        LocalDate now = LocalDate.now();
+        // 1. Từ khóa tương đối phổ biến
+        if (norm.contains("hom qua")) {
+            return now.minusDays(1);
+        }
+        if (norm.contains("hom kia")) {
+            return now.minusDays(2);
+        }
+        if (norm.contains("ngay mai") || norm.contains("mai")) {
+            return now.plusDays(1);
+        }
+        if (norm.contains("hom nay")) {
+            return now;
+        }
+        if (norm.contains("tuan truoc")) {
+            return now.minusWeeks(1);
+        }
+
+        // 2. Nhận diện "ngày dd tháng MM (năm yyyy)?"
+        Pattern dateTextPattern = Pattern.compile("(?i)(?:ngay\\s+|ngày\\s+|hôm\\s+)?(\\d{1,2})\\s*(?:thang|tháng)\\s*(\\d{1,2})(?:\\s*(?:nam|năm)\\s*(\\d{4}|\\d{2}))?");
+        Matcher mText = dateTextPattern.matcher(originalClause);
+        if (mText.find()) {
+            try {
+                int day = Integer.parseInt(mText.group(1));
+                int month = Integer.parseInt(mText.group(2));
+                int year = now.getYear();
+                if (mText.group(3) != null) {
+                    int y = Integer.parseInt(mText.group(3));
+                    year = y < 100 ? 2000 + y : y;
+                }
+                if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    return LocalDate.of(year, month, day);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // 3. Nhận diện "dd/MM/yyyy" hoặc "dd/MM" hoặc "dd-MM-yyyy" hoặc "dd-MM"
+        Pattern slashPattern = Pattern.compile("(?i)(?:ngay\\s+|ngày\\s+|vao\\s+|vào\\s+)?\\b(\\d{1,2})[/-](\\d{1,2})(?:[/-](\\d{4}|\\d{2}))?\\b");
+        Matcher mSlash = slashPattern.matcher(originalClause);
+        if (mSlash.find()) {
+            try {
+                int day = Integer.parseInt(mSlash.group(1));
+                int month = Integer.parseInt(mSlash.group(2));
+                int year = now.getYear();
+                if (mSlash.group(3) != null) {
+                    int y = Integer.parseInt(mSlash.group(3));
+                    year = y < 100 ? 2000 + y : y;
+                }
+                if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    return LocalDate.of(year, month, day);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // 4. Nhận diện "ngày dd" hoặc "hôm dd" trong tháng hiện tại
+        Pattern dayPattern = Pattern.compile("(?i)\\b(?:ngay|ngày|hôm|hom)\\s+(\\d{1,2})\\b(?!\\s*(?:k|nghìn|ngan|tr|triệu|trieu|d|đ|đồng|dong|vnd|%))");
+        Matcher mDay = dayPattern.matcher(originalClause);
+        if (mDay.find()) {
+            try {
+                int day = Integer.parseInt(mDay.group(1));
+                if (day >= 1 && day <= 31) {
+                    return LocalDate.of(now.getYear(), now.getMonthValue(), day);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return now;
     }
 
     private Long extractAmount(String originalText, String normalized) {
@@ -423,7 +486,10 @@ public class AiService {
         cleaned = cleaned.replaceAll(
                 "(?i)(bằng|qua|từ|vao|vào)?\\s*(tiền mặt|ngân hàng|the ngan hang|thẻ ngân hàng|thẻ tín dụng|ví|vi|the|credit|bank|cash)",
                 "");
-        cleaned = cleaned.replaceAll("(?i)(hôm nay|hôm qua|hom nay|hom qua)", "");
+        cleaned = cleaned.replaceAll("(?i)(hôm nay|hôm qua|hôm kia|hom nay|hom qua|hom kia|tuần trước|tuan truoc|ngày mai|ngay mai)", "");
+        cleaned = cleaned.replaceAll("(?i)(?:ngay|ngày|vao|vào)?\\s*\\d{1,2}\\s*(?:thang|tháng)\\s*\\d{1,2}(?:\\s*(?:nam|năm)\\s*\\d{2,4})?", "");
+        cleaned = cleaned.replaceAll("(?i)(?:ngay|ngày|vao|vào)?\\s*\\b\\d{1,2}[/-]\\d{1,2}(?:[/-]\\d{2,4})?\\b", "");
+        cleaned = cleaned.replaceAll("(?i)\\b(?:ngay|ngày|hôm|hom)\\s+\\d{1,2}\\b", "");
         cleaned = cleaned.trim();
         cleaned = cleaned.replaceAll("^[\\s,.-]+|[\\s,.-]+$", "");
 
@@ -1038,5 +1104,64 @@ public class AiService {
         String normalized = Normalizer.normalize(s, Normalizer.Form.NFD);
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         return pattern.matcher(normalized).replaceAll("").replace('đ', 'd').replace('Đ', 'D').trim();
+    }
+
+    private static String loadPromptTemplate() {
+        // 1. Thử nạp từ file dev ngoài project nếu có (để dev/tinh chỉnh prompt nhanh không cần build lại)
+        String[] devPaths = {
+                "promts/parse",
+                "../promts/parse",
+                "backend/src/main/resources/prompts/parse-transaction.txt",
+                "src/main/resources/prompts/parse-transaction.txt"
+        };
+        for (String p : devPaths) {
+            try {
+                Path path = Paths.get(p);
+                if (Files.exists(path)) {
+                    String raw = Files.readString(path, StandardCharsets.UTF_8);
+                    String cleaned = cleanPromptText(raw);
+                    if (!cleaned.isBlank()) {
+                        log.info("Đã nạp AI prompt template từ file ngoài: {}", path.toAbsolutePath());
+                        return cleaned;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // 2. Nạp từ Classpath Resource (chuẩn đóng gói JAR / Production)
+        try (InputStream is = AiService.class.getClassLoader().getResourceAsStream("prompts/parse-transaction.txt")) {
+            if (is != null) {
+                String raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                String cleaned = cleanPromptText(raw);
+                if (!cleaned.isBlank()) {
+                    return cleaned;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể nạp prompt template từ classpath: {}", e.getMessage());
+        }
+
+        // 3. Fallback tối thiểu dự phòng
+        return """
+                Bạn là AI chuyên trích xuất giao dịch tài chính cho ứng dụng FinMan tại Việt Nam.
+                Hôm nay: %s. Hôm qua: %s. Năm: %d.
+                Danh mục: %s
+                Tài khoản: %s
+                Nội dung: %s
+                Hôm nay: %s, Hôm qua: %s, Mặc định: %s, %s
+                """;
+    }
+
+    private static String cleanPromptText(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        int firstTriple = raw.indexOf("\"\"\"");
+        int lastTriple = raw.lastIndexOf("\"\"\"");
+        if (firstTriple >= 0 && lastTriple > firstTriple) {
+            raw = raw.substring(firstTriple + 3, lastTriple);
+        }
+        return raw.stripIndent().trim();
     }
 }

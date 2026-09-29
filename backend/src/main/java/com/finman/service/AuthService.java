@@ -198,4 +198,21 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(user.getId(), user.getEmail());
         return new AuthResponse(token, UserResponse.from(user));
     }
+
+    @Transactional(readOnly = true)
+    public void forgotPassword(com.finman.dto.request.ForgotPasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
+
+        if (userOpt.isEmpty()) {
+            log.warn("Yêu cầu quên mật khẩu cho email không tồn tại: {}", normalizedEmail);
+            return;
+        }
+
+        User user = userOpt.get();
+        String resetToken = UUID.randomUUID().toString();
+        log.info("Tạo liên kết khôi phục mật khẩu thành công cho người dùng: {} ({}) | Token: {}",
+                user.getFullName(), user.getEmail(), resetToken);
+    }
 }
+

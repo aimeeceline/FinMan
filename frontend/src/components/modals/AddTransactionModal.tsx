@@ -10,6 +10,7 @@ export interface AddTransactionModalProps {
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   onUpdateTransaction?: (id: number, transaction: Omit<Transaction, 'id'>) => void;
   editingTransaction?: Transaction | null;
+  initialTransaction?: Partial<Transaction> | null;
   accounts?: Account[];
   categories?: Category[];
   transactions?: Transaction[];
@@ -78,6 +79,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onAddTransaction,
   onUpdateTransaction,
   editingTransaction,
+  initialTransaction,
   accounts = [],
   categories,
   transactions: _transactions = [],
@@ -125,7 +127,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [newCatIcon, setNewCatIcon] = useState<string>('🍜');
   const [isSavingCategory, setIsSavingCategory] = useState<boolean>(false);
 
-  // Sync form state when editingTransaction or isOpen changes
+  // Sync form state when editingTransaction, initialTransaction, or isOpen changes
   useEffect(() => {
     if (!isOpen) return;
     if (editingTransaction) {
@@ -144,6 +146,40 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         const matchedCat = categoriesList.find((c) => c.id === editingTransaction.category.id);
         if (matchedCat) setSelectedCategory(matchedCat);
       }
+    } else if (initialTransaction) {
+      const targetType = initialTransaction.type === 'INCOME' ? 'INCOME' : 'EXPENSE';
+      setType(targetType);
+      setAmount(initialTransaction.amount || 0);
+      setDate(initialTransaction.date || getTodayLocalDateStr());
+      if (initialTransaction.time) {
+        setTime(initialTransaction.time);
+      } else {
+        setTime(new Date().toTimeString().slice(0, 5));
+      }
+      setNote(initialTransaction.note || '');
+      if (initialTransaction.account) {
+        const matchedAcc = accounts.find(
+          (a) =>
+            a.id === initialTransaction.account?.id ||
+            a.name.toLowerCase() === initialTransaction.account?.name?.toLowerCase() ||
+            (initialTransaction.account?.name &&
+              (a.name.toLowerCase().includes(initialTransaction.account.name.toLowerCase()) ||
+                initialTransaction.account.name.toLowerCase().includes(a.name.toLowerCase())))
+        );
+        if (matchedAcc) setSelectedAccount(matchedAcc);
+      }
+      if (initialTransaction.category) {
+        const matchedCat = categoriesList.find(
+          (c) =>
+            (c.id === initialTransaction.category?.id ||
+              c.name.toLowerCase() === initialTransaction.category?.name?.toLowerCase() ||
+              (initialTransaction.category?.name &&
+                (c.name.toLowerCase().includes(initialTransaction.category.name.toLowerCase()) ||
+                  initialTransaction.category.name.toLowerCase().includes(c.name.toLowerCase())))) &&
+            c.type === targetType
+        );
+        if (matchedCat) setSelectedCategory(matchedCat);
+      }
     } else {
       setType('EXPENSE');
       setAmount(0);
@@ -151,7 +187,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setTime(new Date().toTimeString().slice(0, 5));
       setNote('');
     }
-  }, [isOpen, editingTransaction]);
+  }, [isOpen, editingTransaction, initialTransaction]);
 
   // Sync categories prop
   useEffect(() => {
@@ -181,23 +217,45 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         selectedCategory.type !== type ||
         !filteredCategories.some((c) => c.id === selectedCategory.id)
       ) {
-        setSelectedCategory(filteredCategories[0]);
+        const preferredCat = editingTransaction?.category || initialTransaction?.category;
+        const matchedPref = preferredCat
+          ? filteredCategories.find(
+              (c) =>
+                c.id === preferredCat.id ||
+                c.name.toLowerCase() === preferredCat.name?.toLowerCase() ||
+                (preferredCat.name &&
+                  (c.name.toLowerCase().includes(preferredCat.name.toLowerCase()) ||
+                    preferredCat.name.toLowerCase().includes(c.name.toLowerCase())))
+            )
+          : null;
+        setSelectedCategory(matchedPref || filteredCategories[0]);
       }
     } else {
       setSelectedCategory(null);
     }
-  }, [filteredCategories, type, selectedCategory]);
+  }, [filteredCategories, type, selectedCategory, editingTransaction, initialTransaction]);
 
   // Sync selectedAccount
   useEffect(() => {
     if (accounts.length > 0) {
       if (!selectedAccount || !accounts.some((a) => a.id === selectedAccount.id)) {
-        setSelectedAccount(accounts[0]);
+        const preferredAcc = editingTransaction?.account || initialTransaction?.account;
+        const matchedPref = preferredAcc
+          ? accounts.find(
+              (a) =>
+                a.id === preferredAcc.id ||
+                a.name.toLowerCase() === preferredAcc.name?.toLowerCase() ||
+                (preferredAcc.name &&
+                  (a.name.toLowerCase().includes(preferredAcc.name.toLowerCase()) ||
+                    preferredAcc.name.toLowerCase().includes(a.name.toLowerCase())))
+            )
+          : null;
+        setSelectedAccount(matchedPref || accounts[0]);
       }
     } else {
       setSelectedAccount(null);
     }
-  }, [accounts, selectedAccount]);
+  }, [accounts, selectedAccount, editingTransaction, initialTransaction]);
 
   // Shortcuts: Escape to close, Enter to submit
   useEffect(() => {
@@ -448,11 +506,17 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                {editingTransaction ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch mới'}
+                {editingTransaction
+                  ? 'Chỉnh sửa giao dịch'
+                  : initialTransaction
+                  ? 'Chỉnh sửa giao dịch từ AI'
+                  : 'Thêm giao dịch mới'}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 {editingTransaction
                   ? `Cập nhật thông tin giao dịch #${editingTransaction.id}`
+                  : initialTransaction
+                  ? 'Kiểm tra và tùy chỉnh thông tin do AI bóc tách trước khi lưu'
                   : type === 'EXPENSE'
                   ? 'Ghi nhận chi phí sinh hoạt & dòng tiền ra'
                   : 'Ghi nhận nguồn thu nhập & tích lũy tài sản'}
