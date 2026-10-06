@@ -17,37 +17,6 @@ interface DashboardPageProps {
 
 type TimeRangeOption = 'ALL' | '1_MONTH' | '3_MONTHS' | '6_MONTHS' | 'CUSTOM';
 
-const PASTEL_PALETTES = [
-  'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
-  'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
-  'bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300',
-  'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
-  'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
-  'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300',
-  'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300',
-  'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300',
-  'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300',
-  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300',
-];
-
-const getCategoryPastelBg = (id?: number, name?: string): string => {
-  if (typeof id === 'number' && id > 0) {
-    return PASTEL_PALETTES[id % PASTEL_PALETTES.length];
-  }
-  const str = name || 'category';
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return PASTEL_PALETTES[Math.abs(hash) % PASTEL_PALETTES.length];
-};
-
-const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE', name?: string) => {
-  const theme = getCategoryTheme({ name, icon, type });
-  return <span className="text-base leading-none select-none">{theme.emoji}</span>;
-};
-
 // Get today YYYY-MM-DD in local timezone
 const getTodayLocalDate = (): string => {
   const now = new Date();

@@ -10,6 +10,7 @@ export interface AccountDetailModalProps {
   onClose: () => void;
   account: Account | null;
   onAccountUpdated?: (updatedAccount: Account) => void;
+  onOpenEditAccount?: (account: Account) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onRefresh?: () => void;
   initialEditMode?: boolean;
@@ -31,6 +32,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
   onClose,
   account,
   onAccountUpdated,
+  onOpenEditAccount,
   onOpenAddTransaction,
   onRefresh,
   initialEditMode = false,
@@ -646,27 +648,29 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                 </button>
               )}
 
-              {/* SỬA TÀI KHOẢN TOGGLE (Ẩn khi là thẻ tín dụng) */}
-              {!isCredit && (
-                <button
-                  type="button"
-                  onClick={() => {
+              {/* SỬA TÀI KHOẢN TOGGLE */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenEditAccount && currentAccount) {
+                    onOpenEditAccount(currentAccount);
+                  } else {
                     setIsEditing((prev) => !prev);
                     setEditError(null);
-                  }}
-                  className={`px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    isEditing
-                      ? 'bg-surface-container-high border-secondary text-secondary shadow-inner'
-                      : 'bg-surface-container-lowest border-outline-variant/40 hover:bg-surface-container text-on-surface'
-                  }`}
-                  title="Sửa chữa thông tin tài khoản"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isEditing ? 'keyboard_arrow_up' : 'edit'}
-                  </span>
-                  <span>{isEditing ? 'Đóng form' : 'Sửa tài khoản'}</span>
-                </button>
-              )}
+                  }
+                }}
+                className={`px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  isEditing
+                    ? 'bg-surface-container-high border-secondary text-secondary shadow-inner'
+                    : 'bg-surface-container-lowest border-outline-variant/40 hover:bg-surface-container text-on-surface'
+                }`}
+                title="Sửa chữa thông tin tài khoản"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {isEditing ? 'keyboard_arrow_up' : 'edit'}
+                </span>
+                <span>{isEditing ? 'Đóng form' : 'Sửa tài khoản'}</span>
+              </button>
             </div>
           </div>
 

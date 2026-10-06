@@ -118,7 +118,7 @@ export const accountService = {
     archived = true,
     accountData?: Partial<Account>
   ): Promise<Account | void> {
-    let result: Account | void;
+    let result: Account | void = undefined;
     try {
       const res = await api.patch<ApiResponse<Account>>(`/accounts/${id}/archive`, null, {
         params: { archived },

@@ -54,20 +54,20 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<AccountType>('BANK');
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [accountToArchive, setAccountToArchive] = useState<Account | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openMenuAccountId, setOpenMenuAccountId] = useState<number | null>(null);
 
-  // Account Detail Modal (Edit account & Transaction history with Day/Month/Year filters)
+  // Account Detail Modal (Transaction history with Day/Month/Year filters)
   const [selectedDetailAccount, setSelectedDetailAccount] = useState<Account | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailInitialEdit, setDetailInitialEdit] = useState(false);
 
   const handleOpenEditAccount = (account: Account) => {
-    setSelectedDetailAccount(account);
-    setDetailInitialEdit(true);
-    setIsDetailModalOpen(true);
+    setEditingAccount(account);
+    setIsModalOpen(true);
   };
 
   // Privacy toggle for hiding balances
@@ -475,6 +475,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   // HANDLERS
   // ============================================================
   const handleOpenAddModal = (defaultType: AccountType = 'BANK') => {
+    setEditingAccount(null);
     setModalDefaultType(defaultType);
     setIsModalOpen(true);
   };
@@ -482,6 +483,22 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const handleAccountCreated = async (created: Account) => {
     showToast(`Đã tạo tài khoản "${created.name}" thành công!`);
     if (onAddAccount) onAddAccount(created);
+    window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
+    await fetchAccounts();
+  };
+
+  const handleAccountUpdated = async (updated: Account) => {
+    showToast(`Đã cập nhật tài khoản "${updated.name}" thành công!`);
+    setSummary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        accounts: prev.accounts.map((a) => (a.id === updated.id ? updated : a)),
+      };
+    });
+    if (selectedDetailAccount?.id === updated.id) {
+      setSelectedDetailAccount(updated);
+    }
     window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
     await fetchAccounts();
   };
@@ -1152,13 +1169,23 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         )}
       </div>
 
-      {/* MODAL: ADD ACCOUNT */}
+      {/* MODAL: ADD / EDIT ACCOUNT */}
       <AddAccountModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleAccountCreated}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingAccount(null);
+        }}
+        onSuccess={(saved) => {
+          if (editingAccount) {
+            handleAccountUpdated(saved);
+          } else {
+            handleAccountCreated(saved);
+          }
+        }}
         defaultType={modalDefaultType}
         existingAccounts={activeAccounts}
+        accountToEdit={editingAccount}
       />
 
       {/* MODAL: CONFIRM ARCHIVE */}
@@ -1233,6 +1260,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               accounts: prev.accounts.map((a) => (a.id === updatedAccount.id ? updatedAccount : a)),
             };
           });
+        }}
+        onOpenEditAccount={(acc) => {
+          setIsDetailModalOpen(false);
+          handleOpenEditAccount(acc);
         }}
         onOpenAddTransaction={(initial) => {
           if (onOpenAddTransaction) {

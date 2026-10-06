@@ -54,12 +54,6 @@ const getAccountEmoji = (type: AccountType): string => {
   }
 };
 
-
-const PRESET_ICONS = [
-  '🍜', '👕', '🛒', '🚕', '🎮', '🏠', '💊', '📚', '☕', '✈️',
-  '🎬', '📱', '💻', '🎁', '📈', '📦', '⚽', '🛠️', '🪙', '💰'
-];
-
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   isOpen,
   onClose,

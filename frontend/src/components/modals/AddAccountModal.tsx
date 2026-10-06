@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Account, AccountType, AccountCreatePayload, Category } from '../../types';
+import type { Account, AccountType, AccountCreatePayload, AccountUpdatePayload, Category } from '../../types';
 import { accountService } from '../../services/accountService';
 import { transactionService } from '../../services/transactionService';
 import { categoryService } from '../../services/categoryService';
@@ -15,9 +15,10 @@ export interface PurposePreset {
 export interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (newAccount: Account) => void;
+  onSuccess: (savedAccount: Account) => void;
   defaultType?: AccountType;
   existingAccounts?: Account[];
+  accountToEdit?: Account | null;
 }
 
 export const AddAccountModal: React.FC<AddAccountModalProps> = ({
@@ -26,8 +27,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   onSuccess,
   defaultType = 'BANK',
   existingAccounts = [],
+  accountToEdit = null,
 }) => {
-  const [modalType, setModalType] = useState<AccountType>(defaultType);
+  const isEditMode = Boolean(accountToEdit);
+  const [modalType, setModalType] = useState<AccountType>(accountToEdit?.type || defaultType);
   const [modalName, setModalName] = useState('');
   const [modalNote, setModalNote] = useState('');
   const [modalBalance, setModalBalance] = useState<string>('');
@@ -54,17 +57,39 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    setModalType(defaultType);
-    setModalName('');
-    setModalNote('');
-    setModalBalance('');
-    setModalCreditLimit('');
-    setModalAccountNumber('');
-    setModalError(null);
-    setFundingSource('INCOME');
-    setStatementDay(20);
-    setPaymentDueDay(5);
-    setIsAutoPayment(false);
+    if (accountToEdit) {
+      setModalType(accountToEdit.type);
+      setModalName(accountToEdit.name || '');
+      setModalNote(accountToEdit.note || '');
+      setModalBalance(
+        accountToEdit.type === 'CREDIT_CARD'
+          ? ''
+          : formatCurrencyInput(String(accountToEdit.currentBalance ?? accountToEdit.initialBalance ?? 0))
+      );
+      setModalCreditLimit(
+        accountToEdit.creditLimit
+          ? formatCurrencyInput(String(accountToEdit.creditLimit))
+          : ''
+      );
+      setModalAccountNumber(accountToEdit.accountNumber || '');
+      setModalError(null);
+      setFundingSource('INCOME');
+      setStatementDay(20);
+      setPaymentDueDay(5);
+      setIsAutoPayment(false);
+    } else {
+      setModalType(defaultType);
+      setModalName('');
+      setModalNote('');
+      setModalBalance('');
+      setModalCreditLimit('');
+      setModalAccountNumber('');
+      setModalError(null);
+      setFundingSource('INCOME');
+      setStatementDay(20);
+      setPaymentDueDay(5);
+      setIsAutoPayment(false);
+    }
 
     // 1. Sync or fetch source accounts for TRANSFER & credit card settlement
     if (existingAccounts && existingAccounts.length > 0) {
@@ -107,18 +132,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         }
       })
       .catch((err) => console.warn('Could not load categories in AddAccountModal:', err));
-  }, [isOpen]);
+  }, [isOpen, accountToEdit, defaultType]);
 
   if (!isOpen) return null;
 
   const initialBal = parseCurrencyInput(modalBalance);
-
-  const applyPreset = (preset: PurposePreset) => {
-    setModalName(preset.name);
-    setModalNote(preset.note);
-    setModalType(preset.type);
-    if (modalError) setModalError(null);
-  };
 
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +156,37 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
     const accNum = modalAccountNumber.trim();
     const finalNote = modalNote.trim();
+
+    // XỬ LÝ KHI ĐANG Ở CHẾ ĐỘ SỬA TÀI KHOẢN (EDIT MODE)
+    if (isEditMode && accountToEdit) {
+      const payload: AccountUpdatePayload = {
+        name: trimmedName,
+        accountNumber: accNum || undefined,
+        note: finalNote || undefined,
+      };
+
+      if (modalType === 'CREDIT_CARD') {
+        payload.creditLimit = creditLim;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const updated = await accountService.updateAccount(accountToEdit.id, payload);
+        window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
+        onClose();
+        onSuccess(updated);
+      } catch (err: any) {
+        console.error('Error updating account:', err);
+        const backendMsg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error?.details?.name ||
+          err?.response?.data?.error?.message;
+        setModalError(backendMsg || 'Không thể cập nhật thông tin tài khoản. Vui lòng thử lại.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     const effectiveInitialBal = modalType === 'CREDIT_CARD' ? 0 : initialBal;
 
@@ -299,12 +348,19 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-space-xs">
             <div className="w-10 h-10 rounded-xl bg-secondary-fixed/50 text-secondary flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">savings</span>
+              <span className="material-symbols-outlined text-[24px]">
+                {isEditMode ? 'edit_square' : 'savings'}
+              </span>
             </div>
             <div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                Tạo Tài Khoản Mới
+                {isEditMode ? 'Chỉnh Sửa Tài Khoản' : 'Tạo Tài Khoản Mới'}
               </h3>
+              {isEditMode && accountToEdit && (
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Cập nhật thông tin cho &quot;{accountToEdit.name}&quot;
+                </p>
+              )}
             </div>
           </div>
           <button
@@ -325,26 +381,42 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </div>
           )}
 
-          {/* 1. Hình thức giữ tiền - ĐƯỢC ĐƯA LÊN ĐẦU */}
+          {/* 1. Hình thức giữ tiền - KHÓA KHI Ở CHẾ ĐỘ SỬA */}
           <div className="flex flex-col gap-space-2xs">
-            <label className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[18px] text-primary">account_balance_wallet</span>
-              <span>Hình thức giữ tiền:</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[18px] text-primary">account_balance_wallet</span>
+                <span>Hình thức giữ tiền:</span>
+              </label>
+              {isEditMode && (
+                <span className="text-[11px] text-on-surface-variant flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-md font-medium border border-outline-variant/30">
+                  <span className="material-symbols-outlined text-[13px] text-on-surface-variant">lock</span>
+                  <span>Đã khóa hình thức</span>
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-space-xs">
               <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl transition-all ${
+                  isEditMode ? 'cursor-not-allowed select-none' : 'cursor-pointer'
+                } ${
                   modalType === 'BANK'
                     ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : isEditMode
+                    ? 'bg-surface-container-low text-on-surface-variant/40 opacity-40 border border-transparent'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
+                title={isEditMode ? 'Không thể thay đổi hình thức của tài khoản đã tạo' : undefined}
               >
                 <input
                   type="radio"
                   name="acc_type"
                   value="BANK"
+                  disabled={isEditMode}
                   checked={modalType === 'BANK'}
                   onChange={() => {
+                    if (isEditMode) return;
                     setModalType('BANK');
                     setModalCreditLimit('');
                   }}
@@ -355,18 +427,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </label>
 
               <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl transition-all ${
+                  isEditMode ? 'cursor-not-allowed select-none' : 'cursor-pointer'
+                } ${
                   modalType === 'CASH'
                     ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : isEditMode
+                    ? 'bg-surface-container-low text-on-surface-variant/40 opacity-40 border border-transparent'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
+                title={isEditMode ? 'Không thể thay đổi hình thức của tài khoản đã tạo' : undefined}
               >
                 <input
                   type="radio"
                   name="acc_type"
                   value="CASH"
+                  disabled={isEditMode}
                   checked={modalType === 'CASH'}
                   onChange={() => {
+                    if (isEditMode) return;
                     setModalType('CASH');
                     setModalCreditLimit('');
                   }}
@@ -377,18 +456,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </label>
 
               <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl transition-all ${
+                  isEditMode ? 'cursor-not-allowed select-none' : 'cursor-pointer'
+                } ${
                   modalType === 'CREDIT_CARD'
                     ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : isEditMode
+                    ? 'bg-surface-container-low text-on-surface-variant/40 opacity-40 border border-transparent'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
+                title={isEditMode ? 'Không thể thay đổi hình thức của tài khoản đã tạo' : undefined}
               >
                 <input
                   type="radio"
                   name="acc_type"
                   value="CREDIT_CARD"
+                  disabled={isEditMode}
                   checked={modalType === 'CREDIT_CARD'}
                   onChange={() => {
+                    if (isEditMode) return;
                     setModalType('CREDIT_CARD');
                     setModalBalance('');
                   }}
@@ -399,18 +485,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </label>
 
               <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl transition-all ${
+                  isEditMode ? 'cursor-not-allowed select-none' : 'cursor-pointer'
+                } ${
                   modalType === 'INVESTMENT'
                     ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : isEditMode
+                    ? 'bg-surface-container-low text-on-surface-variant/40 opacity-40 border border-transparent'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
+                title={isEditMode ? 'Không thể thay đổi hình thức của tài khoản đã tạo' : undefined}
               >
                 <input
                   type="radio"
                   name="acc_type"
                   value="INVESTMENT"
+                  disabled={isEditMode}
                   checked={modalType === 'INVESTMENT'}
                   onChange={() => {
+                    if (isEditMode) return;
                     setModalType('INVESTMENT');
                     setModalCreditLimit('');
                   }}
@@ -421,18 +514,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </label>
 
               <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl transition-all ${
+                  isEditMode ? 'cursor-not-allowed select-none' : 'cursor-pointer'
+                } ${
                   modalType === 'OTHER'
                     ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : isEditMode
+                    ? 'bg-surface-container-low text-on-surface-variant/40 opacity-40 border border-transparent'
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
                 }`}
+                title={isEditMode ? 'Không thể thay đổi hình thức của tài khoản đã tạo' : undefined}
               >
                 <input
                   type="radio"
                   name="acc_type"
                   value="OTHER"
+                  disabled={isEditMode}
                   checked={modalType === 'OTHER'}
                   onChange={() => {
+                    if (isEditMode) return;
                     setModalType('OTHER');
                     setModalCreditLimit('');
                   }}
@@ -442,6 +542,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 <span className="font-label-sm text-label-sm mt-1">Khác</span>
               </label>
             </div>
+            {isEditMode && (
+              <p className="text-[11px] text-on-surface-variant/80 flex items-center gap-1 mt-0.5">
+                <span className="material-symbols-outlined text-[13px]">info</span>
+                <span>Hình thức tài khoản đã được cố định sau khi tạo để bảo toàn lịch sử giao dịch.</span>
+              </p>
+            )}
           </div>
 
           {/* 2. Tên tài khoản */}
@@ -484,15 +590,20 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
           {/* 4. Số tiền ban đầu & Hạn mức tín dụng (Logic động: Thẻ tín dụng ngược lại các hình thức khác) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-            {/* Số tiền ban đầu: Cho nhập khi != CREDIT_CARD, Khóa khi == CREDIT_CARD */}
+            {/* Số tiền ban đầu / Số dư hiện tại: Cho nhập khi != CREDIT_CARD và !isEditMode, Khóa khi == CREDIT_CARD hoặc isEditMode */}
             <div className="flex flex-col gap-space-2xs">
               <label
                 className={`font-label-md text-label-md font-semibold ${
-                  modalType === 'CREDIT_CARD' ? 'text-on-surface-variant/60' : 'text-on-surface'
+                  modalType === 'CREDIT_CARD' || isEditMode ? 'text-on-surface-variant/70' : 'text-on-surface'
                 }`}
                 htmlFor="accBalance"
               >
-                Số tiền ban đầu
+                {isEditMode ? 'Số dư hiện tại' : 'Số tiền ban đầu'}
+                {isEditMode && modalType !== 'CREDIT_CARD' && (
+                  <span className="text-[11px] font-normal text-on-surface-variant ml-1.5">
+                    (Cố định theo giao dịch)
+                  </span>
+                )}
               </label>
               <div className="relative">
                 <input
@@ -500,12 +611,21 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   type="text"
                   inputMode="numeric"
                   placeholder="0"
-                  disabled={modalType === 'CREDIT_CARD'}
-                  value={modalType === 'CREDIT_CARD' ? '0' : modalBalance}
-                  onChange={(e) => setModalBalance(formatCurrencyInput(e.target.value))}
-                  className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row ${
+                  disabled={modalType === 'CREDIT_CARD' || isEditMode}
+                  value={
                     modalType === 'CREDIT_CARD'
-                      ? 'opacity-50 cursor-not-allowed bg-slate-100/70 dark:bg-surface-container'
+                      ? '0'
+                      : isEditMode
+                      ? (accountToEdit?.currentBalance ?? 0).toLocaleString('vi-VN')
+                      : modalBalance
+                  }
+                  onChange={(e) => {
+                    if (isEditMode) return;
+                    setModalBalance(formatCurrencyInput(e.target.value));
+                  }}
+                  className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row ${
+                    modalType === 'CREDIT_CARD' || isEditMode
+                      ? 'opacity-60 cursor-not-allowed bg-slate-100/70 dark:bg-surface-container'
                       : ''
                   }`}
                 />
@@ -692,9 +812,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           )}
 
           {/* ========================================================
-              LOGIC HỎI NGUỒN TIỀN BAN ĐẦU: THU MỚI HAY CHUYỂN TIỀN (Chỉ cho tài khoản thông thường khi initialBal > 0)
+              LOGIC HỎI NGUỒN TIỀN BAN ĐẦU: THU MỚI HAY CHUYỂN TIỀN (Chỉ cho tài khoản thông thường khi tạo mới và initialBal > 0)
           ======================================================== */}
-          {modalType !== 'CREDIT_CARD' && initialBal > 0 && (
+          {!isEditMode && modalType !== 'CREDIT_CARD' && initialBal > 0 && (
             <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-space-sm animate-in fade-in duration-200">
               <div className="flex items-center gap-2 text-on-surface font-semibold text-sm">
                 <span className="material-symbols-outlined text-secondary text-[20px]">
@@ -854,7 +974,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               disabled={isSubmitting}
               className="px-space-xl py-space-sm rounded-xl bg-primary-container hover:opacity-95 text-on-primary font-label-lg text-label-lg font-bold shadow-md transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
             >
-              {isSubmitting ? 'Đang lưu...' : 'Lưu tài khoản'}
+              {isSubmitting
+                ? 'Đang lưu...'
+                : isEditMode
+                ? 'Lưu thay đổi'
+                : 'Lưu tài khoản'}
             </button>
           </div>
         </form>
