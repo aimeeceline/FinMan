@@ -14,6 +14,7 @@ export interface AddTransactionModalProps {
   onUpdateTransaction?: (id: number, transaction: Omit<Transaction, 'id'>) => Promise<void> | void;
   editingTransaction?: Transaction | null;
   initialTransaction?: Partial<Transaction> | null;
+  initialData?: Partial<Transaction> | null;
   accounts?: Account[];
   categories?: Category[];
   transactions?: Transaction[];
@@ -60,13 +61,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onAddTransaction,
   onUpdateTransaction,
   editingTransaction,
-  initialTransaction,
+  initialTransaction: initialTransactionProp,
+  initialData,
   accounts = [],
   categories,
   transactions: _transactions = [],
   budgets: externalBudgets,
   onCategoryCreated,
 }) => {
+  const initialTransaction = initialTransactionProp || initialData;
   const [categoriesList, setCategoriesList] = useState<Category[]>(categories || []);
   const [accountsList, setAccountsList] = useState<Account[]>(accounts.filter((a) => !a.isArchived));
   const [type, setType] = useState<TransactionType>('EXPENSE');
@@ -295,6 +298,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         initialTransaction.note !== undefined ||
         initialTransaction.category !== undefined ||
         initialTransaction.account !== undefined ||
+        initialTransaction.toAccount !== undefined ||
         initialTransaction.isAiParsed)
     ) {
       const targetType = initialTransaction.type || 'EXPENSE';
@@ -307,6 +311,17 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         setTime(new Date().toTimeString().slice(0, 5));
       }
       setNote(initialTransaction.note || '');
+
+      let matchedToAcc: Account | null = null;
+      if (initialTransaction.toAccount) {
+        matchedToAcc = accountsList.find(
+          (a) =>
+            a.id === initialTransaction.toAccount?.id ||
+            a.name.toLowerCase() === initialTransaction.toAccount?.name?.toLowerCase()
+        ) || null;
+        if (matchedToAcc) setSelectedToAccount(matchedToAcc);
+      }
+
       if (initialTransaction.account) {
         const matchedAcc = accountsList.find(
           (a) =>
@@ -317,15 +332,20 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 initialTransaction.account.name.toLowerCase().includes(a.name.toLowerCase())))
         );
         if (matchedAcc) setSelectedAccount(matchedAcc);
+      } else if (matchedToAcc) {
+        // Nếu chỉ truyền toAccount (như khi bấm Thanh toán thẻ tín dụng):
+        // Ưu tiên tài khoản thanh toán đã được người dùng cấu hình cho thẻ tín dụng này
+        const configuredPaymentAcc = matchedToAcc.paymentAccountId
+          ? accountsList.find((a) => a.id === matchedToAcc.paymentAccountId)
+          : null;
+        const sourceAcc =
+          configuredPaymentAcc ||
+          accountsList.find((a) => a.id !== matchedToAcc.id && a.type !== 'CREDIT_CARD') ||
+          accountsList.find((a) => a.id !== matchedToAcc.id) ||
+          null;
+        if (sourceAcc) setSelectedAccount(sourceAcc);
       }
-      if (initialTransaction.toAccount) {
-        const matchedToAcc = accountsList.find(
-          (a) =>
-            a.id === initialTransaction.toAccount?.id ||
-            a.name.toLowerCase() === initialTransaction.toAccount?.name?.toLowerCase()
-        );
-        if (matchedToAcc) setSelectedToAccount(matchedToAcc);
-      }
+
       if (initialTransaction.category) {
         const matchedCat = categoriesList.find(
           (c) =>
@@ -430,17 +450,45 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     preferredAcc.name.toLowerCase().includes(a.name.toLowerCase())))
             )
           : null;
-        setSelectedAccount(matchedPref || accountsList[0]);
+
+        // Nếu không có preferredAcc nhưng có toAccount (ví dụ khi bấm Thanh toán thẻ tín dụng):
+        // Tránh chọn trùng với toAccount!
+        const avoidId = editingTransaction?.toAccount?.id || initialTransaction?.toAccount?.id || selectedToAccount?.id;
+        const fallbackAcc = avoidId
+          ? (accountsList.find((a) => a.id !== avoidId && a.type !== 'CREDIT_CARD')
+             || accountsList.find((a) => a.id !== avoidId)
+             || accountsList[0])
+          : accountsList[0];
+
+        setSelectedAccount(matchedPref || fallbackAcc);
       }
     } else {
       setSelectedAccount(null);
     }
-  }, [isOpen, accountsList, selectedAccount, editingTransaction, initialTransaction]);
+  }, [isOpen, accountsList, selectedAccount, editingTransaction, initialTransaction, selectedToAccount?.id]);
 
   // Sync selectedToAccount when type is TRANSFER
   useEffect(() => {
     if (!isOpen) return;
     if (type === 'TRANSFER' && accountsList.length > 0) {
+      const preferredTo = editingTransaction?.toAccount || initialTransaction?.toAccount;
+      if (preferredTo) {
+        const matchedTo = accountsList.find(
+          (a) => a.id === preferredTo.id || a.name.toLowerCase() === preferredTo.name?.toLowerCase()
+        );
+        if (matchedTo) {
+          if (!selectedToAccount || selectedToAccount.id !== matchedTo.id) {
+            setSelectedToAccount(matchedTo);
+          }
+          if (selectedAccount?.id === matchedTo.id) {
+            const otherFromAcc = accountsList.find((a) => a.id !== matchedTo.id && a.type !== 'CREDIT_CARD')
+              || accountsList.find((a) => a.id !== matchedTo.id);
+            if (otherFromAcc) setSelectedAccount(otherFromAcc);
+          }
+          return;
+        }
+      }
+
       if (
         !selectedToAccount ||
         selectedToAccount.id === selectedAccount?.id ||
@@ -450,7 +498,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         if (otherAcc) setSelectedToAccount(otherAcc);
       }
     }
-  }, [isOpen, type, accountsList, selectedAccount, selectedToAccount]);
+  }, [isOpen, type, accountsList, selectedAccount, selectedToAccount, editingTransaction, initialTransaction]);
 
   // Handle switching from account with auto-switch for destination
   const handleFromAccountChange = (accId: number) => {
@@ -565,6 +613,31 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     };
   }, [type, selectedCategory, date, activeBudgets, amount, editingTransaction]);
 
+  // Kiểm tra hạn mức tín dụng thời gian thực khi chọn tài khoản là thẻ tín dụng
+  const creditLimitValidation = useMemo(() => {
+    if (!selectedAccount || selectedAccount.type !== 'CREDIT_CARD') return null;
+    const limit = selectedAccount.creditLimit || 0;
+    let baseDebt = selectedAccount.currentBalance || 0;
+    if (
+      editingTransaction &&
+      editingTransaction.account?.id === selectedAccount.id &&
+      (editingTransaction.type === 'EXPENSE' || editingTransaction.type === 'TRANSFER')
+    ) {
+      baseDebt = Math.max(0, baseDebt - (editingTransaction.amount || 0));
+    }
+    const availableCredit = limit > 0 ? Math.max(0, limit - baseDebt) : 0;
+    const isExceeded = limit > 0 && (type === 'EXPENSE' || type === 'TRANSFER') && amount > availableCredit;
+    const remainingAfterSpend = limit > 0 ? limit - (baseDebt + amount) : 0;
+
+    return {
+      limit,
+      currentDebt: baseDebt,
+      availableCredit,
+      isExceeded,
+      remainingAfterSpend,
+    };
+  }, [selectedAccount, editingTransaction, type, amount]);
+
   if (!isOpen) return null;
 
   const handleAddQuickAmount = (val: number) => {
@@ -602,6 +675,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     }
     if (!selectedAccount) {
       setFormError('Vui lòng chọn tài khoản giao dịch.');
+      return;
+    }
+
+    // RÀNG BUỘC HẠN MỨC TÍN DỤNG: Không cho phép chi tiêu hoặc chuyển tiền vượt hạn mức
+    if (creditLimitValidation && creditLimitValidation.isExceeded) {
+      setFormError(
+        `Giao dịch vượt quá hạn mức tín dụng khả dụng của thẻ "${selectedAccount.name}"! Hạn mức khả dụng còn lại là ${creditLimitValidation.availableCredit.toLocaleString('vi-VN')} đ, số tiền bạn nhập là ${amount.toLocaleString('vi-VN')} đ.`
+      );
       return;
     }
 
@@ -694,7 +775,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/65 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-6 transition-all duration-300 select-none animate-fadeIn"
+      className="fixed inset-0 bg-slate-950/65 backdrop-blur-md z-[200] flex items-center justify-center p-4 lg:p-6 transition-all duration-300 select-none animate-fadeIn"
       data-purpose="modal-container"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -961,6 +1042,17 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 Xóa (C)
               </button>
             </div>
+
+            {/* Cảnh báo thời gian thực khi số tiền vượt hạn mức thẻ tín dụng */}
+            {creditLimitValidation?.isExceeded && (
+              <div className="mt-3.5 py-2 px-3 bg-red-100/95 border border-red-300 rounded-xl text-red-700 text-xs font-bold inline-flex items-center gap-1.5 animate-pulse shadow-xs">
+                <span className="material-symbols-outlined text-[18px]">warning</span>
+                <span>
+                  Vượt quá hạn mức tín dụng! Thẻ "{selectedAccount?.name}" chỉ còn khả dụng tối đa{' '}
+                  <strong className="underline">{creditLimitValidation.availableCredit.toLocaleString('vi-VN')} đ</strong>.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Main Form: Two Column Layout */}
@@ -999,7 +1091,9 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       </span>
                       {selectedAccount && (
                         <span className="text-xs font-semibold text-slate-500 font-currency-row">
-                          Khả dụng: {formatVND(selectedAccount.currentBalance)}
+                          {selectedAccount.type === 'CREDIT_CARD'
+                            ? `Khả dụng thẻ: ${formatVND(Math.max(0, (selectedAccount.creditLimit || 0) - (selectedAccount.currentBalance || 0)))}`
+                            : `Khả dụng: ${formatVND(selectedAccount.currentBalance)}`}
                         </span>
                       )}
                     </div>
@@ -1010,27 +1104,44 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       {accountsList.length === 0 && <option value="">-- Chưa có tài khoản --</option>}
-                      {accountsList.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {getAccountEmoji(a.type)} {a.name} (Số dư: {formatVND(a.currentBalance)})
-                          {a.note ? ` - [${a.note}]` : ''}
-                        </option>
-                      ))}
+                      {accountsList.map((a) => {
+                        const isCard = a.type === 'CREDIT_CARD';
+                        const avail = isCard && a.creditLimit
+                          ? Math.max(0, a.creditLimit - (a.currentBalance || 0))
+                          : a.currentBalance;
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {getAccountEmoji(a.type)} {a.name} ({isCard ? 'Khả dụng' : 'Số dư'}: {formatVND(avail)})
+                            {a.note ? ` - [${a.note}]` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
 
                     {selectedAccount && (
                       <div className="mt-2 text-[11px] flex items-center justify-between text-slate-500 pt-1.5 border-t border-slate-100">
                         <span>Sau khi trích:</span>
-                        <span
-                          className={`font-bold font-currency-row ${
-                            selectedAccount.currentBalance - amount < 0
-                              ? 'text-red-600'
-                              : 'text-slate-700'
-                          }`}
-                        >
-                          {formatVND(selectedAccount.currentBalance - amount)}
-                          {selectedAccount.currentBalance - amount < 0 && ' (⚠️ Vượt số dư)'}
-                        </span>
+                        {selectedAccount.type === 'CREDIT_CARD' ? (
+                          <span
+                            className={`font-bold font-currency-row ${
+                              creditLimitValidation?.isExceeded ? 'text-red-600' : 'text-slate-700'
+                            }`}
+                          >
+                            Còn hạn mức: {formatVND(Math.max(0, creditLimitValidation?.remainingAfterSpend || 0))}
+                            {creditLimitValidation?.isExceeded && ' (⚠️ Vượt hạn mức thẻ)'}
+                          </span>
+                        ) : (
+                          <span
+                            className={`font-bold font-currency-row ${
+                              selectedAccount.currentBalance - amount < 0
+                                ? 'text-red-600'
+                                : 'text-slate-700'
+                            }`}
+                          >
+                            {formatVND(selectedAccount.currentBalance - amount)}
+                            {selectedAccount.currentBalance - amount < 0 && ' (⚠️ Vượt số dư)'}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1306,12 +1417,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all appearance-none cursor-pointer"
                     >
-                      {accountsList.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {getAccountEmoji(a.type)} {a.name} (Khả dụng:{' '}
-                          {a.currentBalance.toLocaleString('vi-VN')} đ)
-                        </option>
-                      ))}
+                      {accountsList.map((a) => {
+                        const isCard = a.type === 'CREDIT_CARD';
+                        const avail = isCard && a.creditLimit
+                          ? Math.max(0, a.creditLimit - (a.currentBalance || 0))
+                          : a.currentBalance;
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {getAccountEmoji(a.type)} {a.name} ({isCard ? 'Khả dụng thẻ' : 'Số dư'}:{' '}
+                            {avail.toLocaleString('vi-VN')} đ)
+                          </option>
+                        );
+                      })}
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1324,6 +1441,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       </svg>
                     </div>
                   </div>
+
+                  {/* THÔNG TIN THẺ TÍN DỤNG & CẢNH BÁO HẠN MỨC */}
+                  {selectedAccount?.type === 'CREDIT_CARD' && creditLimitValidation && (
+                    <div
+                      className={`mt-2 p-2.5 rounded-xl border text-xs transition-all ${
+                        creditLimitValidation.isExceeded
+                          ? 'bg-red-50 border-red-300 text-red-800 shadow-xs'
+                          : 'bg-amber-50/70 border-amber-200 text-amber-900'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[15px] text-amber-700">credit_card</span>
+                          Hạn mức: {creditLimitValidation.limit.toLocaleString('vi-VN')} đ
+                        </span>
+                        <span className={creditLimitValidation.isExceeded ? 'text-red-700 font-extrabold' : 'text-slate-700'}>
+                          Khả dụng: <strong>{creditLimitValidation.availableCredit.toLocaleString('vi-VN')} đ</strong>
+                        </span>
+                      </div>
+                      {creditLimitValidation.isExceeded ? (
+                        <p className="mt-1 text-red-600 font-bold flex items-center gap-1 leading-tight">
+                          <span className="material-symbols-outlined text-[15px] shrink-0">error</span>
+                          Vượt quá hạn mức! Chỉ còn được chi tối đa {creditLimitValidation.availableCredit.toLocaleString('vi-VN')} đ.
+                        </p>
+                      ) : (
+                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                          <span>Dư nợ hiện tại: {creditLimitValidation.currentDebt.toLocaleString('vi-VN')} đ</span>
+                          <span>Sau chi còn: {Math.max(0, creditLimitValidation.remainingAfterSpend).toLocaleString('vi-VN')} đ</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

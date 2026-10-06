@@ -12,6 +12,7 @@ import { AccountDetailModal } from '../../components/modals/AccountDetailModal';
 interface AccountsPageProps {
   accounts?: Account[];
   onAddAccount?: (account: Account) => void;
+  onUpdateAccount?: (account: Account) => void;
   onRefresh?: () => void;
   onOpenAddTransaction?: (initial?: Partial<any>) => void;
 }
@@ -42,6 +43,7 @@ const Dong: React.FC<{ className?: string }> = ({ className = '' }) => (
 export const AccountsPage: React.FC<AccountsPageProps> = ({
   accounts: propAccounts,
   onAddAccount,
+  onUpdateAccount,
   onRefresh,
   onOpenAddTransaction,
 }) => {
@@ -489,6 +491,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
 
   const handleAccountUpdated = async (updated: Account) => {
     showToast(`Đã cập nhật tài khoản "${updated.name}" thành công!`);
+    if (onUpdateAccount) onUpdateAccount(updated);
     setSummary((prev) => {
       if (!prev) return prev;
       return {
@@ -652,25 +655,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     text-xs font-medium text-on-surface
                     animate-in fade-in zoom-in-95 duration-100
                   "
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenMenuAccountId(null);
-                      handleOpenEditAccount(account);
-                    }}
-                    className="
-                      w-full px-3 py-2 text-left
-                      hover:bg-surface-container hover:text-secondary
-                      flex items-center gap-2
-                      cursor-pointer transition-colors
-                    "
-                  >
-                    <span className="material-symbols-outlined text-[16px]">
-                      edit
-                    </span>
-                    <span>Sửa tài khoản</span>
-                  </button>
+                >                
+
                   <button
                     type="button"
                     onClick={() => {
@@ -697,6 +683,16 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
 
         {/* MIDDLE ROW: CURRENT BALANCE */}
         <div className="py-1">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[11px] font-medium text-on-surface-variant">
+              {isCredit ? 'Dư nợ thẻ' : 'Số dư'}
+            </span>
+            {isCredit && currentBalance > 0 && (
+              <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                Đang nợ
+              </span>
+            )}
+          </div>
           <span
             className={`
               font-currency-display
@@ -704,7 +700,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               font-extrabold
               tracking-tight
               block
-              ${getBalanceColor(account)}
+              ${isCredit ? (currentBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-secondary') : getBalanceColor(account)}
             `}
           >
             {hideBalance ? '••••••••' : currentBalance.toLocaleString('vi-VN')} <Dong />
@@ -1177,7 +1173,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           setEditingAccount(null);
         }}
         onSuccess={(saved) => {
-          if (editingAccount) {
+          const isEdit = Boolean(editingAccount && editingAccount.id === saved.id) || activeAccounts.some((a) => a.id === saved.id);
+          if (isEdit) {
             handleAccountUpdated(saved);
           } else {
             handleAccountCreated(saved);

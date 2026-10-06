@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { aiService, type AiQuickAddResult, type AiQuickAddItem, type AiInsightsResult, type AiStatusResult } from '../../services/aiService';
 import { transactionService } from '../../services/transactionService';
@@ -6,6 +6,9 @@ import { accountService } from '../../services/accountService';
 import { categoryService } from '../../services/categoryService';
 import type { Account, Category, Transaction } from '../../types';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+
+const CHAT_STORAGE_KEY_PREFIX = 'finman_ai_chat_history_';
+const MAX_STORED_MESSAGES = 100;
 
 export interface ParsedItemState extends AiQuickAddItem {
   id: string;
@@ -68,18 +71,119 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [aiStatus, setAiStatus] = useState<AiStatusResult | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Helper render markdown bold text
-  const renderFormattedText = (text: string) => {
+  const handleCopyMessage = (messageId: string, text: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedMessageId(messageId);
+        setTimeout(() => setCopiedMessageId(null), 2000);
+      }).catch(console.error);
+    }
+  };
+
+  // Phát hiện chỉ số tài chính chính (Chi tiêu, Thu nhập, Số dư) để hiển thị Hero Stat Widget
+  const detectStatHighlight = (text: string) => {
+    if (!text) return null;
+
+    // Chi tiêu hôm nay
+    const todayExp = text.match(/hôm nay[^\n]*chi tiêu(?: tổng cộng)?[^\n]*\*\*([0-9.,]+(?:\s*₫)?)\*\*/i)
+      || text.match(/hôm nay[^\n]*chi tiêu tổng cộng\s*([0-9.,]+(?:\s*₫)?)/i);
+    if (todayExp) {
+      const amt = todayExp[1].trim().endsWith('₫') ? todayExp[1].trim() : `${todayExp[1].trim()} ₫`;
+      return {
+        label: 'Tổng chi tiêu hôm nay',
+        amount: amt,
+        icon: 'payments',
+        containerClass: 'bg-rose-50/80 dark:bg-rose-950/25 border-rose-200/80 dark:border-rose-900/40 text-rose-900 dark:text-rose-200',
+        iconBg: 'bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300',
+        badge: 'Hôm nay',
+      };
+    }
+
+    // Thu nhập hôm nay
+    const todayInc = text.match(/hôm nay[^\n]*thu nhập[^\n]*\*\*([0-9.,]+(?:\s*₫)?)\*\*/i);
+    if (todayInc) {
+      const amt = todayInc[1].trim().endsWith('₫') ? todayInc[1].trim() : `${todayInc[1].trim()} ₫`;
+      return {
+        label: 'Tổng thu nhập hôm nay',
+        amount: amt,
+        icon: 'trending_up',
+        containerClass: 'bg-emerald-50/80 dark:bg-emerald-950/25 border-emerald-200/80 dark:border-emerald-900/40 text-emerald-900 dark:text-emerald-200',
+        iconBg: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300',
+        badge: 'Hôm nay',
+      };
+    }
+
+    // Chi tiêu hôm qua
+    const yExp = text.match(/hôm qua[^\n]*chi tiêu(?: tổng cộng)?[^\n]*\*\*([0-9.,]+(?:\s*₫)?)\*\*/i);
+    if (yExp) {
+      const amt = yExp[1].trim().endsWith('₫') ? yExp[1].trim() : `${yExp[1].trim()} ₫`;
+      return {
+        label: 'Tổng chi tiêu hôm qua',
+        amount: amt,
+        icon: 'history_toggle_off',
+        containerClass: 'bg-amber-50/80 dark:bg-amber-950/25 border-amber-200/80 dark:border-amber-900/40 text-amber-900 dark:text-amber-200',
+        iconBg: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300',
+        badge: 'Hôm qua',
+      };
+    }
+
+    // Tổng số dư khả dụng
+    const bal = text.match(/tổng số dư khả dụng[^\n]*\*\*([0-9.,]+(?:\s*₫)?)\*\*/i)
+      || text.match(/số dư hiện tại của tài khoản[^\n]*là \*\*([0-9.,]+(?:\s*₫)?)\*\*/i);
+    if (bal) {
+      const amt = bal[1].trim().endsWith('₫') ? bal[1].trim() : `${bal[1].trim()} ₫`;
+      return {
+        label: 'Số dư khả dụng',
+        amount: amt,
+        icon: 'account_balance_wallet',
+        containerClass: 'bg-blue-50/80 dark:bg-blue-950/25 border-blue-200/80 dark:border-blue-900/40 text-blue-900 dark:text-blue-200',
+        iconBg: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300',
+        badge: 'Khả dụng',
+      };
+    }
+
+    // Chi tiêu tháng này
+    const mExp = text.match(/(?:trong tháng|tháng này)[^\n]*chi tiêu tổng cộng[^\n]*\*\*([0-9.,]+(?:\s*₫)?)\*\*/i);
+    if (mExp) {
+      const amt = mExp[1].trim().endsWith('₫') ? mExp[1].trim() : `${mExp[1].trim()} ₫`;
+      return {
+        label: 'Tổng chi tiêu tháng này',
+        amount: amt,
+        icon: 'calendar_month',
+        containerClass: 'bg-indigo-50/80 dark:bg-indigo-950/25 border-indigo-200/80 dark:border-indigo-900/40 text-indigo-900 dark:text-indigo-200',
+        iconBg: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300',
+        badge: 'Tháng này',
+      };
+    }
+
+    return null;
+  };
+
+  // Helper render inline markdown bold text & highlight money
+  const renderInlineFormatted = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
+        const inner = part.slice(2, -2);
+        const isMoney = inner.includes('₫') || /^[0-9.,]+\s*(?:k|tr|đ|vnđ)?$/i.test(inner.trim());
+        if (isMoney) {
+          return (
+            <span
+              key={i}
+              className="font-extrabold text-primary dark:text-primary-300 bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded-lg inline-flex items-center gap-1 mx-0.5 shadow-2xs font-display tracking-tight"
+            >
+              {inner}
+            </span>
+          );
+        }
         return (
           <strong key={i} className="font-bold text-on-surface">
-            {part.slice(2, -2)}
+            {inner}
           </strong>
         );
       }
@@ -87,15 +191,89 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     });
   };
 
-  // Initial welcome message
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'ai',
-      text: `Xin chào ${user?.fullName || 'bạn'}! Tôi là Trợ lý FinMan AI.\nTôi có thể giúp bạn:\n💬 **Hỏi đáp số liệu**\n⚡ **Nhập nhanh giao dịch**\n📊 **Phân tích tài chính**`,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  // Render câu trả lời AI với layout phân đoạn, list item đẹp mắt
+  const renderAiFormattedContent = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            return <div key={idx} className="h-1" />;
+          }
+
+          // Dòng gạch đầu dòng: - hoặc *
+          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            const content = trimmed.slice(2);
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-2.5 p-2.5 rounded-xl bg-surface-container-low/60 dark:bg-slate-800/40 border border-outline-variant/15 hover:border-outline-variant/30 transition-all text-xs md:text-sm"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-2"></span>
+                <div className="flex-1 text-on-surface leading-relaxed">
+                  {renderInlineFormatted(content)}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <p key={idx} className="text-sm leading-relaxed text-on-surface font-body-md">
+              {renderInlineFormatted(line)}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const chatStorageKey = user?.id ? `${CHAT_STORAGE_KEY_PREFIX}${user.id}` : `${CHAT_STORAGE_KEY_PREFIX}guest`;
+
+  const getInitialMessages = useCallback((): ChatMessage[] => {
+    try {
+      const key = user?.id ? `${CHAT_STORAGE_KEY_PREFIX}${user.id}` : `${CHAT_STORAGE_KEY_PREFIX}guest`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load chat history from localStorage:', err);
+    }
+    return [
+      {
+        id: 'welcome',
+        sender: 'ai',
+        text: `Xin chào ${user?.fullName || 'bạn'}! Tôi là Trợ lý FinMan AI.\nTôi có thể giúp bạn:\n💬 **Hỏi đáp số liệu**\n⚡ **Nhập nhanh giao dịch**\n📊 **Phân tích tài chính**`,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      },
+    ];
+  }, [user?.id, user?.fullName]);
+
+  // Initial welcome message or restored chat history from localStorage
+  const [messages, setMessages] = useState<ChatMessage[]>(getInitialMessages);
+
+  // Sync state if user changes
+  useEffect(() => {
+    setMessages(getInitialMessages());
+  }, [chatStorageKey, getInitialMessages]);
+
+  // Save to localStorage whenever messages change (kept up to MAX_STORED_MESSAGES)
+  useEffect(() => {
+    try {
+      if (messages && messages.length > 0) {
+        const toSave = messages.slice(-MAX_STORED_MESSAGES);
+        localStorage.setItem(chatStorageKey, JSON.stringify(toSave));
+      }
+    } catch (err) {
+      console.warn('Failed to save chat history to localStorage:', err);
+    }
+  }, [messages, chatStorageKey]);
 
   // Load accounts and categories if not passed from parent
   useEffect(() => {
@@ -139,7 +317,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     setIsTyping(true);
 
     try {
-      const chatRes = await aiService.chat(text);
+      const historyDto = messages
+        .filter((m) => m.id !== 'welcome' && !m.isError)
+        .slice(-10)
+        .map((m) => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        }));
+
+      const chatRes = await aiService.chat(text, historyDto);
 
       if (chatRes.responseType === 'INSIGHTS' && chatRes.insights) {
         setLatestInsights(chatRes.insights);
@@ -587,14 +773,23 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   // Clear Chat History
   const handleClearChat = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện với AI?')) {
-      setMessages([
-        {
-          id: `welcome-${Date.now()}`,
-          sender: 'ai',
-          text: `Cuộc hội thoại đã được làm mới. Tôi sẵn sàng hỗ trợ bạn nhập giao dịch hoặc tư vấn quản lý tài chính!`,
-          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      try {
+        localStorage.removeItem(chatStorageKey);
+      } catch (err) {
+        console.warn('Could not clear chat history from localStorage:', err);
+      }
+      const resetMsg: ChatMessage = {
+        id: `welcome-${Date.now()}`,
+        sender: 'ai',
+        text: `Cuộc hội thoại đã được làm mới. Tôi sẵn sàng hỗ trợ bạn nhập giao dịch hoặc tư vấn quản lý tài chính!`,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages([resetMsg]);
+      try {
+        localStorage.setItem(chatStorageKey, JSON.stringify([resetMsg]));
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -674,38 +869,117 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
           {/* Messages Stream Area */}
           <div className="flex-1 min-h-0 overflow-y-auto custom-scroll p-4 md:p-5 space-y-4">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex items-start gap-3.5 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                {/* Avatar Icon */}
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${m.sender === 'user' ? 'bg-primary text-white' : 'bg-tertiary text-on-tertiary'
-                    }`}
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {m.sender === 'user' ? 'person' : 'smart_toy'}
-                  </span>
-                </div>
+            {messages.map((m) => {
+              const statHighlight = m.sender === 'ai' && !m.isError ? detectStatHighlight(m.text) : null;
 
-                {/* Message Bubble & Cards */}
+              return (
                 <div
-                  className={`max-w-xl md:max-w-2xl flex flex-col gap-2 ${m.sender === 'user' ? 'items-end' : 'items-start'
-                    }`}
+                  key={m.id}
+                  className={`flex items-start gap-3.5 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
                 >
-                  {/* Bubble Text */}
+                  {/* Avatar Icon */}
                   <div
-                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xs ${m.sender === 'user'
-                      ? 'bg-primary-container text-on-primary-container rounded-tr-none'
-                      : m.isError
-                        ? 'bg-error-container text-on-error-container rounded-tl-none border border-error/30'
-                        : 'bg-surface-container-low text-on-surface rounded-tl-none border border-outline-variant/20'
-                      }`}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                      m.sender === 'user'
+                        ? 'bg-primary text-white shadow-primary/20'
+                        : 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-primary text-white shadow-blue-500/20 ring-2 ring-blue-100 dark:ring-blue-900/50'
+                    }`}
                   >
-                    <p className="font-body-md whitespace-pre-line">{renderFormattedText(m.text)}</p>
-                    <span className="text-[10px] opacity-70 block text-right mt-1.5">{m.time}</span>
+                    <span className="material-symbols-outlined text-[20px]">
+                      {m.sender === 'user' ? 'person' : 'smart_toy'}
+                    </span>
                   </div>
+
+                  {/* Message Bubble & Cards */}
+                  <div
+                    className={`max-w-xl md:max-w-2xl flex flex-col gap-2 ${
+                      m.sender === 'user' ? 'items-end' : 'items-start'
+                    }`}
+                  >
+                    {/* Bubble Text */}
+                    {m.sender === 'user' ? (
+                      <div className="p-3.5 px-4 rounded-2xl rounded-tr-none text-sm leading-relaxed shadow-xs bg-primary text-white">
+                        <p className="font-body-md whitespace-pre-line">{m.text}</p>
+                        <span className="text-[10px] text-white/70 block text-right mt-1.5">{m.time}</span>
+                      </div>
+                    ) : m.isError ? (
+                      <div className="p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed shadow-xs bg-error-container text-on-error-container border border-error/30">
+                        <p className="font-body-md whitespace-pre-line">{m.text}</p>
+                        <span className="text-[10px] opacity-70 block text-right mt-1.5">{m.time}</span>
+                      </div>
+                    ) : (
+                      /* AI Assistant Response Box */
+                      <div className="w-full bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-2xl rounded-tl-sm p-4 md:p-5 shadow-xs hover:shadow-sm transition-all duration-200">
+                        {/* Top Bar: Brand, Badge & Copy Button */}
+                        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-outline-variant/15 text-xs text-on-surface-variant">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-on-surface flex items-center gap-1.5 font-label-md">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                              FinMan AI
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                              Trợ lý tài chính
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCopyMessage(m.id, m.text)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all cursor-pointer font-medium"
+                            title="Sao chép câu trả lời"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">
+                              {copiedMessageId === m.id ? 'check' : 'content_copy'}
+                            </span>
+                            <span>{copiedMessageId === m.id ? 'Đã chép' : 'Sao chép'}</span>
+                          </button>
+                        </div>
+
+                        {/* Hero Stat Highlight Card (Nếu có con số trọng tâm) */}
+                        {statHighlight && (
+                          <div
+                            className={`mb-3.5 p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-xs ${statHighlight.containerClass}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${statHighlight.iconBg}`}
+                              >
+                                <span className="material-symbols-outlined text-[22px]">
+                                  {statHighlight.icon}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+                                  {statHighlight.label}
+                                </div>
+                                <div className="text-xl font-extrabold tracking-tight font-display mt-0.5">
+                                  {statHighlight.amount}
+                                </div>
+                              </div>
+                            </div>
+                            {statHighlight.badge && (
+                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800/80 shadow-2xs border border-black/5">
+                                {statHighlight.badge}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Main Message Body */}
+                        <div className="font-body-md text-sm leading-relaxed text-on-surface">
+                          {renderAiFormattedContent(m.text)}
+                        </div>
+
+                        {/* Footer: Verified Source & Time */}
+                        <div className="flex items-center justify-between pt-2.5 mt-3 border-t border-outline-variant/10 text-[11px] text-on-surface-variant/70">
+                          <span className="flex items-center gap-1 text-[11px]">
+                            <span className="material-symbols-outlined text-[13px] text-primary">verified_user</span>
+                            Dữ liệu xác thực từ tài khoản ví
+                          </span>
+                          <span>{m.time}</span>
+                        </div>
+                      </div>
+                    )}
 
                   {/* EMBEDDED CARD 1: Multi-Item Batch Preview Cards OR Single Preview Card */}
                   {m.parsedItems && m.parsedItems.length > 1 ? (
@@ -1430,7 +1704,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                   )}
                 </div>
               </div>
-            ))}
+            );
+          })}
 
             {/* AI Typing Indicator */}
             {isTyping && (

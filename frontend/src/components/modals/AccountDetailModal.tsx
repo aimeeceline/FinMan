@@ -32,7 +32,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
   onClose,
   account,
   onAccountUpdated,
-  onOpenEditAccount,
+  onOpenEditAccount: _onOpenEditAccount,
   onOpenAddTransaction,
   onRefresh,
   initialEditMode = false,
@@ -505,7 +505,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
     <div
       aria-modal="true"
       role="dialog"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 p-2 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 p-2 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -573,25 +573,35 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
           )}
 
           {/* BALANCE BAR & ACTIONS */}
-          <div className={`p-3 sm:p-4 rounded-2xl ${currentBalance < 0 ? 'bg-red-50/70 border border-red-200/90' : 'bg-surface-container-low border border-outline-variant/30'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs`}>
+          <div className={`p-3 sm:p-4 rounded-2xl ${isCredit ? 'bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40' : currentBalance < 0 ? 'bg-red-50/70 border border-red-200/90' : 'bg-surface-container-low border border-outline-variant/30'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs`}>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider block">
-                  Số dư hiện tại
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  {isCredit ? 'Dư nợ hiện tại' : 'Số dư hiện tại'}
                 </span>
-                {currentBalance < 0 && (
-                  <span className="px-1.5 py-0.2 text-[10px] font-bold rounded bg-red-100 text-red-700 border border-red-200">
+                {isCredit ? (
+                  currentBalance > 0 ? (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-800">
+                      Đang nợ thẻ
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      Đã thanh toán hết nợ
+                    </span>
+                  )
+                ) : currentBalance < 0 ? (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-red-100 text-red-700 border border-red-200">
                     Số dư âm
                   </span>
-                )}
+                ) : null}
               </div>
-              <div className="flex items-baseline gap-1 mt-0.5">
+              <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
                 <span
                   className={`text-xl sm:text-2xl font-extrabold tracking-tight ${
                     isCredit
                       ? currentBalance > 0
                         ? 'text-error'
-                        : 'text-on-surface'
+                        : 'text-secondary'
                       : currentBalance >= 0
                       ? 'text-on-surface font-currency-display'
                       : 'text-error'
@@ -602,8 +612,8 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                 <Dong className="text-base font-bold text-on-surface-variant" />
 
                 {isCredit && creditLimit > 0 && (
-                  <span className="ml-3 text-xs text-on-surface-variant">
-                    (Còn: <strong className="text-secondary">{Math.max(0, creditLimit - currentBalance).toLocaleString('vi-VN')}</strong> <Dong />)
+                  <span className="ml-2 text-xs text-on-surface-variant">
+                    (Khả dụng: <strong className="text-secondary font-bold">{Math.max(0, creditLimit - currentBalance).toLocaleString('vi-VN')}</strong> <Dong /> / Hạn mức: {creditLimit.toLocaleString('vi-VN')} <Dong />)
                   </span>
                 )}
               </div>
@@ -632,9 +642,11 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                   type="button"
                   onClick={() => {
                     if (onOpenAddTransaction && currentAccount) {
+                      const payAccId = currentAccount.paymentAccountId;
                       onOpenAddTransaction({
                         type: 'TRANSFER',
                         toAccount: currentAccount,
+                        ...(payAccId ? { account: { id: payAccId } } : {}),
                         amount: currentBalance > 0 ? currentBalance : undefined,
                         note: `Thanh toán thẻ tín dụng ${currentAccount.name}`,
                       });
@@ -647,30 +659,6 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                   <span>Thanh toán</span>
                 </button>
               )}
-
-              {/* SỬA TÀI KHOẢN TOGGLE */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (onOpenEditAccount && currentAccount) {
-                    onOpenEditAccount(currentAccount);
-                  } else {
-                    setIsEditing((prev) => !prev);
-                    setEditError(null);
-                  }
-                }}
-                className={`px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  isEditing
-                    ? 'bg-surface-container-high border-secondary text-secondary shadow-inner'
-                    : 'bg-surface-container-lowest border-outline-variant/40 hover:bg-surface-container text-on-surface'
-                }`}
-                title="Sửa chữa thông tin tài khoản"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {isEditing ? 'keyboard_arrow_up' : 'edit'}
-                </span>
-                <span>{isEditing ? 'Đóng form' : 'Sửa tài khoản'}</span>
-              </button>
             </div>
           </div>
 
@@ -886,9 +874,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                         calendar_month
                       </span>
                       <span>{formatMonthLabel(selectedMonth)}</span>
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                        expand_more
-                      </span>
+                      
                     </button>
 
                     {/* Next Month */}

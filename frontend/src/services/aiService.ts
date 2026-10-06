@@ -92,8 +92,14 @@ export const aiService = {
   /**
    * Tương tác trò chuyện thông minh với FinMan AI (Tự động nhận diện Quick Add, Truy vấn dữ liệu, Báo cáo)
    */
-  async chat(message: string): Promise<AiChatResult> {
-    const res = await api.post<ApiResponse<AiChatResult>>('/ai/chat', { message });
+  async chat(
+    message: string,
+    conversationHistory?: { role: string; content: string }[]
+  ): Promise<AiChatResult> {
+    const res = await api.post<ApiResponse<AiChatResult>>('/ai/chat', {
+      message,
+      conversationHistory,
+    });
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể xử lý yêu cầu AI');
     }
@@ -103,8 +109,14 @@ export const aiService = {
   /**
    * Truy vấn số liệu tài chính trực tiếp qua AI
    */
-  async query(message: string): Promise<AiChatResult> {
-    const res = await api.post<ApiResponse<AiChatResult>>('/ai/query', { message });
+  async query(
+    message: string,
+    conversationHistory?: { role: string; content: string }[]
+  ): Promise<AiChatResult> {
+    const res = await api.post<ApiResponse<AiChatResult>>('/ai/query', {
+      message,
+      conversationHistory,
+    });
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể truy vấn dữ liệu');
     }

@@ -42,6 +42,57 @@ export const removeCachedArchivedAccount = (accountId: number) => {
   }
 };
 
+export interface CreditCardConfig {
+  statementDay?: number;
+  paymentDueDay?: number;
+  paymentAccountId?: number | null;
+  isAutoPayment?: boolean;
+}
+
+export const getCachedCreditCardConfig = (accountId: number): CreditCardConfig | null => {
+  try {
+    const raw = localStorage.getItem(`finman_cc_config_${accountId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveCachedCreditCardConfig = (accountId: number, config: CreditCardConfig) => {
+  try {
+    const current = getCachedCreditCardConfig(accountId) || {};
+    const merged = { ...current, ...config };
+    localStorage.setItem(`finman_cc_config_${accountId}`, JSON.stringify(merged));
+  } catch (e) {
+    console.warn('Failed to cache credit card config:', e);
+  }
+};
+
+const mergeCreditCardConfig = (account: Account): Account => {
+  if (account.type !== 'CREDIT_CARD') return account;
+  const cached = getCachedCreditCardConfig(account.id);
+  const statementDay = account.statementDay ?? cached?.statementDay ?? 20;
+  const paymentDueDay = account.paymentDueDay ?? cached?.paymentDueDay ?? 5;
+  const paymentAccountId = account.paymentAccountId !== undefined ? account.paymentAccountId : (cached?.paymentAccountId ?? null);
+  const isAutoPayment = account.isAutoPayment !== undefined ? account.isAutoPayment : (cached?.isAutoPayment ?? false);
+
+  // Keep cache synchronized
+  saveCachedCreditCardConfig(account.id, {
+    statementDay,
+    paymentDueDay,
+    paymentAccountId,
+    isAutoPayment,
+  });
+
+  return {
+    ...account,
+    statementDay,
+    paymentDueDay,
+    paymentAccountId,
+    isAutoPayment,
+  };
+};
+
 export const accountService = {
   /**
    * Lấy tổng hợp Net Worth và danh sách tài khoản của người dùng
@@ -52,23 +103,20 @@ export const accountService = {
     });
     const data = res.data.data;
 
+    if (data && Array.isArray(data.accounts)) {
+      data.accounts = data.accounts.map(mergeCreditCardConfig);
+    }
+
     if (includeArchived && data && Array.isArray(data.accounts)) {
       const backendArchived = data.accounts.filter((a) => a.isArchived);
-      if (backendArchived.length > 0) {
-        // Backend natively supports includeArchived, sync to local cache
-        try {
+      try {
+        if (backendArchived.length > 0) {
           localStorage.setItem(ARCHIVED_ACCOUNTS_STORAGE_KEY, JSON.stringify(backendArchived));
-        } catch {
-          // Ignore storage errors
+        } else {
+          localStorage.removeItem(ARCHIVED_ACCOUNTS_STORAGE_KEY);
         }
-      } else {
-        // Backend running without includeArchived; merge cached archived accounts
-        const cached = getCachedArchivedAccounts();
-        const activeIds = new Set(data.accounts.map((a) => a.id));
-        const validArchived = cached.filter((a) => !activeIds.has(a.id));
-        if (validArchived.length > 0) {
-          data.accounts = [...data.accounts, ...validArchived];
-        }
+      } catch {
+        // Ignore storage errors
       }
     }
 
@@ -88,7 +136,7 @@ export const accountService = {
    */
   async getAccountById(id: number): Promise<Account> {
     const res = await api.get<ApiResponse<Account>>(`/accounts/${id}`);
-    return res.data.data;
+    return mergeCreditCardConfig(res.data.data);
   },
 
   /**
@@ -96,15 +144,39 @@ export const accountService = {
    */
   async createAccount(payload: AccountCreatePayload): Promise<Account> {
     const res = await api.post<ApiResponse<Account>>('/accounts', payload);
-    return res.data.data;
+    const created = res.data.data;
+    if (payload.type === 'CREDIT_CARD') {
+      saveCachedCreditCardConfig(created.id, {
+        statementDay: payload.statementDay,
+        paymentDueDay: payload.paymentDueDay,
+        paymentAccountId: payload.paymentAccountId,
+        isAutoPayment: payload.isAutoPayment,
+      });
+    }
+    return mergeCreditCardConfig(created);
   },
 
   /**
    * Cập nhật thông tin tài khoản
    */
   async updateAccount(id: number, payload: AccountUpdatePayload): Promise<Account> {
+    if (
+      payload.statementDay !== undefined ||
+      payload.paymentDueDay !== undefined ||
+      payload.paymentAccountId !== undefined ||
+      payload.isAutoPayment !== undefined
+    ) {
+      saveCachedCreditCardConfig(id, {
+        statementDay: payload.statementDay,
+        paymentDueDay: payload.paymentDueDay,
+        paymentAccountId: payload.paymentAccountId,
+        isAutoPayment: payload.isAutoPayment,
+      });
+    }
+
     const res = await api.put<ApiResponse<Account>>(`/accounts/${id}`, payload);
-    return res.data.data;
+    const updated = res.data.data;
+    return mergeCreditCardConfig(updated);
   },
 
   /**

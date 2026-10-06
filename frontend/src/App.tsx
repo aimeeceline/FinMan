@@ -347,6 +347,7 @@ const MainApp: React.FC = () => {
           <AccountsPage
             accounts={accounts}
             onAddAccount={handleAddAccount}
+            onUpdateAccount={handleAddAccount}
             onRefresh={loadData}
             onOpenAddTransaction={handleOpenAddModal}
           />

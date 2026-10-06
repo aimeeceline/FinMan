@@ -19,6 +19,10 @@ export interface Account {
   accountNumber?: string;
   bankName?: string;
   note?: string;
+  statementDay?: number;
+  paymentDueDay?: number;
+  paymentAccountId?: number | null;
+  isAutoPayment?: boolean;
   napasLinked?: boolean;
   isArchived?: boolean;
   createdAt?: string;
@@ -40,6 +44,10 @@ export interface AccountCreatePayload {
   accountNumber?: string;
   bankName?: string;
   note?: string;
+  statementDay?: number;
+  paymentDueDay?: number;
+  paymentAccountId?: number | null;
+  isAutoPayment?: boolean;
 }
 
 export interface AccountUpdatePayload {
@@ -48,6 +56,10 @@ export interface AccountUpdatePayload {
   accountNumber?: string;
   bankName?: string;
   note?: string;
+  statementDay?: number;
+  paymentDueDay?: number;
+  paymentAccountId?: number | null;
+  isAutoPayment?: boolean;
   isArchived?: boolean;
 }
 

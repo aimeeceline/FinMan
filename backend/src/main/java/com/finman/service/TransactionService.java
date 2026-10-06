@@ -85,6 +85,18 @@ public class TransactionService {
                 category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId).orElse(null);
             }
 
+            // Ràng buộc hạn mức tín dụng: Không cho chuyển tiền vượt quá hạn mức
+            if (fromAccount.getType() == AccountType.CREDIT_CARD) {
+                long creditLimit = fromAccount.getCreditLimit() != null ? fromAccount.getCreditLimit() : 0L;
+                long currentDebt = fromAccount.getCurrentBalance() != null ? fromAccount.getCurrentBalance() : 0L;
+                if (creditLimit > 0 && (currentDebt + request.getAmount()) > creditLimit) {
+                    long available = Math.max(0, creditLimit - currentDebt);
+                    throw new BusinessValidationException(String.format(
+                            "Giao dịch chuyển tiền vượt quá hạn mức tín dụng của thẻ! Hạn mức khả dụng còn lại: %s, số tiền cần chuyển: %s.",
+                            formatMoney(available), formatMoney(request.getAmount())));
+                }
+            }
+
             // Cập nhật số dư nguyên tử: trừ tiền tài khoản nguồn và cộng tiền tài khoản đích
             applyTransferImpact(fromAccount, toAccount, request.getAmount());
             accountRepository.save(fromAccount);
@@ -121,6 +133,18 @@ public class TransactionService {
 
             if (!request.getType().name().equals(category.getType().name())) {
                 throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
+            }
+
+            // Ràng buộc hạn mức tín dụng: Không cho chi tiêu vượt quá hạn mức thẻ tín dụng
+            if (request.getType() == TransactionType.EXPENSE && account.getType() == AccountType.CREDIT_CARD) {
+                long creditLimit = account.getCreditLimit() != null ? account.getCreditLimit() : 0L;
+                long currentDebt = account.getCurrentBalance() != null ? account.getCurrentBalance() : 0L;
+                if (creditLimit > 0 && (currentDebt + request.getAmount()) > creditLimit) {
+                    long available = Math.max(0, creditLimit - currentDebt);
+                    throw new BusinessValidationException(String.format(
+                            "Giao dịch chi tiêu vượt quá hạn mức tín dụng của thẻ! Hạn mức khả dụng còn lại: %s, số tiền cần chi: %s.",
+                            formatMoney(available), formatMoney(request.getAmount())));
+                }
             }
 
             // Cập nhật số dư tài khoản tương ứng
@@ -202,6 +226,18 @@ public class TransactionService {
                 category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId).orElse(null);
             }
 
+            // Ràng buộc hạn mức tín dụng khi cập nhật chuyển tiền
+            if (fromAccount.getType() == AccountType.CREDIT_CARD) {
+                long creditLimit = fromAccount.getCreditLimit() != null ? fromAccount.getCreditLimit() : 0L;
+                long currentDebt = fromAccount.getCurrentBalance() != null ? fromAccount.getCurrentBalance() : 0L;
+                if (creditLimit > 0 && (currentDebt + request.getAmount()) > creditLimit) {
+                    long available = Math.max(0, creditLimit - currentDebt);
+                    throw new BusinessValidationException(String.format(
+                            "Giao dịch chuyển tiền vượt quá hạn mức tín dụng của thẻ! Hạn mức khả dụng còn lại: %s, số tiền cần chuyển: %s.",
+                            formatMoney(available), formatMoney(request.getAmount())));
+                }
+            }
+
             // Áp dụng số dư mới cho luồng TRANSFER
             applyTransferImpact(fromAccount, toAccount, request.getAmount());
             accountRepository.save(fromAccount);
@@ -237,6 +273,18 @@ public class TransactionService {
 
             if (!request.getType().name().equals(category.getType().name())) {
                 throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
+            }
+
+            // Ràng buộc hạn mức tín dụng khi cập nhật chi tiêu
+            if (request.getType() == TransactionType.EXPENSE && targetAccount.getType() == AccountType.CREDIT_CARD) {
+                long creditLimit = targetAccount.getCreditLimit() != null ? targetAccount.getCreditLimit() : 0L;
+                long currentDebt = targetAccount.getCurrentBalance() != null ? targetAccount.getCurrentBalance() : 0L;
+                if (creditLimit > 0 && (currentDebt + request.getAmount()) > creditLimit) {
+                    long available = Math.max(0, creditLimit - currentDebt);
+                    throw new BusinessValidationException(String.format(
+                            "Giao dịch chi tiêu vượt quá hạn mức tín dụng của thẻ! Hạn mức khả dụng còn lại: %s, số tiền cần chi: %s.",
+                            formatMoney(available), formatMoney(request.getAmount())));
+                }
             }
 
             // Áp dụng tác động số dư mới cho tài khoản
@@ -471,6 +519,11 @@ public class TransactionService {
         }
 
         return new DateRange(resolvedStart, resolvedEnd);
+    }
+
+    private String formatMoney(Long amount) {
+        if (amount == null) return "0 ₫";
+        return java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(amount) + " ₫";
     }
 
     private static class DateRange {

@@ -75,6 +75,18 @@ public class Account {
     @Column(name = "note", length = 255)
     private String note;
 
+    @Column(name = "statement_day")
+    private Integer statementDay = 20;
+
+    @Column(name = "payment_due_day")
+    private Integer paymentDueDay = 5;
+
+    @Column(name = "payment_account_id")
+    private Long paymentAccountId;
+
+    @Column(name = "is_auto_payment")
+    private Boolean isAutoPayment = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -233,6 +245,38 @@ public class Account {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getStatementDay() {
+        return statementDay;
+    }
+
+    public void setStatementDay(Integer statementDay) {
+        this.statementDay = statementDay;
+    }
+
+    public Integer getPaymentDueDay() {
+        return paymentDueDay;
+    }
+
+    public void setPaymentDueDay(Integer paymentDueDay) {
+        this.paymentDueDay = paymentDueDay;
+    }
+
+    public Long getPaymentAccountId() {
+        return paymentAccountId;
+    }
+
+    public void setPaymentAccountId(Long paymentAccountId) {
+        this.paymentAccountId = paymentAccountId;
+    }
+
+    public Boolean getIsAutoPayment() {
+        return isAutoPayment;
+    }
+
+    public void setIsAutoPayment(Boolean autoPayment) {
+        isAutoPayment = autoPayment;
     }
 
     @Override

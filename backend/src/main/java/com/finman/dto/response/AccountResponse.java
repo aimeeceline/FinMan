@@ -16,6 +16,10 @@ public class AccountResponse {
     private Boolean isArchived;
     private String accountNumber;
     private String note;
+    private Integer statementDay;
+    private Integer paymentDueDay;
+    private Long paymentAccountId;
+    private Boolean isAutoPayment;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -51,6 +55,10 @@ public class AccountResponse {
         );
         response.setAccountNumber(account.getAccountNumber());
         response.setNote(account.getNote());
+        response.setStatementDay(account.getStatementDay());
+        response.setPaymentDueDay(account.getPaymentDueDay());
+        response.setPaymentAccountId(account.getPaymentAccountId());
+        response.setIsAutoPayment(account.getIsAutoPayment());
         return response;
     }
 
@@ -140,5 +148,37 @@ public class AccountResponse {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public Integer getStatementDay() {
+        return statementDay;
+    }
+
+    public void setStatementDay(Integer statementDay) {
+        this.statementDay = statementDay;
+    }
+
+    public Integer getPaymentDueDay() {
+        return paymentDueDay;
+    }
+
+    public void setPaymentDueDay(Integer paymentDueDay) {
+        this.paymentDueDay = paymentDueDay;
+    }
+
+    public Long getPaymentAccountId() {
+        return paymentAccountId;
+    }
+
+    public void setPaymentAccountId(Long paymentAccountId) {
+        this.paymentAccountId = paymentAccountId;
+    }
+
+    public Boolean getIsAutoPayment() {
+        return isAutoPayment;
+    }
+
+    public void setIsAutoPayment(Boolean autoPayment) {
+        isAutoPayment = autoPayment;
     }
 }

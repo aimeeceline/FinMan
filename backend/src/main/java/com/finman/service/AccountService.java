@@ -99,6 +99,20 @@ public class AccountService {
         if (request.getType() == AccountType.CREDIT_CARD && request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());
         }
+        if (request.getType() == AccountType.CREDIT_CARD) {
+            if (request.getStatementDay() != null) {
+                account.setStatementDay(request.getStatementDay());
+            }
+            if (request.getPaymentDueDay() != null) {
+                account.setPaymentDueDay(request.getPaymentDueDay());
+            }
+            if (request.getPaymentAccountId() != null) {
+                account.setPaymentAccountId(request.getPaymentAccountId());
+            }
+            if (request.getIsAutoPayment() != null) {
+                account.setIsAutoPayment(request.getIsAutoPayment());
+            }
+        }
 
         Account saved = accountRepository.save(account);
         return AccountResponse.from(saved);
@@ -126,6 +140,22 @@ public class AccountService {
 
         if (request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());
+        }
+
+        if (request.getStatementDay() != null) {
+            account.setStatementDay(request.getStatementDay());
+        }
+
+        if (request.getPaymentDueDay() != null) {
+            account.setPaymentDueDay(request.getPaymentDueDay());
+        }
+
+        if (request.getPaymentAccountId() != null) {
+            account.setPaymentAccountId(request.getPaymentAccountId());
+        }
+
+        if (request.getIsAutoPayment() != null) {
+            account.setIsAutoPayment(request.getIsAutoPayment());
         }
 
         if (request.getIsArchived() != null) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Account, AccountType, AccountCreatePayload, AccountUpdatePayload, Category } from '../../types';
-import { accountService } from '../../services/accountService';
+import { accountService, getCachedCreditCardConfig } from '../../services/accountService';
 import { transactionService } from '../../services/transactionService';
 import { categoryService } from '../../services/categoryService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
@@ -57,6 +57,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    let targetPaymentId: number | null = null;
+
     if (accountToEdit) {
       setModalType(accountToEdit.type);
       setModalName(accountToEdit.name || '');
@@ -74,9 +76,14 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setModalAccountNumber(accountToEdit.accountNumber || '');
       setModalError(null);
       setFundingSource('INCOME');
-      setStatementDay(20);
-      setPaymentDueDay(5);
-      setIsAutoPayment(false);
+
+      const cachedConfig = accountToEdit.type === 'CREDIT_CARD' ? getCachedCreditCardConfig(accountToEdit.id) : null;
+      setStatementDay(accountToEdit.statementDay ?? cachedConfig?.statementDay ?? 20);
+      setPaymentDueDay(accountToEdit.paymentDueDay ?? cachedConfig?.paymentDueDay ?? 5);
+      setIsAutoPayment(Boolean(accountToEdit.isAutoPayment ?? cachedConfig?.isAutoPayment ?? false));
+
+      targetPaymentId = accountToEdit.paymentAccountId ?? cachedConfig?.paymentAccountId ?? null;
+      setPaymentAccountId(targetPaymentId);
     } else {
       setModalType(defaultType);
       setModalName('');
@@ -89,33 +96,37 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setStatementDay(20);
       setPaymentDueDay(5);
       setIsAutoPayment(false);
+      setPaymentAccountId(null);
     }
 
-    // 1. Sync or fetch source accounts for TRANSFER & credit card settlement
-    if (existingAccounts && existingAccounts.length > 0) {
-      const active = existingAccounts.filter((a) => !a.isArchived);
+    const applySourceAccounts = (active: Account[]) => {
       setSourceAccounts(active);
       if (active.length > 0) {
         setFromAccountId(active[0].id);
         const nonCredit = active.filter((a) => a.type !== 'CREDIT_CARD');
-        setPaymentAccountId(nonCredit.length > 0 ? nonCredit[0].id : active[0].id);
+        const defaultNonCredit = nonCredit.length > 0 ? nonCredit[0].id : active[0].id;
+
+        // Ưu tiên giữ nguyên tài khoản thanh toán đã cấu hình của thẻ
+        if (targetPaymentId && active.some((a) => a.id === targetPaymentId)) {
+          setPaymentAccountId(targetPaymentId);
+        } else {
+          setPaymentAccountId((prev) => (prev && active.some((a) => a.id === prev) ? prev : defaultNonCredit));
+        }
       } else {
         setFromAccountId(null);
         setPaymentAccountId(null);
       }
+    };
+
+    // 1. Sync or fetch source accounts for TRANSFER & credit card settlement
+    if (existingAccounts && existingAccounts.length > 0) {
+      const active = existingAccounts.filter((a) => !a.isArchived);
+      applySourceAccounts(active);
     } else {
       accountService.getAccounts()
         .then((accs) => {
           const active = (accs || []).filter((a) => !a.isArchived);
-          setSourceAccounts(active);
-          if (active.length > 0) {
-            setFromAccountId(active[0].id);
-            const nonCredit = active.filter((a) => a.type !== 'CREDIT_CARD');
-            setPaymentAccountId(nonCredit.length > 0 ? nonCredit[0].id : active[0].id);
-          } else {
-            setFromAccountId(null);
-            setPaymentAccountId(null);
-          }
+          applySourceAccounts(active);
         })
         .catch((err) => console.warn('Could not load accounts in AddAccountModal:', err));
     }
@@ -161,20 +172,24 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     if (isEditMode && accountToEdit) {
       const payload: AccountUpdatePayload = {
         name: trimmedName,
-        accountNumber: accNum || undefined,
-        note: finalNote || undefined,
+        accountNumber: accNum,
+        note: finalNote,
       };
 
       if (modalType === 'CREDIT_CARD') {
         payload.creditLimit = creditLim;
+        payload.statementDay = statementDay;
+        payload.paymentDueDay = paymentDueDay;
+        payload.paymentAccountId = paymentAccountId;
+        payload.isAutoPayment = isAutoPayment;
       }
 
       setIsSubmitting(true);
       try {
         const updated = await accountService.updateAccount(accountToEdit.id, payload);
         window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
-        onClose();
         onSuccess(updated);
+        onClose();
       } catch (err: any) {
         console.error('Error updating account:', err);
         const backendMsg =
@@ -251,6 +266,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       creditLimit: creditLim,
       accountNumber: accNum || undefined,
       note: finalNote || undefined,
+      statementDay: modalType === 'CREDIT_CARD' ? statementDay : undefined,
+      paymentDueDay: modalType === 'CREDIT_CARD' ? paymentDueDay : undefined,
+      paymentAccountId: modalType === 'CREDIT_CARD' ? paymentAccountId : undefined,
+      isAutoPayment: modalType === 'CREDIT_CARD' ? isAutoPayment : undefined,
     };
 
     setIsSubmitting(true);
@@ -340,7 +359,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
     >
       <div className="w-full max-w-xl mx-space-md bg-surface-container-lowest rounded-xl shadow-2xl p-space-xl flex flex-col gap-space-lg relative animate-in zoom-in-95 duration-200 border border-outline-variant/20 max-h-[90vh] overflow-y-auto custom-scroll">
@@ -553,13 +572,13 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           {/* 2. Tên tài khoản */}
           <div className="flex flex-col gap-space-2xs">
             <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accName">
-              {modalType === 'CREDIT_CARD' ? 'Tên thẻ tín dụng:' : 'Tên tài khoản:'} <span className="text-primary">*</span>
+              {'Tên tài khoản:'} <span className="text-primary">*</span>
             </label>
             <input
               id="accName"
               type="text"
               required
-              placeholder={modalType === 'CREDIT_CARD' ? 'Ví dụ: Techcombank Visa Platinum, VIB Cashback...' : 'Ví dụ: Nuôi con, Phụng dưỡng bố mẹ, Đầu tư...'}
+              placeholder={'Ví dụ: Nuôi con, Phụng dưỡng bố mẹ, Đầu tư...'}
               value={modalName}
               onChange={(e) => {
                 setModalName(e.target.value);
@@ -945,7 +964,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </div>
           )}
 
-          {/* Masked Number / Notes */}
+          {/* Số tài khoản */}
           <div className="flex flex-col gap-space-2xs">
             <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accNumber">
               4 số cuối thẻ / Số tài khoản (Ghi nhớ)
@@ -953,10 +972,26 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             <input
               id="accNumber"
               type="text"
-              maxLength={16}
+              maxLength={25}
               placeholder="Ví dụ: 9968"
               value={modalAccountNumber}
               onChange={(e) => setModalAccountNumber(e.target.value)}
+              className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
+            />
+          </div>
+
+          {/* Ghi chú mục đích sử dụng */}
+          <div className="flex flex-col gap-space-2xs">
+            <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accNote">
+              Ghi chú mục đích tài khoản (Tùy chọn)
+            </label>
+            <input
+              id="accNote"
+              type="text"
+              maxLength={255}
+              placeholder="Ví dụ: Mua sắm vật dụng trong gia đình, Nuôi con..."
+              value={modalNote}
+              onChange={(e) => setModalNote(e.target.value)}
               className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
             />
           </div>

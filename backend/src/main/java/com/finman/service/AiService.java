@@ -1052,11 +1052,12 @@ public class AiService {
                             CÂU HỎI / YÊU CẦU CỦA NGƯỜI DÙNG: "%s"
 
                             NHIỆM VỤ:
-                            1. Trả lời trực tiếp, chính xác, ngắn gọn, lịch sự và thân thiện bằng tiếng Việt.
-                            2. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
-                            3. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
-                            4. Sử dụng định dạng markdown (in đậm **số tiền**, danh sách gạch đầu dòng) để câu trả lời trực quan, chuyên nghiệp.
-                            5. Nếu người dùng hỏi điều gì mà dữ liệu chưa có, hãy giải thích lịch sự dựa trên dữ liệu hiện có.
+                            1. Trả lời trực tiếp, chính xác, ngắn gọn (1-2 câu), lịch sự và thân thiện bằng tiếng Việt.
+                            2. NGUYÊN TẮC HỎI GÌ ĐÁP NẤY: Khi người dùng hỏi tổng tiền hoặc hỏi chi tiêu (ví dụ: "Hôm nay tôi đã tiêu bao nhiêu?"), CHỈ TRẢ LỜI ĐÚNG CON SỐ CHI TIÊU ĐÓ. TUYỆT ĐỐI KHÔNG tự động liệt kê toàn bộ từng giao dịch, không liệt kê số dư ban đầu hoặc thu nhập/chuyển khoản khi chỉ hỏi chi tiêu. Chỉ liệt kê khi người dùng có yêu cầu rõ ràng ("liệt kê", "danh sách", "chi tiết").
+                            3. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
+                            4. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
+                            5. Sử dụng định dạng markdown (in đậm **số tiền**) để câu trả lời trực quan, chuyên nghiệp.
+                            6. Nếu người dùng hỏi điều gì mà dữ liệu chưa có, hãy giải thích lịch sự dựa trên dữ liệu hiện có.
                             """,
                     context, userQuery);
         }
@@ -1076,6 +1077,10 @@ public class AiService {
         LocalDate startOfMonth = currentMonth.atDay(1);
         LocalDate endOfMonth = currentMonth.atEndOfMonth();
 
+        boolean wantsList = norm.contains("liet ke") || norm.contains("danh sach") || norm.contains("chi tiet")
+                || norm.contains("nhung gi") || norm.contains("giao dich nao") || norm.contains("nhung giao dich")
+                || norm.contains("tung vi") || norm.contains("cac vi");
+
         // 1. Câu hỏi về Số dư / Ví / Tài khoản
         if (norm.contains("so du") || norm.contains("con bao nhieu") || norm.contains("con lai")
                 || norm.contains("tien con") || norm.contains("tai khoan") || norm.contains("vi")) {
@@ -1089,6 +1094,11 @@ public class AiService {
                             "Số dư hiện tại của tài khoản **%s** là **%s** (Tổng số dư tất cả các ví: **%s**).",
                             acc.getName(), formatMoney(acc.getCurrentBalance()), formatMoney(totalBalance));
                 }
+            }
+
+            if (!wantsList) {
+                return String.format("Tổng số dư khả dụng hiện tại của bạn là **%s** (trên **%d** tài khoản ví).",
+                        formatMoney(totalBalance), accounts.size());
             }
 
             StringBuilder sb = new StringBuilder();
@@ -1106,20 +1116,61 @@ public class AiService {
                     userId, TransactionType.EXPENSE, yesterday, yesterday);
             Long yIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.INCOME, yesterday, yesterday);
+            long exp = yExpense != null ? yExpense : 0L;
+            long inc = yIncome != null ? yIncome : 0L;
+
+            boolean isExpenseOnly = (norm.contains("tieu") || norm.contains("chi")) && !norm.contains("thu");
+            boolean isIncomeOnly = (norm.contains("thu") || norm.contains("luong")) && !norm.contains("tieu") && !norm.contains("chi");
+
+            if (isExpenseOnly) {
+                if (exp == 0) {
+                    return String.format("Hôm qua (%s), bạn **không có khoản chi tiêu nào**.", yesterday);
+                }
+                if (!wantsList) {
+                    return String.format("Hôm qua (%s), bạn đã chi tiêu tổng cộng **%s**.", yesterday, formatMoney(exp));
+                }
+            } else if (isIncomeOnly) {
+                if (inc == 0) {
+                    return String.format("Hôm qua (%s), bạn **không có khoản thu nhập nào**.", yesterday);
+                }
+                if (!wantsList) {
+                    return String.format("Hôm qua (%s), bạn đã có thu nhập tổng cộng **%s**.", yesterday, formatMoney(inc));
+                }
+            } else {
+                if (exp == 0 && inc == 0) {
+                    return String.format("Hôm qua (%s), bạn **không có giao dịch nào** được ghi nhận.", yesterday);
+                }
+                if (!wantsList) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(String.format("Hôm qua (%s), bạn đã chi tiêu **%s**", yesterday, formatMoney(exp)));
+                    if (inc > 0) {
+                        sb.append(String.format(" và thu nhập **%s**", formatMoney(inc)));
+                    }
+                    sb.append(".");
+                    return sb.toString();
+                }
+            }
+
+            // Chỉ liệt kê khi người dùng thực sự yêu cầu
             List<Transaction> yTxns = transactionRepository
                     .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
                             userId, yesterday, yesterday);
+            if (isExpenseOnly) {
+                yTxns = yTxns.stream().filter(t -> t.getType() == TransactionType.EXPENSE).collect(Collectors.toList());
+            } else if (isIncomeOnly) {
+                yTxns = yTxns.stream().filter(t -> t.getType() == TransactionType.INCOME).collect(Collectors.toList());
+            }
 
             if (yTxns.isEmpty()) {
-                return String.format("Hôm qua (%s), bạn **không có giao dịch nào** được ghi nhận.", yesterday);
+                return String.format("Hôm qua (%s), bạn không có giao dịch nào thỏa mãn yêu cầu.", yesterday);
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Hôm qua (%s), bạn đã chi tiêu tổng cộng **%s**", yesterday, formatMoney(yExpense)));
-            if (yIncome > 0) {
-                sb.append(String.format(" (thu nhập: **%s**)", formatMoney(yIncome)));
-            }
-            sb.append(String.format(" với **%d giao dịch**:\n", yTxns.size()));
+            sb.append(String.format("Hôm qua (%s), bạn đã %s tổng cộng **%s** với **%d giao dịch**:\n",
+                    yesterday,
+                    isExpenseOnly ? "chi tiêu" : (isIncomeOnly ? "thu nhập" : "phát sinh"),
+                    formatMoney(isExpenseOnly ? exp : (isIncomeOnly ? inc : exp + inc)),
+                    yTxns.size()));
             for (Transaction t : yTxns) {
                 sb.append(String.format("- **%s**: %s (%s | %s)\n",
                         t.getNote(), formatMoney(t.getAmount()),
@@ -1135,23 +1186,63 @@ public class AiService {
                     userId, TransactionType.EXPENSE, today, today);
             Long todayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.INCOME, today, today);
+            long exp = todayExpense != null ? todayExpense : 0L;
+            long inc = todayIncome != null ? todayIncome : 0L;
+
+            boolean isExpenseOnly = (norm.contains("tieu") || norm.contains("chi")) && !norm.contains("thu");
+            boolean isIncomeOnly = (norm.contains("thu") || norm.contains("luong")) && !norm.contains("tieu") && !norm.contains("chi");
+
+            if (isExpenseOnly) {
+                if (exp == 0) {
+                    return String.format("Hôm nay (%s), bạn **chưa có khoản chi tiêu nào** được ghi nhận.", today);
+                }
+                if (!wantsList) {
+                    return String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%s**.", today, formatMoney(exp));
+                }
+            } else if (isIncomeOnly) {
+                if (inc == 0) {
+                    return String.format("Hôm nay (%s), bạn **chưa có khoản thu nhập nào** được ghi nhận.", today);
+                }
+                if (!wantsList) {
+                    return String.format("Hôm nay (%s), bạn đã có thu nhập tổng cộng **%s**.", today, formatMoney(inc));
+                }
+            } else {
+                if (exp == 0 && inc == 0) {
+                    return String.format(
+                            "Hôm nay (%s), bạn **chưa có giao dịch chi tiêu hoặc thu nhập nào** được ghi nhận.",
+                            today.toString());
+                }
+                if (!wantsList) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(String.format("Hôm nay (%s), bạn đã chi tiêu **%s**", today, formatMoney(exp)));
+                    if (inc > 0) {
+                        sb.append(String.format(" và thu nhập **%s**", formatMoney(inc)));
+                    }
+                    sb.append(".");
+                    return sb.toString();
+                }
+            }
+
+            // Chỉ liệt kê khi người dùng thực sự yêu cầu
             List<Transaction> todayTxns = transactionRepository
                     .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
                             userId, today, today);
+            if (isExpenseOnly) {
+                todayTxns = todayTxns.stream().filter(t -> t.getType() == TransactionType.EXPENSE).collect(Collectors.toList());
+            } else if (isIncomeOnly) {
+                todayTxns = todayTxns.stream().filter(t -> t.getType() == TransactionType.INCOME).collect(Collectors.toList());
+            }
 
             if (todayTxns.isEmpty()) {
-                return String.format(
-                        "Hôm nay (%s), bạn **chưa có giao dịch chi tiêu hoặc thu nhập nào** được ghi nhận.",
-                        today.toString());
+                return String.format("Hôm nay (%s), bạn không có giao dịch nào thỏa mãn yêu cầu.", today);
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append(
-                    String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%s**", today.toString(), formatMoney(todayExpense)));
-            if (todayIncome > 0) {
-                sb.append(String.format(" (thu nhập: **%s**)", formatMoney(todayIncome)));
-            }
-            sb.append(String.format(" với **%d giao dịch**:\n", todayTxns.size()));
+            sb.append(String.format("Hôm nay (%s), bạn đã %s tổng cộng **%s** với **%d giao dịch**:\n",
+                    today,
+                    isExpenseOnly ? "chi tiêu" : (isIncomeOnly ? "thu nhập" : "phát sinh"),
+                    formatMoney(isExpenseOnly ? exp : (isIncomeOnly ? inc : exp + inc)),
+                    todayTxns.size()));
             for (Transaction t : todayTxns) {
                 sb.append(String.format("- **%s**: %s (%s | %s)\n",
                         t.getNote(), formatMoney(t.getAmount()),
@@ -1232,8 +1323,21 @@ public class AiService {
                     userId, TransactionType.EXPENSE, startOfMonth, endOfMonth);
             Long monthIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.INCOME, startOfMonth, endOfMonth);
-            long netSavings = monthIncome - monthExpense;
-            double savingsRate = monthIncome > 0 ? ((double) netSavings / monthIncome) * 100.0 : 0.0;
+            long exp = monthExpense != null ? monthExpense : 0L;
+            long inc = monthIncome != null ? monthIncome : 0L;
+
+            boolean isExpenseOnly = (norm.contains("tieu") || norm.contains("chi")) && !norm.contains("thu") && !norm.contains("tiet kiem") && !norm.contains("tong quan");
+            boolean isIncomeOnly = (norm.contains("thu") || norm.contains("luong")) && !norm.contains("tieu") && !norm.contains("chi") && !norm.contains("tiet kiem") && !norm.contains("tong quan");
+
+            if (isExpenseOnly) {
+                return String.format("Trong tháng **%s**, bạn đã chi tiêu tổng cộng **%s**.", currentMonth, formatMoney(exp));
+            }
+            if (isIncomeOnly) {
+                return String.format("Trong tháng **%s**, tổng thu nhập của bạn là **%s**.", currentMonth, formatMoney(inc));
+            }
+
+            long netSavings = inc - exp;
+            double savingsRate = inc > 0 ? ((double) netSavings / inc) * 100.0 : 0.0;
 
             return String.format(Locale.US, """
                     Tổng quan tình hình tài chính tháng **%s** của bạn:
@@ -1243,8 +1347,8 @@ public class AiService {
                     - **Tỷ lệ tiết kiệm**: %.1f%%
                     """,
                     currentMonth.toString(),
-                    formatMoney(monthIncome),
-                    formatMoney(monthExpense),
+                    formatMoney(inc),
+                    formatMoney(exp),
                     formatMoney(netSavings),
                     netSavings >= 0 ? "✅" : "⚠️",
                     savingsRate);

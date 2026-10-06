@@ -23,6 +23,14 @@ public class AccountUpdateRequest {
     @Size(max = 255, message = "Ghi chú tài khoản tối đa 255 ký tự")
     private String note;
 
+    private Integer statementDay;
+
+    private Integer paymentDueDay;
+
+    private Long paymentAccountId;
+
+    private Boolean isAutoPayment;
+
     public AccountUpdateRequest() {
     }
 
@@ -82,5 +90,37 @@ public class AccountUpdateRequest {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public Integer getStatementDay() {
+        return statementDay;
+    }
+
+    public void setStatementDay(Integer statementDay) {
+        this.statementDay = statementDay;
+    }
+
+    public Integer getPaymentDueDay() {
+        return paymentDueDay;
+    }
+
+    public void setPaymentDueDay(Integer paymentDueDay) {
+        this.paymentDueDay = paymentDueDay;
+    }
+
+    public Long getPaymentAccountId() {
+        return paymentAccountId;
+    }
+
+    public void setPaymentAccountId(Long paymentAccountId) {
+        this.paymentAccountId = paymentAccountId;
+    }
+
+    public Boolean getIsAutoPayment() {
+        return isAutoPayment;
+    }
+
+    public void setIsAutoPayment(Boolean autoPayment) {
+        isAutoPayment = autoPayment;
     }
 }
