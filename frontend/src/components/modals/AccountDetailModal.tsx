@@ -10,8 +10,9 @@ export interface AccountDetailModalProps {
   onClose: () => void;
   account: Account | null;
   onAccountUpdated?: (updatedAccount: Account) => void;
-  onOpenAddTransaction?: (account: Account) => void;
+  onOpenAddTransaction?: (initialData?: any) => void;
   onRefresh?: () => void;
+  initialEditMode?: boolean;
 }
 
 type PeriodType = 'DAY' | 'MONTH' | 'YEAR';
@@ -32,6 +33,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
   onAccountUpdated,
   onOpenAddTransaction,
   onRefresh,
+  initialEditMode = false,
 }) => {
   // Current local account copy so edits update live
   const [currentAccount, setCurrentAccount] = useState<Account | null>(account);
@@ -140,7 +142,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
     setTransactions([]);
     setIsLoadingTx(true);
     setCurrentAccount(account);
-    setIsEditing(false);
+    setIsEditing(initialEditMode || false);
     setEditError(null);
     setEditSuccessMessage(null);
     setEditName(account.name || '');
@@ -148,7 +150,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
     setEditCreditLimit(account.creditLimit ? formatCurrencyInput(account.creditLimit) : '');
     setEditNote(account.note || '');
     setIsMonthPickerOpen(false);
-  }, [isOpen, account?.id]);
+  }, [isOpen, account?.id, initialEditMode]);
 
   // Compute startDate & endDate according to periodType
   const dateRange = useMemo<{ startDate?: string; endDate?: string }>(() => {
@@ -605,14 +607,14 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
               </div>
             </div>
 
-            {/* ACTION BUTTONS: + TẠO GIAO DỊCH & SỬA TÀI KHOẢN */}
+            {/* ACTION BUTTONS: + TẠO GIAO DỊCH & THANH TOÁN (CREDIT) / SỬA TÀI KHOẢN (NON-CREDIT) */}
             <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
               {/* + TẠO GIAO DỊCH */}
               <button
                 type="button"
                 onClick={() => {
                   if (onOpenAddTransaction && currentAccount) {
-                    onOpenAddTransaction(currentAccount);
+                    onOpenAddTransaction({ account: currentAccount });
                   }
                 }}
                 className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-primary-container text-on-primary text-xs sm:text-sm font-semibold hover:opacity-95 active:scale-95 shadow-md shadow-primary-container/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -622,25 +624,49 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                 <span>Tạo giao dịch</span>
               </button>
 
-              {/* SỬA TÀI KHOẢN TOGGLE */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing((prev) => !prev);
-                  setEditError(null);
-                }}
-                className={`px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  isEditing
-                    ? 'bg-surface-container-high border-secondary text-secondary shadow-inner'
-                    : 'bg-surface-container-lowest border-outline-variant/40 hover:bg-surface-container text-on-surface'
-                }`}
-                title="Sửa chữa thông tin tài khoản"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {isEditing ? 'keyboard_arrow_up' : 'edit'}
-                </span>
-                <span>{isEditing ? 'Đóng form' : 'Sửa tài khoản'}</span>
-              </button>
+              {/* THANH TOÁN (Chỉ hiển thị khi là thẻ tín dụng) */}
+              {isCredit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenAddTransaction && currentAccount) {
+                      onOpenAddTransaction({
+                        type: 'TRANSFER',
+                        toAccount: currentAccount,
+                        amount: currentBalance > 0 ? currentBalance : undefined,
+                        note: `Thanh toán thẻ tín dụng ${currentAccount.name}`,
+                      });
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold hover:opacity-95 active:scale-95 shadow-md shadow-rose-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  title="Thanh toán dư nợ thẻ tín dụng"
+                >
+                  <span className="material-symbols-outlined text-[18px]">payments</span>
+                  <span>Thanh toán</span>
+                </button>
+              )}
+
+              {/* SỬA TÀI KHOẢN TOGGLE (Ẩn khi là thẻ tín dụng) */}
+              {!isCredit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing((prev) => !prev);
+                    setEditError(null);
+                  }}
+                  className={`px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    isEditing
+                      ? 'bg-surface-container-high border-secondary text-secondary shadow-inner'
+                      : 'bg-surface-container-lowest border-outline-variant/40 hover:bg-surface-container text-on-surface'
+                  }`}
+                  title="Sửa chữa thông tin tài khoản"
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isEditing ? 'keyboard_arrow_up' : 'edit'}
+                  </span>
+                  <span>{isEditing ? 'Đóng form' : 'Sửa tài khoản'}</span>
+                </button>
+              )}
             </div>
           </div>
 

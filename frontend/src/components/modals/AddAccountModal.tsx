@@ -36,6 +36,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [modalError, setModalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Credit card specific fields
+  const [statementDay, setStatementDay] = useState<number>(20);
+  const [paymentDueDay, setPaymentDueDay] = useState<number>(5);
+  const [paymentAccountId, setPaymentAccountId] = useState<number | null>(null);
+  const [isAutoPayment, setIsAutoPayment] = useState<boolean>(false);
+
   // Funding source choice when initialBalance > 0
   const [fundingSource, setFundingSource] = useState<'INCOME' | 'TRANSFER'>('INCOME');
   const [fromAccountId, setFromAccountId] = useState<number | null>(null);
@@ -56,15 +62,21 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     setModalAccountNumber('');
     setModalError(null);
     setFundingSource('INCOME');
+    setStatementDay(20);
+    setPaymentDueDay(5);
+    setIsAutoPayment(false);
 
-    // 1. Sync or fetch source accounts for TRANSFER
+    // 1. Sync or fetch source accounts for TRANSFER & credit card settlement
     if (existingAccounts && existingAccounts.length > 0) {
       const active = existingAccounts.filter((a) => !a.isArchived);
       setSourceAccounts(active);
       if (active.length > 0) {
         setFromAccountId(active[0].id);
+        const nonCredit = active.filter((a) => a.type !== 'CREDIT_CARD');
+        setPaymentAccountId(nonCredit.length > 0 ? nonCredit[0].id : active[0].id);
       } else {
         setFromAccountId(null);
+        setPaymentAccountId(null);
       }
     } else {
       accountService.getAccounts()
@@ -73,8 +85,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           setSourceAccounts(active);
           if (active.length > 0) {
             setFromAccountId(active[0].id);
+            const nonCredit = active.filter((a) => a.type !== 'CREDIT_CARD');
+            setPaymentAccountId(nonCredit.length > 0 ? nonCredit[0].id : active[0].id);
           } else {
             setFromAccountId(null);
+            setPaymentAccountId(null);
           }
         })
         .catch((err) => console.warn('Could not load accounts in AddAccountModal:', err));
@@ -116,13 +131,20 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     }
 
     const creditLim = modalType === 'CREDIT_CARD' ? parseCurrencyInput(modalCreditLimit) : 0;
+    if (modalType === 'CREDIT_CARD' && creditLim <= 0) {
+      setModalError('Vui lòng nhập hạn mức tín dụng lớn hơn 0 cho thẻ tín dụng.');
+      return;
+    }
+
     const accNum = modalAccountNumber.trim();
-    const trimmedNote = modalNote.trim();
+    const finalNote = modalNote.trim();
+
+    const effectiveInitialBal = modalType === 'CREDIT_CARD' ? 0 : initialBal;
 
     // Validate funding parameters BEFORE creating the account in database
     let resolvedIncomeCatId: number | undefined = undefined;
 
-    if (initialBal > 0) {
+    if (effectiveInitialBal > 0) {
       if (fundingSource === 'TRANSFER') {
         if (sourceAccounts.length === 0) {
           setModalError('Chưa có tài khoản nào khác để trích tiền. Hãy chọn "Tạo giao dịch thu mới".');
@@ -179,7 +201,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       initialBalance: 0,
       creditLimit: creditLim,
       accountNumber: accNum || undefined,
-      note: trimmedNote || undefined,
+      note: finalNote || undefined,
     };
 
     setIsSubmitting(true);
@@ -188,8 +210,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     try {
       createdAccount = await accountService.createAccount(payload);
 
-      // Step 2: Create initial funding transaction if initialBal > 0
-      if (initialBal > 0 && createdAccount) {
+      // Step 2: Create initial funding transaction if effectiveInitialBal > 0
+      if (effectiveInitialBal > 0 && createdAccount) {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -201,7 +223,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             await transactionService.createTransaction({
               accountId: createdAccount.id,
               type: 'INCOME',
-              amount: initialBal,
+              amount: effectiveInitialBal,
               categoryId: resolvedIncomeCatId,
               transactionDate: todayStr,
               note: `Số dư ban đầu: ${createdAccount.name}`,
@@ -211,7 +233,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               accountId: fromAccountId,
               toAccountId: createdAccount.id,
               type: 'TRANSFER',
-              amount: initialBal,
+              amount: effectiveInitialBal,
               transactionDate: todayStr,
               note: `Chuyển số dư ban đầu sang ${createdAccount.name}`,
             });
@@ -238,8 +260,10 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
 
       const finalAccount: Account = {
         ...createdAccount,
-        initialBalance: initialBal,
-        currentBalance: initialBal,
+        initialBalance: effectiveInitialBal,
+        currentBalance: effectiveInitialBal,
+        creditLimit: creditLim,
+        note: finalNote || createdAccount.note,
       };
 
       window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
@@ -301,16 +325,135 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             </div>
           )}
 
-          {/* Account Name */}
+          {/* 1. Hình thức giữ tiền - ĐƯỢC ĐƯA LÊN ĐẦU */}
+          <div className="flex flex-col gap-space-2xs">
+            <label className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[18px] text-primary">account_balance_wallet</span>
+              <span>Hình thức giữ tiền:</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-space-xs">
+              <label
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                  modalType === 'BANK'
+                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="acc_type"
+                  value="BANK"
+                  checked={modalType === 'BANK'}
+                  onChange={() => {
+                    setModalType('BANK');
+                    setModalCreditLimit('');
+                  }}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-[20px]">account_balance</span>
+                <span className="font-label-sm text-label-sm mt-1">Tài khoản NH</span>
+              </label>
+
+              <label
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                  modalType === 'CASH'
+                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="acc_type"
+                  value="CASH"
+                  checked={modalType === 'CASH'}
+                  onChange={() => {
+                    setModalType('CASH');
+                    setModalCreditLimit('');
+                  }}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-[20px]">payments</span>
+                <span className="font-label-sm text-label-sm mt-1">Ví tiền mặt</span>
+              </label>
+
+              <label
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                  modalType === 'CREDIT_CARD'
+                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="acc_type"
+                  value="CREDIT_CARD"
+                  checked={modalType === 'CREDIT_CARD'}
+                  onChange={() => {
+                    setModalType('CREDIT_CARD');
+                    setModalBalance('');
+                  }}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-[20px]">credit_card</span>
+                <span className="font-label-sm text-label-sm mt-1">Thẻ tín dụng</span>
+              </label>
+
+              <label
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                  modalType === 'INVESTMENT'
+                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="acc_type"
+                  value="INVESTMENT"
+                  checked={modalType === 'INVESTMENT'}
+                  onChange={() => {
+                    setModalType('INVESTMENT');
+                    setModalCreditLimit('');
+                  }}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                <span className="font-label-sm text-label-sm mt-1">Đầu tư</span>
+              </label>
+
+              <label
+                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
+                  modalType === 'OTHER'
+                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="acc_type"
+                  value="OTHER"
+                  checked={modalType === 'OTHER'}
+                  onChange={() => {
+                    setModalType('OTHER');
+                    setModalCreditLimit('');
+                  }}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-[20px]">category</span>
+                <span className="font-label-sm text-label-sm mt-1">Khác</span>
+              </label>
+            </div>
+          </div>
+
+          {/* 2. Tên tài khoản */}
           <div className="flex flex-col gap-space-2xs">
             <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accName">
-              Tên tài khoản: <span className="text-primary">*</span>
+              {modalType === 'CREDIT_CARD' ? 'Tên thẻ tín dụng:' : 'Tên tài khoản:'} <span className="text-primary">*</span>
             </label>
             <input
               id="accName"
               type="text"
               required
-              placeholder="Ví dụ: Nuôi con, Phụng dưỡng bố mẹ, Đầu tư quán cà phê..."
+              placeholder={modalType === 'CREDIT_CARD' ? 'Ví dụ: Techcombank Visa Platinum, VIB Cashback...' : 'Ví dụ: Nuôi con, Phụng dưỡng bố mẹ, Đầu tư...'}
               value={modalName}
               onChange={(e) => {
                 setModalName(e.target.value);
@@ -324,7 +467,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             />
           </div>
 
-          {/* Purpose Note / Plan */}
+          {/* 3. Ghi chú mục đích */}
           <div className="flex flex-col gap-space-2xs">
             <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accNote">
               Ghi chú mục đích:
@@ -332,18 +475,24 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             <input
               id="accNote"
               type="text"
-              placeholder="Ví dụ: Chi tiền sữa, học phí cho bé; Gửi về quê định kỳ ngày 15..."
+              placeholder="Ví dụ: Chi tiêu gia đình, mua sắm định kỳ, dự phòng khẩn cấp..."
               value={modalNote}
               onChange={(e) => setModalNote(e.target.value)}
               className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
             />
           </div>
 
-          {/* Balance / Initial Amount */}
+          {/* 4. Số tiền ban đầu & Hạn mức tín dụng (Logic động: Thẻ tín dụng ngược lại các hình thức khác) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+            {/* Số tiền ban đầu: Cho nhập khi != CREDIT_CARD, Khóa khi == CREDIT_CARD */}
             <div className="flex flex-col gap-space-2xs">
-              <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accBalance">
-                Số tiền ban đầu cho tài khoản
+              <label
+                className={`font-label-md text-label-md font-semibold ${
+                  modalType === 'CREDIT_CARD' ? 'text-on-surface-variant/60' : 'text-on-surface'
+                }`}
+                htmlFor="accBalance"
+              >
+                Số tiền ban đầu
               </label>
               <div className="relative">
                 <input
@@ -351,9 +500,14 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   type="text"
                   inputMode="numeric"
                   placeholder="0"
-                  value={modalBalance}
+                  disabled={modalType === 'CREDIT_CARD'}
+                  value={modalType === 'CREDIT_CARD' ? '0' : modalBalance}
                   onChange={(e) => setModalBalance(formatCurrencyInput(e.target.value))}
-                  className="w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row"
+                  className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row ${
+                    modalType === 'CREDIT_CARD'
+                      ? 'opacity-50 cursor-not-allowed bg-slate-100/70 dark:bg-surface-container'
+                      : ''
+                  }`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md font-bold">
                   ₫
@@ -361,9 +515,15 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </div>
             </div>
 
+            {/* Hạn mức tín dụng: Khóa khi != CREDIT_CARD, Cho nhập khi == CREDIT_CARD */}
             <div className="flex flex-col gap-space-2xs">
-              <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accLimit">
-                Hạn mức tín dụng {modalType === 'CREDIT_CARD' ? '(Bắt buộc)' : '(Nếu có)'}
+              <label
+                className={`font-label-md text-label-md font-semibold ${
+                  modalType !== 'CREDIT_CARD' ? 'text-on-surface-variant/60' : 'text-on-surface'
+                }`}
+                htmlFor="accLimit"
+              >
+                Hạn mức tín dụng
               </label>
               <div className="relative">
                 <input
@@ -371,11 +531,13 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   type="text"
                   inputMode="numeric"
                   disabled={modalType !== 'CREDIT_CARD'}
-                  value={modalCreditLimit}
+                  value={modalType !== 'CREDIT_CARD' ? '0' : modalCreditLimit}
                   onChange={(e) => setModalCreditLimit(formatCurrencyInput(e.target.value))}
                   placeholder="0"
                   className={`w-full bg-surface-container-low text-on-surface pl-space-md pr-10 py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30 font-currency-row ${
-                    modalType !== 'CREDIT_CARD' ? 'opacity-50 cursor-not-allowed' : ''
+                    modalType !== 'CREDIT_CARD'
+                      ? 'opacity-50 cursor-not-allowed bg-slate-100/70 dark:bg-surface-container'
+                      : 'border-red-300 dark:border-red-900 focus:ring-red-500'
                   }`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md font-bold">
@@ -386,9 +548,153 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </div>
 
           {/* ========================================================
-              LOGIC HỎI NGUỒN TIỀN BAN ĐẦU: THU MỚI HAY CHUYỂN TIỀN
+              5. CẤU HÌNH ĐẶC THÙ KHI CHỌN THẺ TÍN DỤNG:
+              - Ngày quyết toán (sao kê)
+              - Ngày thanh toán (hạn nợ)
+              - Tài khoản thanh toán
+              - Nút chọn "Thanh toán tự động"
           ======================================================== */}
-          {initialBal > 0 && (
+          {modalType === 'CREDIT_CARD' && (
+            <div className="p-space-md rounded-2xl bg-red-50/40 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/40 flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-2 text-slate-800 dark:text-on-surface font-bold text-xs uppercase tracking-wide">
+                <span className="material-symbols-outlined text-red-600 text-[19px]">credit_score</span>
+                <span>Chu kỳ sao kê &amp; Thanh toán thẻ tín dụng</span>
+              </div>
+
+              {/* Hàng 1: Ngày quyết toán (sao kê) & Ngày thanh toán */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                {/* Ngày quyết toán */}
+                <div className="flex flex-col gap-space-2xs">
+                  <label className="font-label-md text-label-md text-on-surface font-semibold flex items-center justify-between" htmlFor="statementDay">
+                    <span>Ngày quyết toán</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="statementDay"
+                      value={statementDay}
+                      onChange={(e) => setStatementDay(Number(e.target.value))}
+                      className="w-full bg-white dark:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-red-500 border border-outline-variant/30 cursor-pointer shadow-2xs font-semibold"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>
+                          Ngày {d} hàng tháng
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Ngày thanh toán */}
+                <div className="flex flex-col gap-space-2xs">
+                  <label className="font-label-md text-label-md text-on-surface font-semibold flex items-center justify-between" htmlFor="paymentDueDay">
+                    <span>Ngày thanh toán</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="paymentDueDay"
+                      value={paymentDueDay}
+                      onChange={(e) => setPaymentDueDay(Number(e.target.value))}
+                      className="w-full bg-white dark:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-red-500 border border-outline-variant/30 cursor-pointer shadow-2xs font-semibold"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>
+                          Ngày {d} hàng tháng
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hàng 2: Tài khoản thanh toán (Trích nợ) */}
+              <div className="flex flex-col gap-space-2xs pt-1 border-t border-red-100 dark:border-red-950/40">
+                <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="paymentAccountSelect">
+                  Tài khoản thanh toán:
+                </label>
+                {sourceAccounts.filter((a) => a.type !== 'CREDIT_CARD').length > 0 ? (
+                  <select
+                    id="paymentAccountSelect"
+                    value={paymentAccountId || ''}
+                    onChange={(e) => setPaymentAccountId(Number(e.target.value) || null)}
+                    className="w-full bg-white dark:bg-surface-container text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-red-500 border border-outline-variant/30 cursor-pointer shadow-2xs font-medium"
+                  >
+                    <option value="">-- Chọn tài khoản thanh toán nợ thẻ --</option>
+                    {sourceAccounts
+                      .filter((a) => a.type !== 'CREDIT_CARD')
+                      .map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.type === 'BANK' ? 'Ngân hàng' : 'Tiền mặt'} • Số dư: {(acc.currentBalance ?? 0).toLocaleString('vi-VN')} ₫)
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200">
+                    Chưa có tài khoản ngân hàng hoặc tiền mặt nào để liên kết. Bạn có thể chọn sau.
+                  </p>
+                )}
+                <span className="text-[11px] text-on-surface-variant">
+                  Tài khoản nguồn dùng để trích tiền thanh toán dư nợ sao kê hàng tháng
+                </span>
+              </div>
+
+              {/* Hàng 3: Nút chọn "Thanh toán tự động" */}
+              <div className="pt-2 border-t border-red-100 dark:border-red-950/40">
+                <label
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                    isAutoPayment
+                      ? 'bg-red-50 dark:bg-red-950/50 border-red-500/80 ring-1 ring-red-500/30'
+                      : 'bg-white dark:bg-surface-container border-slate-200 dark:border-outline-variant/30 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                        isAutoPayment
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-surface-container-high text-slate-500'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">autorenew</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-on-surface">
+                        Thanh toán tự động
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-on-surface-variant">
+                        Tự động trích tiền từ tài khoản thanh toán khi đến hạn sao kê
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Modern Toggle Switch UI */}
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isAutoPayment}
+                      onChange={(e) => setIsAutoPayment(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${
+                        isAutoPayment ? 'bg-red-600' : 'bg-slate-300 dark:bg-surface-container-high'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${
+                          isAutoPayment ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              LOGIC HỎI NGUỒN TIỀN BAN ĐẦU: THU MỚI HAY CHUYỂN TIỀN (Chỉ cho tài khoản thông thường khi initialBal > 0)
+          ======================================================== */}
+          {modalType !== 'CREDIT_CARD' && initialBal > 0 && (
             <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-space-sm animate-in fade-in duration-200">
               <div className="flex items-center gap-2 text-on-surface font-semibold text-sm">
                 <span className="material-symbols-outlined text-secondary text-[20px]">
@@ -518,109 +824,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               )}
             </div>
           )}
-
-          {/* Funding Type (Lưu trữ bằng gì) */}
-          <div className="flex flex-col gap-space-2xs">
-            <label className="font-label-md text-label-md text-on-surface font-semibold">
-              Hình thức giữ tiền:
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-space-xs">
-              <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
-                  modalType === 'BANK'
-                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="acc_type"
-                  value="BANK"
-                  checked={modalType === 'BANK'}
-                  onChange={() => setModalType('BANK')}
-                  className="sr-only"
-                />
-                <span className="material-symbols-outlined text-[20px]">account_balance</span>
-                <span className="font-label-sm text-label-sm mt-1">Tài khoản NH</span>
-              </label>
-
-              <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
-                  modalType === 'CASH'
-                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="acc_type"
-                  value="CASH"
-                  checked={modalType === 'CASH'}
-                  onChange={() => setModalType('CASH')}
-                  className="sr-only"
-                />
-                <span className="material-symbols-outlined text-[20px]">payments</span>
-                <span className="font-label-sm text-label-sm mt-1">Ví tiền mặt</span>
-              </label>
-
-              <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
-                  modalType === 'CREDIT_CARD'
-                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="acc_type"
-                  value="CREDIT_CARD"
-                  checked={modalType === 'CREDIT_CARD'}
-                  onChange={() => setModalType('CREDIT_CARD')}
-                  className="sr-only"
-                />
-                <span className="material-symbols-outlined text-[20px]">credit_card</span>
-                <span className="font-label-sm text-label-sm mt-1">Thẻ tín dụng</span>
-              </label>
-
-              <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
-                  modalType === 'INVESTMENT'
-                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="acc_type"
-                  value="INVESTMENT"
-                  checked={modalType === 'INVESTMENT'}
-                  onChange={() => setModalType('INVESTMENT')}
-                  className="sr-only"
-                />
-                <span className="material-symbols-outlined text-[20px]">trending_up</span>
-                <span className="font-label-sm text-label-sm mt-1">Đầu tư</span>
-              </label>
-
-              <label
-                className={`flex flex-col items-center justify-center p-space-sm rounded-xl cursor-pointer transition-colors ${
-                  modalType === 'OTHER'
-                    ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                    : 'bg-surface-container-low text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="acc_type"
-                  value="OTHER"
-                  checked={modalType === 'OTHER'}
-                  onChange={() => setModalType('OTHER')}
-                  className="sr-only"
-                />
-                <span className="material-symbols-outlined text-[20px]">category</span>
-                <span className="font-label-sm text-label-sm mt-1">Khác</span>
-              </label>
-            </div>
-          </div>
 
           {/* Masked Number / Notes */}
           <div className="flex flex-col gap-space-2xs">

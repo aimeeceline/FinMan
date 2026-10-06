@@ -349,27 +349,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-gutter-desktop py-space-lg select-none">
-      {/* Page Title & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-space-lg">
-        <div>
-          <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight">
-            Cài đặt &amp; Tài khoản
-          </h1>
-          <p className="text-xs text-on-surface-variant mt-1">
-            Quản lý hồ sơ cá nhân, đổi mật khẩu bảo mật và cấu hình danh mục chi tiêu
-          </p>
-        </div>
-
-        {/* Quick Excel Export button */}
-        <button
-          onClick={() => alert('Đang xuất toàn bộ giao dịch sang định dạng Excel (.xlsx)...')}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold shadow-sm transition-all self-start sm:self-auto cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px] text-secondary">file_download</span>
-          <span>Xuất dữ liệu (.xlsx)</span>
-        </button>
-      </div>
-
+      
       {/* Modern Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-3 mb-space-lg overflow-x-auto">
         <button

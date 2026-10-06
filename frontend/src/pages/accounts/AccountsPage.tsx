@@ -62,6 +62,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   // Account Detail Modal (Edit account & Transaction history with Day/Month/Year filters)
   const [selectedDetailAccount, setSelectedDetailAccount] = useState<Account | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailInitialEdit, setDetailInitialEdit] = useState(false);
+
+  const handleOpenEditAccount = (account: Account) => {
+    setSelectedDetailAccount(account);
+    setDetailInitialEdit(true);
+    setIsDetailModalOpen(true);
+  };
 
   // Privacy toggle for hiding balances
   const [hideBalance, setHideBalance] = useState<boolean>(() => {
@@ -532,6 +539,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         key={account.id}
         onClick={() => {
           setSelectedDetailAccount(account);
+          setDetailInitialEdit(false);
           setIsDetailModalOpen(true);
         }}
         className={`
@@ -552,7 +560,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         `}
         title="Bấm để xem chi tiết, sửa tài khoản và lịch sử giao dịch"
       >
-        {/* TOP ROW: AVATAR + TITLE/SUBTITLE + 3 DOTS MENU */}
+        {/* TOP ROW: AVATAR + TITLE/SUBTITLE + SỬA & 3 DOTS MENU */}
         <div className="flex items-start justify-between gap-1.5">
           <div className="flex items-center gap-2 min-w-0">
             {renderAccountAvatar(account)}
@@ -580,57 +588,93 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             </div>
           </div>
 
-          {/* 3 DOTS ACTION MENU */}
-          <div className="relative shrink-0">
+          {/* ACTIONS: SỬA + 3 DOTS MENU */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* Nút sửa trực tiếp trên account card để vào thẳng form chỉnh sửa */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setOpenMenuAccountId(openMenuAccountId === account.id ? null : account.id);
+                handleOpenEditAccount(account);
               }}
-              className="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant cursor-pointer transition-colors"
-              title="Tùy chọn tài khoản"
+              className="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-secondary cursor-pointer transition-colors"
+              title="Sửa tài khoản"
             >
-              <span className="material-symbols-outlined text-base">
-                more_vert
+              <span className="material-symbols-outlined text-[17px]">
+                edit
               </span>
             </button>
 
-            {openMenuAccountId === account.id && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="
-                  absolute right-0 top-8 z-40
-                  w-44
-                  bg-surface-container-lowest
-                  rounded-xl
-                  shadow-xl
-                  border border-outline-variant/30
-                  py-1
-                  text-xs font-medium text-on-surface
-                  animate-in fade-in zoom-in-95 duration-100
-                "
+            {/* 3 DOTS ACTION MENU */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuAccountId(openMenuAccountId === account.id ? null : account.id);
+                }}
+                className="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant cursor-pointer transition-colors"
+                title="Tùy chọn tài khoản"
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuAccountId(null);
-                    setAccountToArchive(account);
-                  }}
+                <span className="material-symbols-outlined text-base">
+                  more_vert
+                </span>
+              </button>
+
+              {openMenuAccountId === account.id && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
                   className="
-                    w-full px-3 py-2 text-left
-                    hover:bg-error-container hover:text-error
-                    flex items-center gap-2
-                    cursor-pointer transition-colors
+                    absolute right-0 top-8 z-40
+                    w-44
+                    bg-surface-container-lowest
+                    rounded-xl
+                    shadow-xl
+                    border border-outline-variant/30
+                    py-1
+                    text-xs font-medium text-on-surface
+                    animate-in fade-in zoom-in-95 duration-100
                   "
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    archive
-                  </span>
-                  <span>Lưu trữ tài khoản</span>
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuAccountId(null);
+                      handleOpenEditAccount(account);
+                    }}
+                    className="
+                      w-full px-3 py-2 text-left
+                      hover:bg-surface-container hover:text-secondary
+                      flex items-center gap-2
+                      cursor-pointer transition-colors
+                    "
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      edit
+                    </span>
+                    <span>Sửa tài khoản</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuAccountId(null);
+                      setAccountToArchive(account);
+                    }}
+                    className="
+                      w-full px-3 py-2 text-left
+                      hover:bg-error-container hover:text-error
+                      flex items-center gap-2
+                      cursor-pointer transition-colors
+                    "
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      archive
+                    </span>
+                    <span>Lưu trữ tài khoản</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1167,11 +1211,17 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
       )}
       {/* MODAL: ACCOUNT DETAIL & TRANSACTIONS & EDIT */}
       <AccountDetailModal
-        key={selectedDetailAccount?.id ? `acc-modal-${selectedDetailAccount.id}` : 'no-account'}
+        key={
+          selectedDetailAccount?.id
+            ? `acc-modal-${selectedDetailAccount.id}-${detailInitialEdit}`
+            : 'no-account'
+        }
         isOpen={isDetailModalOpen}
+        initialEditMode={detailInitialEdit}
         onClose={() => {
           setIsDetailModalOpen(false);
           setSelectedDetailAccount(null);
+          setDetailInitialEdit(false);
         }}
         account={selectedDetailAccount}
         onAccountUpdated={(updatedAccount) => {
@@ -1184,9 +1234,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             };
           });
         }}
-        onOpenAddTransaction={(acc) => {
+        onOpenAddTransaction={(initial) => {
           if (onOpenAddTransaction) {
-            onOpenAddTransaction({ account: acc });
+            onOpenAddTransaction(initial?.account || initial?.toAccount ? initial : { account: initial });
           }
         }}
         onRefresh={() => {
