@@ -43,10 +43,19 @@ public class AccountService {
         for (Account acc : accounts) {
             // Archived accounts do not contribute to active net worth/liabilities unless viewing all
             if (!acc.getIsArchived()) {
+                long bal = acc.getCurrentBalance() != null ? acc.getCurrentBalance() : 0L;
                 if (acc.getType() == AccountType.CREDIT_CARD) {
-                    totalLiabilities += acc.getCurrentBalance();
+                    if (bal >= 0) {
+                        totalLiabilities += bal;
+                    } else {
+                        totalAssets += Math.abs(bal);
+                    }
                 } else {
-                    totalAssets += acc.getCurrentBalance();
+                    if (bal >= 0) {
+                        totalAssets += bal;
+                    } else {
+                        totalLiabilities += Math.abs(bal);
+                    }
                 }
             }
         }

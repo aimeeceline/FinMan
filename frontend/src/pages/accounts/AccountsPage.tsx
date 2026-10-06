@@ -7,11 +7,13 @@ import type {
 import { accountService } from '../../services/accountService';
 import { transactionService } from '../../services/transactionService';
 import { AddAccountModal } from '../../components/modals/AddAccountModal';
+import { AccountDetailModal } from '../../components/modals/AccountDetailModal';
 
 interface AccountsPageProps {
   accounts?: Account[];
   onAddAccount?: (account: Account) => void;
   onRefresh?: () => void;
+  onOpenAddTransaction?: (initial?: Partial<any>) => void;
 }
 
 type AccountWithStats = Account & {
@@ -41,6 +43,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   accounts: propAccounts,
   onAddAccount,
   onRefresh,
+  onOpenAddTransaction,
 }) => {
   // ============================================================
   // STATE
@@ -55,6 +58,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const [isArchiving, setIsArchiving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openMenuAccountId, setOpenMenuAccountId] = useState<number | null>(null);
+
+  // Account Detail Modal (Edit account & Transaction history with Day/Month/Year filters)
+  const [selectedDetailAccount, setSelectedDetailAccount] = useState<Account | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Privacy toggle for hiding balances
   const [hideBalance, setHideBalance] = useState<boolean>(() => {
@@ -221,11 +228,41 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   }, [fetchAccounts]);
 
   // ============================================================
-  // ACCOUNT LISTS
+  // ACCOUNT LISTS & DYNAMIC METRIC KPI CALCULATIONS
   // ============================================================
   const allAccounts = summary?.accounts || propAccounts || [];
   const activeAccounts = useMemo(() => allAccounts.filter((account) => !account.isArchived), [allAccounts]);
   const archivedAccounts = useMemo(() => allAccounts.filter((account) => account.isArchived), [allAccounts]);
+
+  // Compute live financial totals accurately taking into account negative balances (debts/overdrafts)
+  const { totalAssets, totalLiabilities, netWorth } = useMemo(() => {
+    let assets = 0;
+    let liabilities = 0;
+
+    activeAccounts.forEach((account) => {
+      const balance = account.currentBalance || 0;
+      if (account.type === 'CREDIT_CARD') {
+        if (balance >= 0) {
+          liabilities += balance;
+        } else {
+          assets += Math.abs(balance);
+        }
+      } else {
+        if (balance >= 0) {
+          assets += balance;
+        } else {
+          // Negative balance on bank/cash/other is a liability (nợ/thấu chi)
+          liabilities += Math.abs(balance);
+        }
+      }
+    });
+
+    return {
+      totalAssets: assets,
+      totalLiabilities: liabilities,
+      netWorth: assets - liabilities,
+    };
+  }, [activeAccounts]);
 
   // ============================================================
   // HELPERS & FORMATTERS
@@ -271,6 +308,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   };
 
   const getBalanceColor = (account: Account): string => {
+    if ((account.currentBalance || 0) < 0) {
+      return 'text-red-600 font-extrabold';
+    }
     if (account.type === 'CREDIT_CARD') {
       return 'text-primary-container';
     }
@@ -474,6 +514,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const renderAccountCard = (account: Account) => {
     const isCredit = account.type === 'CREDIT_CARD';
     const currentBalance = account.currentBalance || 0;
+    const isNegative = currentBalance < 0;
     const creditLimit = account.creditLimit || 0;
     const income = getAccountIncome(account);
     const expense = getAccountExpense(account);
@@ -489,19 +530,27 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
     return (
       <div
         key={account.id}
-        className="
+        onClick={() => {
+          setSelectedDetailAccount(account);
+          setIsDetailModalOpen(true);
+        }}
+        className={`
           p-space-sm
           rounded-xl
-          bg-surface-container-lowest
-          border border-slate-200
-          hover:border-primary/50
-          hover:shadow-md
+          ${
+            isNegative
+              ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400 shadow-2xs hover:shadow-md'
+              : 'bg-surface-container-lowest border border-slate-200 hover:border-primary/50 hover:shadow-md'
+          }
           transition-all
           flex flex-col justify-between
           gap-space-xs
           group
           min-w-0
-        "
+          cursor-pointer
+          active:scale-[0.99]
+        `}
+        title="Bấm để xem chi tiết, sửa tài khoản và lịch sử giao dịch"
       >
         {/* TOP ROW: AVATAR + TITLE/SUBTITLE + 3 DOTS MENU */}
         <div className="flex items-start justify-between gap-1.5">
@@ -509,12 +558,19 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             {renderAccountAvatar(account)}
 
             <div className="flex flex-col min-w-0">
-              <span
-                className="font-title-md text-sm text-on-surface font-semibold leading-tight truncate"
-                title={account.name}
-              >
-                {account.name}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="font-title-md text-sm text-on-surface font-semibold leading-tight truncate"
+                  title={account.name}
+                >
+                  {account.name}
+                </span>
+                {isNegative && (
+                  <span className="px-1.5 py-0.2 text-[10px] font-bold rounded bg-red-100 text-red-700 shrink-0 border border-red-200/80">
+                    Số dư âm
+                  </span>
+                )}
+              </div>
               <span
                 className="font-label-sm text-label-sm text-on-surface-variant truncate mt-0.5"
                 title={subtitle}
@@ -615,7 +671,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         )}
 
         {/* BOTTOM ROW: THU / CHI STATS */}
-        <div className="pt-1.5 border-t border-surface-container/60 flex items-center justify-between font-label-sm text-label-sm">
+        <div className={`pt-1.5 border-t ${isNegative ? 'border-red-200/70' : 'border-surface-container/60'} flex items-center justify-between font-label-sm text-label-sm`}>
           {/* Thu */}
           <span className="text-secondary font-medium flex items-center gap-0.5 truncate mr-1">
             <span className="material-symbols-outlined text-xs">arrow_downward</span>
@@ -773,41 +829,67 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-sm w-full">
-        {archivedAccounts.map((account) => (
-          <div
-            key={account.id}
-            className="p-space-sm rounded-xl bg-surface-container-lowest border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between gap-space-xs"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                {renderAccountAvatar(account)}
-                <div className="flex flex-col min-w-0">
-                  <span className="font-title-md text-sm text-on-surface font-semibold leading-tight truncate">
-                    {account.name}
-                  </span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
-                    {getSubtitle(account)}
-                  </span>
+        {archivedAccounts.map((account) => {
+          const isNegative = (account.currentBalance || 0) < 0;
+          return (
+            <div
+              key={account.id}
+              onClick={() => {
+                setSelectedDetailAccount(account);
+                setIsDetailModalOpen(true);
+              }}
+              className={`
+                p-space-sm rounded-xl
+                ${
+                  isNegative
+                    ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400'
+                    : 'bg-surface-container-lowest border border-slate-200 hover:border-slate-300'
+                }
+                hover:shadow-md transition-all flex flex-col justify-between gap-space-xs cursor-pointer active:scale-[0.99]
+              `}
+              title="Bấm để xem chi tiết và lịch sử giao dịch"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {renderAccountAvatar(account)}
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-title-md text-sm text-on-surface font-semibold leading-tight truncate">
+                        {account.name}
+                      </span>
+                      {isNegative && (
+                        <span className="px-1.5 py-0.2 text-[10px] font-bold rounded bg-red-100 text-red-700 shrink-0 border border-red-200/80">
+                          Số dư âm
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                      {getSubtitle(account)}
+                    </span>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUnarchiveAccount(account);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary-container hover:text-on-primary text-xs font-semibold text-on-surface transition-colors cursor-pointer shrink-0"
+                >
+                  Khôi phục
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleUnarchiveAccount(account)}
-                className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary-container hover:text-on-primary text-xs font-semibold text-on-surface transition-colors cursor-pointer shrink-0"
-              >
-                Khôi phục
-              </button>
+              <div className="py-1">
+                <span className="text-xs text-on-surface-variant block">Số dư lúc lưu trữ</span>
+                <span className={`font-currency-display text-lg ${isNegative ? 'text-red-600 font-extrabold' : 'text-on-surface font-extrabold'} tracking-tight block`}>
+                  {formatCurrency(account.currentBalance || 0)} <Dong />
+                </span>
+              </div>
             </div>
-
-            <div className="py-1">
-              <span className="text-xs text-on-surface-variant block">Số dư lúc lưu trữ</span>
-              <span className="font-currency-display text-lg text-on-surface font-extrabold tracking-tight block">
-                {formatCurrency(account.currentBalance || 0)} <Dong />
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -878,7 +960,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             <div className="mt-space-sm mb-space-md relative z-10">
               <div className="flex items-baseline gap-space-2xs">
                 <span className="font-currency-display text-currency-display text-white font-extrabold tracking-tight">
-                  {hideBalance ? '••••••••' : (summary?.totalAssets || 0).toLocaleString('vi-VN')}
+                  {hideBalance ? '••••••••' : totalAssets.toLocaleString('vi-VN')}
                 </span>
                 <span className="font-title-md text-title-md text-blue-200 font-bold">
                   ₫
@@ -902,7 +984,11 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             <div className="mt-space-sm mb-space-md relative z-10">
               <div className="flex items-baseline gap-space-2xs text-white">
                 <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                  {hideBalance ? '••••••••' : `-${(summary?.totalLiabilities || 0).toLocaleString('vi-VN')}`}
+                  {hideBalance
+                    ? '••••••••'
+                    : totalLiabilities > 0
+                    ? `-${totalLiabilities.toLocaleString('vi-VN')}`
+                    : '0'}
                 </span>
                 <span className="font-title-md text-title-md text-rose-200 font-bold">₫</span>
               </div>        
@@ -926,9 +1012,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                 <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
                   {hideBalance
                     ? '••••••••'
-                    : (summary?.netWorth || 0) >= 0
-                    ? `+${(summary?.netWorth || 0).toLocaleString('vi-VN')}`
-                    : (summary?.netWorth || 0).toLocaleString('vi-VN')}
+                    : netWorth >= 0
+                    ? `+${netWorth.toLocaleString('vi-VN')}`
+                    : netWorth.toLocaleString('vi-VN')}
                 </span>
                 <span className="font-title-md text-title-md text-emerald-200 font-bold">₫</span>
               </div>
@@ -1079,6 +1165,35 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           </div>
         </div>
       )}
+      {/* MODAL: ACCOUNT DETAIL & TRANSACTIONS & EDIT */}
+      <AccountDetailModal
+        key={selectedDetailAccount?.id ? `acc-modal-${selectedDetailAccount.id}` : 'no-account'}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedDetailAccount(null);
+        }}
+        account={selectedDetailAccount}
+        onAccountUpdated={(updatedAccount) => {
+          setSelectedDetailAccount(updatedAccount);
+          setSummary((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              accounts: prev.accounts.map((a) => (a.id === updatedAccount.id ? updatedAccount : a)),
+            };
+          });
+        }}
+        onOpenAddTransaction={(acc) => {
+          if (onOpenAddTransaction) {
+            onOpenAddTransaction({ account: acc });
+          }
+        }}
+        onRefresh={() => {
+          fetchAccounts();
+          onRefresh?.();
+        }}
+      />
     </div>
   );
 };

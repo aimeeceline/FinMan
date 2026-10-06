@@ -22,5 +22,4 @@ COPY --from=builder /app/target/finman-backend-*.jar app.jar
 
 EXPOSE 8080
 
-ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC"
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

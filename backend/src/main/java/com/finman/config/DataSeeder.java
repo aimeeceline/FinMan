@@ -30,38 +30,51 @@ public class DataSeeder implements CommandLineRunner {
         record DefaultCategoryDefinition(String name, CategoryType type, String icon) {}
 
         List<DefaultCategoryDefinition> defaultCategories = List.of(
-                // Danh mục Chi tiêu (Expense) - Khớp 100% với Stitch UI Design (07_add_transaction)
-                new DefaultCategoryDefinition("Ăn uống", CategoryType.EXPENSE, "restaurant"),
-                new DefaultCategoryDefinition("Áo quần", CategoryType.EXPENSE, "apparel"),
-                new DefaultCategoryDefinition("Mua sắm", CategoryType.EXPENSE, "shopping_bag"),
-                new DefaultCategoryDefinition("Giao thông", CategoryType.EXPENSE, "directions_car"),
-                new DefaultCategoryDefinition("Giải trí", CategoryType.EXPENSE, "sports_esports"),
-                new DefaultCategoryDefinition("Sinh hoạt", CategoryType.EXPENSE, "home"),
-                new DefaultCategoryDefinition("Sức khỏe", CategoryType.EXPENSE, "favorite"),
-                new DefaultCategoryDefinition("Giáo dục", CategoryType.EXPENSE, "school"),
-                new DefaultCategoryDefinition("Chi tiêu khác", CategoryType.EXPENSE, "more_horiz"),
+                // Danh mục Chi tiêu (Expense) - Đồng bộ emoji hệ thống
+                new DefaultCategoryDefinition("Ăn uống", CategoryType.EXPENSE, "🍜"),
+                new DefaultCategoryDefinition("Áo quần", CategoryType.EXPENSE, "👕"),
+                new DefaultCategoryDefinition("Mua sắm", CategoryType.EXPENSE, "🛒"),
+                new DefaultCategoryDefinition("Giao thông", CategoryType.EXPENSE, "🚕"),
+                new DefaultCategoryDefinition("Giải trí", CategoryType.EXPENSE, "🎮"),
+                new DefaultCategoryDefinition("Sinh hoạt", CategoryType.EXPENSE, "🏠"),
+                new DefaultCategoryDefinition("Sức khỏe", CategoryType.EXPENSE, "💊"),
+                new DefaultCategoryDefinition("Giáo dục", CategoryType.EXPENSE, "📚"),
+                new DefaultCategoryDefinition("Chi tiêu khác", CategoryType.EXPENSE, "📦"),
 
                 // Danh mục Thu nhập (Income)
-                new DefaultCategoryDefinition("Lương", CategoryType.INCOME, "payments"),
-                new DefaultCategoryDefinition("Thưởng", CategoryType.INCOME, "featured_seasonal_and_gifts"),
-                new DefaultCategoryDefinition("Đầu tư", CategoryType.INCOME, "trending_up"),
-                new DefaultCategoryDefinition("Freelance", CategoryType.INCOME, "laptop_mac"),
-                new DefaultCategoryDefinition("Thu nhập khác", CategoryType.INCOME, "savings")
+                new DefaultCategoryDefinition("Lương", CategoryType.INCOME, "💼"),
+                new DefaultCategoryDefinition("Thưởng", CategoryType.INCOME, "🎁"),
+                new DefaultCategoryDefinition("Đầu tư", CategoryType.INCOME, "📈"),
+                new DefaultCategoryDefinition("Freelance", CategoryType.INCOME, "💻"),
+                new DefaultCategoryDefinition("Thu nhập khác", CategoryType.INCOME, "🪙")
         );
 
+        List<Category> existingDefaults = categoryRepository.findByIsDefaultTrue();
         int createdCount = 0;
+        int updatedCount = 0;
         for (DefaultCategoryDefinition def : defaultCategories) {
-            if (!categoryRepository.existsByIsDefaultTrueAndNameIgnoreCase(def.name())) {
+            var existingOpt = existingDefaults.stream()
+                    .filter(c -> c.getName().equalsIgnoreCase(def.name()))
+                    .findFirst();
+
+            if (existingOpt.isPresent()) {
+                Category cat = existingOpt.get();
+                if (!def.icon().equals(cat.getIcon())) {
+                    cat.setIcon(def.icon());
+                    categoryRepository.save(cat);
+                    updatedCount++;
+                }
+            } else {
                 Category category = new Category(def.name(), def.type(), def.icon(), true);
                 categoryRepository.save(category);
                 createdCount++;
             }
         }
 
-        if (createdCount > 0) {
-            log.info("DataSeeder: Đã khởi tạo thành công {} danh mục mặc định cho hệ thống.", createdCount);
+        if (createdCount > 0 || updatedCount > 0) {
+            log.info("DataSeeder: Đã đồng bộ danh mục hệ thống (Tạo mới: {}, Cập nhật icon: {}).", createdCount, updatedCount);
         } else {
-            log.info("DataSeeder: Tất cả danh mục mặc định đã tồn tại trong database, bỏ qua khởi tạo.");
+            log.info("DataSeeder: Tất cả danh mục mặc định đã chuẩn hóa trong database.");
         }
     }
 }

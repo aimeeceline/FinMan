@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 import { aiService } from '../../services/aiService';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 interface DashboardPageProps {
   transactions: Transaction[];
@@ -42,19 +43,9 @@ const getCategoryPastelBg = (id?: number, name?: string): string => {
   return PASTEL_PALETTES[Math.abs(hash) % PASTEL_PALETTES.length];
 };
 
-const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE') => {
-  if (!icon) {
-    return (
-      <span className="material-symbols-outlined text-[18px]">
-        {type === 'INCOME' ? 'savings' : 'payments'}
-      </span>
-    );
-  }
-  const isEmoji = /\p{Extended_Pictographic}/u.test(icon) || icon.length <= 2;
-  if (isEmoji) {
-    return <span className="text-base leading-none">{icon}</span>;
-  }
-  return <span className="material-symbols-outlined text-[18px]">{icon}</span>;
+const renderCategoryIcon = (icon?: string, type?: 'INCOME' | 'EXPENSE', name?: string) => {
+  const theme = getCategoryTheme({ name, icon, type });
+  return <span className="text-base leading-none select-none">{theme.emoji}</span>;
 };
 
 // Get today YYYY-MM-DD in local timezone
@@ -224,7 +215,92 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [calendarMonth, setCalendarMonth] = useState<number>(9);
   const [tempStartDate, setTempStartDate] = useState<string>('2026-09-01');
   const [tempEndDate, setTempEndDate] = useState<string>('2026-09-16');
+  const [startDateInput, setStartDateInput] = useState<string>(() => formatVNDate('2026-09-01'));
+  const [endDateInput, setEndDateInput] = useState<string>(() => formatVNDate('2026-09-16'));
   const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Sync input strings whenever tempStartDate / tempEndDate change
+  useEffect(() => {
+    setStartDateInput(formatVNDate(tempStartDate));
+  }, [tempStartDate]);
+
+  useEffect(() => {
+    setEndDateInput(formatVNDate(tempEndDate));
+  }, [tempEndDate]);
+
+  const handleStartDateInputChange = (val: string) => {
+    setStartDateInput(val);
+    const parts = val.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setTempStartDate(validIso);
+        setCalendarYear(y);
+        setCalendarMonth(m);
+      }
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+      setTempStartDate(val.trim());
+      const [y, m] = val.trim().split('-').map(Number);
+      setCalendarYear(y);
+      setCalendarMonth(m);
+    }
+  };
+
+  const handleStartDateInputBlur = () => {
+    const parts = startDateInput.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setTempStartDate(validIso);
+        setStartDateInput(`${padD}/${padM}/${y}`);
+        return;
+      }
+    }
+    setStartDateInput(formatVNDate(tempStartDate));
+  };
+
+  const handleEndDateInputChange = (val: string) => {
+    setEndDateInput(val);
+    const parts = val.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setTempEndDate(validIso);
+        setCalendarYear(y);
+        setCalendarMonth(m);
+      }
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+      setTempEndDate(val.trim());
+      const [y, m] = val.trim().split('-').map(Number);
+      setCalendarYear(y);
+      setCalendarMonth(m);
+    }
+  };
+
+  const handleEndDateInputBlur = () => {
+    const parts = endDateInput.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      const [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setTempEndDate(validIso);
+        setEndDateInput(`${padD}/${padM}/${y}`);
+        return;
+      }
+    }
+    setEndDateInput(formatVNDate(tempEndDate));
+  };
 
   // Account Dropdown State (Nguồn tiền)
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState<boolean>(false);
@@ -1311,7 +1387,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             <div className="space-y-1">
                               {expenseCategories.map((cat) => {
                                 const isSelected = categoryFilter === cat.name;
-                                const pastelBg = getCategoryPastelBg(cat.id, cat.name);
+                                const catTheme = getCategoryTheme(cat);
                                 return (
                                   <button
                                     key={cat.name}
@@ -1328,8 +1404,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     }`}
                                   >
                                     <div className="flex items-center gap-3 truncate">
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}>
-                                        {renderCategoryIcon(cat.icon, 'EXPENSE')}
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${catTheme.bgClass}`}>
+                                        <span className="text-base leading-none select-none">{catTheme.emoji}</span>
                                       </div>
                                       <span className="text-sm truncate font-medium text-slate-800 dark:text-on-surface">
                                         {cat.name}
@@ -1356,7 +1432,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             <div className="space-y-1">
                               {incomeCategories.map((cat) => {
                                 const isSelected = categoryFilter === cat.name;
-                                const pastelBg = getCategoryPastelBg(cat.id, cat.name);
+                                const catTheme = getCategoryTheme(cat);
                                 return (
                                   <button
                                     key={cat.name}
@@ -1373,8 +1449,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     }`}
                                   >
                                     <div className="flex items-center gap-3 truncate">
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}>
-                                        {renderCategoryIcon(cat.icon, 'INCOME')}
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${catTheme.bgClass}`}>
+                                        <span className="text-base leading-none select-none">{catTheme.emoji}</span>
                                       </div>
                                       <span className="text-sm truncate font-medium text-slate-800 dark:text-on-surface">
                                         {cat.name}
@@ -1519,27 +1595,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                       </div>
                     ) : (
-                      /* 2. CARD LỊCH CHỌN KHOẢNG THỜI GIAN TRA CỨU (Chỉ hiện khi bấm vào Tự chọn) */
-                      <div className="absolute top-full mt-2.5 left-0 sm:left-auto sm:right-0 md:left-0 z-50 w-[350px] sm:w-[440px] bg-white dark:bg-surface-container-lowest rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] border border-slate-100 dark:border-outline-variant/30 p-5 sm:p-6 animate-fadeIn select-none">
+                      /* 2. CARD LỊCH CHỌN KHOẢNG THỜI GIAN TRA CỨU (Chỉ hiện khi bấm vào Tự chọn - Đã thu nhỏ gọn gàng) */
+                      <div className="absolute top-full mt-2 left-0 sm:left-auto sm:right-0 md:left-0 z-50 w-[320px] sm:w-[335px] bg-white dark:bg-surface-container-lowest rounded-2xl shadow-xl border border-slate-100 dark:border-outline-variant/30 p-3.5 sm:p-4 animate-fadeIn select-none">
                         {/* Tiêu đề & Năm tài chính & Nút quay lại */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-outline-variant/20">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-outline-variant/20">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => setShowCalendarView(false)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors flex items-center"
+                              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors flex items-center"
                               title="Quay lại danh sách mốc thời gian"
                             >
-                              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
                             </button>
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
-                            <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-on-surface uppercase tracking-wide">
-                              CHỌN KHOẢNG THỜI GIAN TRA CỨU
+                            <span className="w-2 h-2 rounded-full bg-red-600 shrink-0"></span>
+                            <h4 className="font-extrabold text-[11px] sm:text-xs text-slate-800 dark:text-on-surface uppercase tracking-wide">
+                              Khoảng thời gian tra cứu
                             </h4>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400 dark:text-on-surface-variant font-medium">
-                              Năm tài chính {calendarYear}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-slate-400 dark:text-on-surface-variant font-medium">
+                              Tháng {calendarMonth}/{calendarYear}
                             </span>
                             <button
                               type="button"
@@ -1547,65 +1623,117 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 setIsDatePickerOpen(false);
                                 setShowCalendarView(false);
                               }}
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors"
+                              className="w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-surface-container cursor-pointer transition-colors"
                               title="Đóng"
                             >
-                              <span className="material-symbols-outlined text-[16px]">close</span>
+                              <span className="material-symbols-outlined text-[15px]">close</span>
                             </button>
                           </div>
                         </div>
 
-                        {/* 2 Khối hiển thị: Từ ngày bắt đầu - Đến ngày kết thúc */}
-                        <div className="grid grid-cols-2 gap-2.5 my-3.5">
-                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-2xl p-2.5 sm:p-3">
-                            <div className="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-1">
-                              TỪ NGÀY BẮT ĐẦU
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-[18px] text-slate-400 dark:text-on-surface-variant">
+                        {/* 2 Khối hiển thị: Từ ngày bắt đầu - Đến ngày kết thúc (Cho phép nhập thủ công) */}
+                        <div className="grid grid-cols-2 gap-2 my-2.5">
+                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-xl p-2 focus-within:bg-white dark:focus-within:bg-surface-container focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
+                            <label className="block text-[9px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-0.5">
+                              TỪ NGÀY
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[15px] text-slate-400 dark:text-on-surface-variant shrink-0">
                                 calendar_today
                               </span>
-                              <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-on-surface">
-                                {tempStartDate ? formatVNDate(tempStartDate) : '01/09/2026'}
-                              </span>
+                              <input
+                                type="text"
+                                value={startDateInput}
+                                onChange={(e) => handleStartDateInputChange(e.target.value)}
+                                onBlur={handleStartDateInputBlur}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleStartDateInputBlur();
+                                  }
+                                }}
+                                placeholder="DD/MM/YYYY"
+                                className="w-full bg-transparent text-xs font-bold text-slate-800 dark:text-on-surface font-mono focus:outline-none tracking-tight placeholder:text-slate-300"
+                                title="Nhập ngày bắt đầu (ví dụ: 01/09/2026)"
+                              />
                             </div>
                           </div>
 
-                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-2xl p-2.5 sm:p-3">
-                            <div className="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-1">
-                              ĐẾN NGÀY KẾT THÚC
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-[18px] text-slate-400 dark:text-on-surface-variant">
+                          <div className="bg-slate-50/90 dark:bg-surface-container-low border border-slate-200/80 dark:border-outline-variant/30 rounded-xl p-2 focus-within:bg-white dark:focus-within:bg-surface-container focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
+                            <label className="block text-[9px] font-bold text-slate-400 dark:text-on-surface-variant uppercase tracking-wider mb-0.5">
+                              ĐẾN NGÀY
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[15px] text-slate-400 dark:text-on-surface-variant shrink-0">
                                 calendar_today
                               </span>
-                              <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-on-surface">
-                                {tempEndDate ? formatVNDate(tempEndDate) : '16/09/2026'}
-                              </span>
+                              <input
+                                type="text"
+                                value={endDateInput}
+                                onChange={(e) => handleEndDateInputChange(e.target.value)}
+                                onBlur={handleEndDateInputBlur}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleEndDateInputBlur();
+                                  }
+                                }}
+                                placeholder="DD/MM/YYYY"
+                                className="w-full bg-transparent text-xs font-bold text-slate-800 dark:text-on-surface font-mono focus:outline-none tracking-tight placeholder:text-slate-300"
+                                title="Nhập ngày kết thúc (ví dụ: 16/09/2026)"
+                              />
                             </div>
                           </div>
                         </div>
 
-                        {/* Thanh chuyển tháng: < Tháng 9, 2026 > */}
-                        <div className="flex items-center justify-between py-1 px-1 mb-2">
+                        {/* Thanh chuyển tháng & chọn Năm/Tháng trực tiếp (Năm liên tiếp 2015..2040) */}
+                        <div className="flex items-center justify-between py-1 px-1 mb-1.5 bg-slate-50/80 dark:bg-surface-container-low rounded-xl">
                           <button
                             type="button"
                             onClick={handlePrevMonth}
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
                             title="Tháng trước"
                           >
-                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                            <span className="material-symbols-outlined text-[16px]">chevron_left</span>
                           </button>
-                          <span className="font-bold text-sm text-slate-800 dark:text-on-surface">
-                            Tháng {calendarMonth}, {calendarYear}
-                          </span>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Chọn Tháng */}
+                            <select
+                              value={calendarMonth}
+                              onChange={(e) => setCalendarMonth(Number(e.target.value))}
+                              className="bg-white dark:bg-surface-container border border-slate-200 dark:border-outline-variant/30 rounded-lg px-1.5 py-0.5 text-xs font-bold text-slate-800 dark:text-on-surface cursor-pointer focus:outline-none focus:ring-1 focus:ring-red-500 shadow-2xs hover:border-slate-300"
+                              title="Chọn tháng"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                <option key={m} value={m}>
+                                  Tháng {m}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Chọn Năm: Các năm liên tiếp (consecutive) từ 2015 đến 2040 */}
+                            <select
+                              value={calendarYear}
+                              onChange={(e) => setCalendarYear(Number(e.target.value))}
+                              className="bg-white dark:bg-surface-container border border-slate-200 dark:border-outline-variant/30 rounded-lg px-1.5 py-0.5 text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer focus:outline-none focus:ring-1 focus:ring-red-500 shadow-2xs hover:border-slate-300"
+                              title="Chọn năm"
+                            >
+                              {Array.from({ length: 26 }, (_, i) => 2015 + i).map((y) => (
+                                <option key={y} value={y}>
+                                  Năm {y}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
                           <button
                             type="button"
                             onClick={handleNextMonth}
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-on-surface-variant dark:hover:bg-surface-container transition-colors cursor-pointer"
                             title="Tháng sau"
                           >
-                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                           </button>
                         </div>
 
@@ -1614,7 +1742,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
                             <div
                               key={d}
-                              className="text-xs font-semibold text-slate-400 dark:text-on-surface-variant py-1"
+                              className="text-[10px] font-bold text-slate-400 dark:text-on-surface-variant py-0.5"
                             >
                               {d}
                             </div>
@@ -1622,7 +1750,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {/* Lưới lịch các ngày với dải hồng pastel range & nút tròn đỏ */}
-                        <div className="grid grid-cols-7 gap-y-1">
+                        <div className="grid grid-cols-7 gap-y-0.5">
                           {calendarDays.map((cell, idx) => {
                             const isStart = tempStartDate === cell.dateStr;
                             const isEnd = tempEndDate === cell.dateStr;
@@ -1635,31 +1763,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               cell.dateStr < tempEndDate;
 
                             return (
-                              <div key={idx} className="relative h-9 sm:h-10 flex items-center justify-center">
+                              <div key={idx} className="relative h-7 sm:h-7.5 flex items-center justify-center">
                                 {/* Dải nền đỏ nhạt peach kết nối các ngày trong khoảng */}
                                 {isInRange && (
                                   <div
-                                    className={`absolute inset-y-1 inset-x-0 bg-red-50/90 dark:bg-red-950/40 ${
+                                    className={`absolute inset-y-0.5 inset-x-0 bg-red-50/90 dark:bg-red-950/40 ${
                                       cell.dayOfWeekIndex === 0 ? 'rounded-l-full' : ''
                                     } ${cell.dayOfWeekIndex === 6 ? 'rounded-r-full' : ''}`}
                                   />
                                 )}
                                 {/* Nửa dải bên phải nối từ ngày bắt đầu sang ngày kế tiếp */}
                                 {isStart && isRangeActive && (
-                                  <div className="absolute inset-y-1 right-0 left-1/2 bg-red-50/90 dark:bg-red-950/40" />
+                                  <div className="absolute inset-y-0.5 right-0 left-1/2 bg-red-50/90 dark:bg-red-950/40" />
                                 )}
                                 {/* Nửa dải bên trái nối từ ngày trước đến ngày kết thúc */}
                                 {isEnd && isRangeActive && (
-                                  <div className="absolute inset-y-1 left-0 right-1/2 bg-red-50/90 dark:bg-red-950/40" />
+                                  <div className="absolute inset-y-0.5 left-0 right-1/2 bg-red-50/90 dark:bg-red-950/40" />
                                 )}
 
                                 {/* Nút bấm ngày */}
                                 <button
                                   type="button"
                                   onClick={() => handleDayClick(cell.dateStr)}
-                                  className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all cursor-pointer ${
+                                  className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold transition-all cursor-pointer ${
                                     isStart || isEnd
-                                      ? 'bg-red-600 text-white font-extrabold shadow-md hover:bg-red-700 active:scale-95'
+                                      ? 'bg-red-600 text-white font-extrabold shadow-xs hover:bg-red-700 active:scale-95'
                                       : isInRange
                                       ? 'text-slate-800 dark:text-on-surface font-semibold hover:bg-red-100/60'
                                       : cell.isCurrentMonth
@@ -1675,14 +1803,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
 
                         {/* Nút hành động "Áp dụng khoảng ngày" */}
-                        <div className="pt-4 mt-2 border-t border-slate-100 dark:border-outline-variant/20 flex items-center justify-between">
+                        <div className="pt-2.5 mt-2 border-t border-slate-100 dark:border-outline-variant/20 flex items-center justify-between">
                           <button
                             type="button"
                             onClick={() => {
                               handleApplyDateRange();
                               setShowCalendarView(false);
                             }}
-                            className="bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm px-6 py-2.5 rounded-2xl shadow-lg shadow-red-500/25 transition-all cursor-pointer"
+                            className="bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-red-500/20 transition-all cursor-pointer"
                           >
                             Áp dụng khoảng ngày
                           </button>
@@ -1719,7 +1847,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
                     </div>
                     <span className="text-amber-700 dark:text-amber-400 font-bold text-[11px] uppercase tracking-wider">
-                      NGUỒN TIỀN:
+                      TÀI KHOẢN:
                     </span>
                     <span className="font-bold text-xs max-w-[150px] truncate text-slate-800 dark:text-on-surface">
                       {accountFilter === 'ALL' ? 'Tất cả tài khoản' : accountFilter}
@@ -1975,19 +2103,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           >
                             {/* Left Info */}
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0"
-                                style={{
-                                  backgroundColor: isIncome ? '#85f8c4' : (isTransfer ? '#dbeafe' : '#ffdad6'),
-                                  color: isIncome ? '#006c4a' : (isTransfer ? '#1d4ed8' : '#dc2626'),
-                                }}
-                              >
-                                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
-                                  {isTransfer
-                                    ? 'swap_horiz'
-                                    : (tx.category?.icon || (isIncome ? 'account_balance' : 'payments'))}
-                                </span>
-                              </div>
+                              {isTransfer ? (
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0 bg-blue-100 text-blue-700">
+                                  <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
+                                    swap_horiz
+                                  </span>
+                                </div>
+                              ) : (
+                                <div
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0 shadow-2xs"
+                                  style={{
+                                    backgroundColor: getCategoryTheme(tx.category).hexBg,
+                                    color: getCategoryTheme(tx.category).hexColor,
+                                  }}
+                                >
+                                  <span className="text-sm sm:text-base leading-none select-none">
+                                    {getCategoryTheme(tx.category).emoji}
+                                  </span>
+                                </div>
+                              )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-xs sm:text-sm text-on-surface font-semibold truncate">

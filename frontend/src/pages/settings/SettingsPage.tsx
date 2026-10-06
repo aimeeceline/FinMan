@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/userService';
 import { categoryService } from '../../services/categoryService';
 import type { Category } from '../../types';
+import { AddCategoryModal } from '../../components/modals/AddCategoryModal';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 // Preset avatar list for quick 1-click selection
 const PRESET_AVATARS = [
@@ -14,26 +16,6 @@ const PRESET_AVATARS = [
   { id: 'av-6', label: 'FinBot', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FinBot' },
   { id: 'av-7', label: 'Doanh nhân 1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
   { id: 'av-8', label: 'Doanh nhân 2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
-];
-
-// Preset icons for new categories
-const PRESET_ICONS = [
-  'shopping_bag', 'restaurant', 'directions_car', 'home',
-  'flight', 'payments', 'trending_up', 'work',
-  'school', 'medical_services', 'fitness_center', 'sports_esports',
-  'card_giftcard', 'coffee', 'savings', 'build'
-];
-
-// Preset colors for new categories
-const PRESET_COLORS = [
-  { color: '#dc2626', bg: '#fee2e2' },
-  { color: '#ea580c', bg: '#ffedd5' },
-  { color: '#ca8a04', bg: '#fef9c3' },
-  { color: '#16a34a', bg: '#dcfce7' },
-  { color: '#0d9488', bg: '#ccfbf1' },
-  { color: '#2563eb', bg: '#dbeafe' },
-  { color: '#7c3aed', bg: '#ede9fe' },
-  { color: '#db2777', bg: '#fce7f3' },
 ];
 
 type SettingsTab = 'profile' | 'security' | 'categories';
@@ -161,11 +143,6 @@ export const SettingsPage: React.FC = () => {
   const [categoryTypeFilter, setCategoryTypeFilter] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [categorySearch, setCategorySearch] = useState('');
   const [isAddCatModalOpen, setIsAddCatModalOpen] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatType, setNewCatType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
-  const [newCatIcon, setNewCatIcon] = useState('shopping_bag');
-  const [newCatColor, setNewCatColor] = useState(PRESET_COLORS[0].color);
-  const [catSaving, setCatSaving] = useState(false);
 
   // --- Logout Dialog State ---
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -358,30 +335,6 @@ export const SettingsPage: React.FC = () => {
       setPasswordFeedback({ type: 'error', message: msg });
     } finally {
       setPasswordSaving(false);
-    }
-  };
-
-  // --- Category Actions ---
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-
-    setCatSaving(true);
-    try {
-      const created = await categoryService.createCategory({
-        name: newCatName.trim(),
-        type: newCatType,
-        icon: newCatIcon,
-        color: newCatColor,
-      });
-
-      setCategories((prev) => [...prev, created]);
-      setIsAddCatModalOpen(false);
-      setNewCatName('');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Không thể tạo danh mục mới.');
-    } finally {
-      setCatSaving(false);
     }
   };
 
@@ -986,10 +939,7 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => {
-                  setNewCatType(categoryTypeFilter);
-                  setIsAddCatModalOpen(true);
-                }}
+                onClick={() => setIsAddCatModalOpen(true)}
                 className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary-container transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1040,39 +990,43 @@ export const SettingsPage: React.FC = () => {
 
           {/* Categories Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
-            {filteredCategories.map((c) => (
-              <div
-                key={c.id}
-                className="p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-outline-variant/15 flex items-center justify-between transition-colors group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                    style={{
-                      backgroundColor: c.bgColor || '#fee2e2',
-                      color: c.color || '#dc2626',
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
-                  </div>
-                  <div className="truncate">
-                    <span className="text-xs font-bold text-on-surface block truncate">
-                      {c.name}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider ${c.type === 'INCOME' ? 'text-secondary' : 'text-primary'
-                        }`}
+            {filteredCategories.map((c) => {
+              const theme = getCategoryTheme(c);
+              return (
+                <div
+                  key={c.id}
+                  className="p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-outline-variant/15 flex items-center justify-between transition-all hover:shadow-xs group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105"
+                      style={{
+                        backgroundColor: c.bgColor || theme.hexBg,
+                        color: c.color || theme.hexColor,
+                      }}
                     >
-                      {c.type === 'INCOME' ? 'Thu nhập' : 'Chi tiêu'}
-                    </span>
+                      <span className="text-xl leading-none select-none">{theme.emoji}</span>
+                    </div>
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-on-surface block truncate">
+                        {c.name}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider ${
+                          c.type === 'INCOME' ? 'text-secondary' : 'text-primary'
+                        }`}
+                      >
+                        {c.type === 'INCOME' ? 'Thu nhập' : 'Chi tiêu'}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <span className="material-symbols-outlined text-slate-300 text-[18px] group-hover:text-slate-400">
-                  category
-                </span>
-              </div>
-            ))}
+                  <span className="text-base opacity-25 group-hover:opacity-70 transition-opacity select-none">
+                    {theme.emoji}
+                  </span>
+                </div>
+              );
+            })}
 
             {filteredCategories.length === 0 && (
               <div className="col-span-full py-12 text-center text-xs text-on-surface-variant">
@@ -1109,128 +1063,17 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL 1: ADD CATEGORY MODAL */}
+      {/* MODAL 1: UNIFIED ADD CATEGORY MODAL */}
       {/* ========================================================================= */}
-      {isAddCatModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl p-6 shadow-2xl border border-outline-variant/30 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                Thêm danh mục mới
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddCatModalOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateCategory} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1.5">
-                  Tên danh mục <span className="text-primary">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Cà phê, Xăng xe, Du lịch..."
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low text-xs font-semibold text-on-surface placeholder:text-on-surface-variant/50 border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1.5">
-                  Loại danh mục
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewCatType('EXPENSE')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${newCatType === 'EXPENSE'
-                        ? 'bg-primary text-white'
-                        : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                      }`}
-                  >
-                    Chi tiêu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewCatType('INCOME')}
-                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${newCatType === 'INCOME'
-                        ? 'bg-secondary text-white'
-                        : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                      }`}
-                  >
-                    Thu nhập
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1.5">
-                  Biểu tượng (Icon)
-                </label>
-                <div className="grid grid-cols-8 gap-2 p-2 bg-surface-container-low rounded-xl">
-                  {PRESET_ICONS.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      onClick={() => setNewCatIcon(icon)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer ${newCatIcon === icon
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-on-surface-variant hover:bg-surface-container-high'
-                        }`}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1.5">
-                  Màu sắc
-                </label>
-                <div className="flex items-center gap-2">
-                  {PRESET_COLORS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setNewCatColor(item.color);
-                      }}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${newCatColor === item.color ? 'scale-125 ring-2 ring-primary/40' : ''
-                        }`}
-                      style={{ backgroundColor: item.color }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsAddCatModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={catSaving || !newCatName.trim()}
-                  className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-container disabled:opacity-50 transition-all cursor-pointer"
-                >
-                  {catSaving ? 'Đang tạo...' : 'Tạo danh mục'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddCategoryModal
+        isOpen={isAddCatModalOpen}
+        onClose={() => setIsAddCatModalOpen(false)}
+        initialType={categoryTypeFilter}
+        showTypeSelector={true}
+        onSuccess={(created) => {
+          setCategories((prev) => [...prev, created]);
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL 2: LOGOUT CONFIRMATION DIALOG */}

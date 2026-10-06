@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { Transaction, Account } from '../../types';
 import { statisticsService, type StatisticsOverview, type CategoryBreakdownItem } from '../../services/statisticsService';
 import { transactionService } from '../../services/transactionService';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 interface StatisticsPageProps {
   transactions?: Transaction[];
@@ -279,7 +280,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
 
   const formatCalMonthLabel = (m: string) => {
     const [y, mon] = m.split('-');
-    return `Th ${parseInt(mon, 10)}/${y}`;
+    return `Tháng ${parseInt(mon, 10)}/${y}`;
   };
 
   const handleChartPointClick = (d: { dateStr: string; label: string }) => {
@@ -427,16 +428,26 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
   // Top Expenses calculation
   const topExpensesList = useMemo(() => {
     if (serverOverview?.topExpenses && serverOverview.topExpenses.length > 0) {
-      return serverOverview.topExpenses.map((t) => ({
-        id: t.id,
-        note: t.note || 'Chi tiêu không ghi chú',
-        amount: t.amount,
-        date: t.transactionDate,
-        categoryName: t.categoryName || 'Chi tiêu',
-        categoryIcon: t.categoryIcon || 'shopping_bag',
-        accountName: t.accountName || 'Ví chính',
-        percent: totalExpense > 0 ? Math.round((t.amount / totalExpense) * 1000) / 10 : 0,
-      }));
+      return serverOverview.topExpenses.map((t: any) => {
+        const matchedTx = transactions.find((tx) => tx.id === t.id);
+        const cat = matchedTx?.category || t.category || {
+          name: t.categoryName,
+          icon: t.categoryIcon,
+          color: t.categoryColor,
+        };
+        const accName = matchedTx?.account?.name || t.account?.name || t.accountName || 'Ví chính';
+        return {
+          id: t.id,
+          note: t.note || cat?.name || 'Chi tiêu không ghi chú',
+          amount: t.amount,
+          date: t.transactionDate || t.date,
+          category: cat,
+          categoryName: cat?.name || t.categoryName || 'Chi tiêu',
+          categoryIcon: cat?.icon || t.categoryIcon || 'shopping_bag',
+          accountName: accName,
+          percent: totalExpense > 0 ? Math.round((t.amount / totalExpense) * 1000) / 10 : 0,
+        };
+      });
     }
 
     return filteredTransactions
@@ -448,12 +459,13 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
         note: t.note || `${t.category?.name || 'Chi tiêu'}`,
         amount: t.amount,
         date: t.date,
+        category: t.category,
         categoryName: t.category?.name || 'Chi tiêu',
         categoryIcon: t.category?.icon || 'shopping_bag',
         accountName: t.account?.name || 'Ví tiền mặt',
         percent: totalExpense > 0 ? Math.round((t.amount / totalExpense) * 1000) / 10 : 0,
       }));
-  }, [serverOverview, filteredTransactions, totalExpense]);
+  }, [serverOverview, filteredTransactions, transactions, totalExpense]);
 
   // Format local date as YYYY-MM-DD
   const formatLocalDate = (d: Date): string => {
@@ -1139,47 +1151,55 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   Chưa có khoản chi nào được ghi nhận trong khoảng thời gian này.
                 </div>
               ) : (
-                topExpensesList.map((item, idx) => (
-                  <div
-                    key={item.id || idx}
-                    className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors border border-outline-variant/10"
-                  >
-                    <div className="flex items-center gap-space-sm">
-                      <span
-                        className={`w-5 text-center font-headline-sm text-headline-sm font-bold ${idx === 0 ? 'text-primary' : 'text-on-surface-variant'
+                topExpensesList.map((item, idx) => {
+                  const theme = getCategoryTheme(
+                    item.category || { name: item.categoryName, icon: item.categoryIcon },
+                    item.note
+                  );
+                  return (
+                    <div
+                      key={item.id || idx}
+                      className="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors border border-outline-variant/10"
+                    >
+                      <div className="flex items-center gap-space-sm">
+                        <span
+                          className={`w-5 text-center font-headline-sm text-headline-sm font-bold ${
+                            idx === 0 ? 'text-primary' : 'text-on-surface-variant'
                           }`}
-                      >
-                        {idx + 1}
-                      </span>
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${idx === 0
-                            ? 'bg-error-container text-on-error-container'
-                            : 'bg-surface-container-high text-on-surface'
-                          }`}
-                      >
-                        <span className="material-symbols-outlined text-[20px]">
-                          {item.categoryIcon}
+                        >
+                          {idx + 1}
                         </span>
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+                          style={{
+                            backgroundColor: theme.hexBg,
+                            color: theme.hexColor,
+                          }}
+                        >
+                          <span className="text-xl leading-none select-none">
+                            {theme.emoji}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-label-lg text-label-lg text-on-surface font-semibold truncate max-w-[180px]">
+                            {item.note}
+                          </span>
+                          <span className="font-body-sm text-body-sm text-on-surface-variant">
+                            {item.date} • {item.accountName}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-label-lg text-label-lg text-on-surface font-semibold truncate max-w-[180px]">
-                          {item.note}
+                      <div className="text-right shrink-0">
+                        <span className="font-currency-row text-currency-row text-primary block">
+                          -{item.amount.toLocaleString('vi-VN')}₫
                         </span>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          {item.date} • {item.accountName}
+                        <span className="font-label-sm text-label-sm text-on-surface-variant block">
+                          {item.percent}% chi tiêu
                         </span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-currency-row text-currency-row text-primary block">
-                        -{item.amount.toLocaleString('vi-VN')}₫
-                      </span>
-                      <span className="font-label-sm text-label-sm text-on-surface-variant block">
-                        {item.percent}% chi tiêu
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -1366,22 +1386,14 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                       onClick={() => handleChartPointClick(d)}
                     >
                       {/* Active/Hover/Selected highlight pill behind label */}
-                      {(isHovered || d.isSelected || d.isToday) && (
+                      {(isHovered || d.isSelected) && (
                         <rect
                           x={pt.x - (isMonthMode ? 14 : 22)}
                           y={186}
                           width={isMonthMode ? 28 : 44}
                           height={22}
                           rx={6}
-                          fill={
-                            isHovered
-                              ? '#131b2e'
-                              : d.isSelected
-                                ? '#ffdad6'
-                                : d.isToday
-                                  ? '#eaedff'
-                                  : 'transparent'
-                          }
+                          fill={isHovered ? '#131b2e' : '#ffdad6'}
                           className="transition-colors"
                         />
                       )}
@@ -1395,15 +1407,13 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                             textAnchor="middle"
                             fontFamily="Inter"
                             fontSize={isMonthMode ? '10' : '11'}
-                            fontWeight={isHovered || d.isSelected || d.isToday ? '700' : '600'}
+                            fontWeight={isHovered || d.isSelected ? '700' : '600'}
                             fill={
                               isHovered
                                 ? '#ffffff'
                                 : d.isSelected
                                   ? '#ba1a1a'
-                                  : d.isToday
-                                    ? '#006c4a'
-                                    : '#5c403c'
+                                  : '#5c403c'
                             }
                           >
                             {d.label}
@@ -1696,10 +1706,9 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                         title="Bấm để xem danh sách giao dịch"
                       >
                         <div className="flex items-center gap-space-xs">
-                          <div
-                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
-                            style={{ backgroundColor: c.color }}
-                          ></div>
+                          <span className="text-base leading-none select-none mr-1">
+                            {getCategoryTheme(c).emoji}
+                          </span>
                           <span className="font-label-md text-label-md text-on-surface font-semibold group-hover:text-primary transition-colors">
                             {c.name}
                           </span>
@@ -1822,18 +1831,23 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                       className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors border border-outline-variant/10"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm shrink-0 ${isIncome
-                              ? 'bg-secondary/15 text-secondary'
-                              : isTransfer
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-surface-container-high text-primary'
-                            }`}
-                        >
-                          <span className="material-symbols-outlined text-[20px]">
-                            {isTransfer ? 'swap_horiz' : (t.category?.icon || (isIncome ? 'payments' : 'shopping_bag'))}
-                          </span>
-                        </div>
+                        {isTransfer ? (
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm shrink-0 bg-blue-100 text-blue-700">
+                            <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+                          </div>
+                        ) : (
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+                            style={{
+                              backgroundColor: getCategoryTheme(t.category).hexBg,
+                              color: getCategoryTheme(t.category).hexColor,
+                            }}
+                          >
+                            <span className="text-xl leading-none select-none">
+                              {getCategoryTheme(t.category).emoji}
+                            </span>
+                          </div>
+                        )}
                         <div>
                           <div className="font-semibold text-sm text-on-surface">
                             {t.note || (isTransfer ? 'Chuyển khoản nội bộ' : (t.category?.name || 'Giao dịch'))}
@@ -1889,12 +1903,12 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
                   style={{
-                    backgroundColor: `${selectedCategoryForModal.color || (breakdownType === 'EXPENSE' ? '#dc2626' : '#006c4a')}20`,
-                    color: selectedCategoryForModal.color || (breakdownType === 'EXPENSE' ? '#dc2626' : '#006c4a')
+                    backgroundColor: getCategoryTheme(selectedCategoryForModal).hexBg,
+                    color: getCategoryTheme(selectedCategoryForModal).hexColor,
                   }}
                 >
-                  <span className="material-symbols-outlined text-[22px]">
-                    {selectedCategoryForModal.icon || (breakdownType === 'EXPENSE' ? 'shopping_bag' : 'payments')}
+                  <span className="text-xl leading-none select-none">
+                    {getCategoryTheme(selectedCategoryForModal).emoji}
                   </span>
                 </div>
                 <div>
@@ -1967,13 +1981,14 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm shrink-0 ${isIncome
-                              ? 'bg-secondary/15 text-secondary'
-                              : 'bg-surface-container-high text-primary'
-                            }`}
+                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
+                          style={{
+                            backgroundColor: getCategoryTheme(t.category).hexBg,
+                            color: getCategoryTheme(t.category).hexColor,
+                          }}
                         >
-                          <span className="material-symbols-outlined text-[20px]">
-                            {t.category?.icon || (isIncome ? 'payments' : 'shopping_bag')}
+                          <span className="text-xl leading-none select-none">
+                            {getCategoryTheme(t.category).emoji}
                           </span>
                         </div>
                         <div>

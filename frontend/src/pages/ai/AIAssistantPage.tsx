@@ -5,6 +5,7 @@ import { transactionService } from '../../services/transactionService';
 import { accountService } from '../../services/accountService';
 import { categoryService } from '../../services/categoryService';
 import type { Account, Category, Transaction } from '../../types';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 export interface ParsedItemState extends AiQuickAddItem {
   id: string;
@@ -986,8 +987,11 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                             ) : (
                               <div className="flex items-center gap-3 text-xs text-on-surface-variant flex-wrap">
                                 <span className="flex items-center gap-1 font-medium">
-                                  <span className="material-symbols-outlined text-[14px] text-tertiary">
-                                    {item.editableCategoryIcon || item.categoryIcon || 'category'}
+                                  <span className="text-sm leading-none select-none">
+                                    {getCategoryTheme({
+                                      name: item.editableCategoryName || item.categoryName,
+                                      icon: item.editableCategoryIcon || item.categoryIcon,
+                                    }).emoji}
                                   </span>
                                   {item.editableCategoryName || item.categoryName}
                                 </span>
@@ -1207,9 +1211,12 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                                 ))}
                             </select>
                           ) : (
-                            <span className="font-bold text-on-surface flex items-center gap-1 text-xs truncate">
-                              <span className="material-symbols-outlined text-[15px] text-tertiary">
-                                {m.parsedTransaction.editableCategoryIcon || m.parsedTransaction.categoryIcon || 'category'}
+                            <span className="font-bold text-on-surface flex items-center gap-1.5 text-xs truncate">
+                              <span className="text-sm leading-none select-none">
+                                {getCategoryTheme({
+                                  name: m.parsedTransaction.editableCategoryName || m.parsedTransaction.categoryName,
+                                  icon: m.parsedTransaction.editableCategoryIcon || m.parsedTransaction.categoryIcon,
+                                }).emoji}
                               </span>
                               {m.parsedTransaction.editableCategoryName || m.parsedTransaction.categoryName}
                             </span>

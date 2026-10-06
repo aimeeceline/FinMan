@@ -4,6 +4,7 @@ import { budgetService } from '../../services/budgetService';
 import type { BudgetSummary } from '../../services/budgetService';
 import type { Budget, Category, Transaction } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 export interface BudgetPageProps {
   transactions?: Transaction[];
@@ -36,15 +37,9 @@ const getCategoryPastelBg = (id?: number, name?: string): string => {
   return PASTEL_PALETTES[Math.abs(hash) % PASTEL_PALETTES.length];
 };
 
-const renderCategoryIcon = (icon?: string, sizeClass = 'text-[18px]') => {
-  if (!icon) {
-    return <span className={`material-symbols-outlined ${sizeClass}`}>payments</span>;
-  }
-  const isEmoji = /\p{Extended_Pictographic}/u.test(icon) || icon.length <= 2;
-  if (isEmoji) {
-    return <span className="text-base leading-none">{icon}</span>;
-  }
-  return <span className={`material-symbols-outlined ${sizeClass}`}>{icon}</span>;
+const renderCategoryIcon = (category?: Category | string | null, _sizeClass = 'text-[18px]') => {
+  const theme = getCategoryTheme(category);
+  return <span className="text-base leading-none select-none">{theme.emoji}</span>;
 };
 
 export interface BudgetColor {
@@ -921,8 +916,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                               : budgetColor.lightBg
                           }`}
                         >
-                          <span className="material-symbols-outlined text-[26px]">
-                            {b.category.icon || 'category'}
+                          <span className="text-2xl leading-none select-none">
+                            {getCategoryTheme(b.category).emoji}
                           </span>
                         </div>
                         <div>
@@ -1087,12 +1082,11 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                     {selectedFormCategory ? (
                       <>
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${getCategoryPastelBg(
-                            selectedFormCategory.id,
-                            selectedFormCategory.name
-                          )}`}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${getCategoryTheme(
+                            selectedFormCategory
+                          ).bgClass}`}
                         >
-                          {renderCategoryIcon(selectedFormCategory.icon)}
+                          {renderCategoryIcon(selectedFormCategory)}
                         </div>
                         <span className="font-semibold text-sm text-on-surface">
                           {selectedFormCategory.name}
@@ -1121,7 +1115,7 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                     <div className="max-h-[240px] overflow-y-auto custom-scroll space-y-1 pr-1">
                       {categories.map((c) => {
                         const isSelected = formCategoryId === c.id;
-                        const pastelBg = getCategoryPastelBg(c.id, c.name);
+                        const catTheme = getCategoryTheme(c);
                         return (
                           <button
                             key={c.id}
@@ -1138,9 +1132,9 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                           >
                             <div className="flex items-center gap-2.5">
                               <div
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${pastelBg}`}
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${catTheme.bgClass}`}
                               >
-                                {renderCategoryIcon(c.icon)}
+                                {renderCategoryIcon(c)}
                               </div>
                               <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-on-surface">
                                 {c.name}

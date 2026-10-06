@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Account, Category, Transaction, AccountType, Budget, TransactionType } from '../../types';
 import { accountService } from '../../services/accountService';
 import { categoryService } from '../../services/categoryService';
 import { budgetService } from '../../services/budgetService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
+import { AddCategoryModal } from './AddCategoryModal';
+import { getCategoryTheme } from '../../utils/categoryTheme';
 
 export interface AddTransactionModalProps {
   isOpen: boolean;
@@ -52,26 +54,6 @@ const getAccountEmoji = (type: AccountType): string => {
   }
 };
 
-// Preset category visual styling & icon fallback
-const CATEGORY_STYLES: Record<
-  string,
-  { emoji: string; bg: string; text: string }
-> = {
-  'Ăn uống': { emoji: '🍜', bg: 'bg-red-100', text: 'text-red-700' },
-  'Áo quần': { emoji: '👕', bg: 'bg-blue-100', text: 'text-blue-700' },
-  'Mua sắm': { emoji: '🛒', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  'Giao thông': { emoji: '🚕', bg: 'bg-amber-100', text: 'text-amber-700' },
-  'Giải trí': { emoji: '🎮', bg: 'bg-purple-100', text: 'text-purple-700' },
-  'Sinh hoạt': { emoji: '🏠', bg: 'bg-rose-100', text: 'text-rose-700' },
-  'Sức khỏe': { emoji: '💊', bg: 'bg-pink-100', text: 'text-pink-700' },
-  'Giáo dục': { emoji: '📚', bg: 'bg-teal-100', text: 'text-teal-700' },
-  'Chi tiêu khác': { emoji: '📦', bg: 'bg-slate-100', text: 'text-slate-700' },
-  'Lương': { emoji: '💼', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  'Thưởng': { emoji: '🎁', bg: 'bg-amber-100', text: 'text-amber-700' },
-  'Đầu tư': { emoji: '📈', bg: 'bg-indigo-100', text: 'text-indigo-700' },
-  'Freelance': { emoji: '💻', bg: 'bg-sky-100', text: 'text-sky-700' },
-  'Thu nhập khác': { emoji: '🪙', bg: 'bg-violet-100', text: 'text-violet-700' },
-};
 
 const PRESET_ICONS = [
   '🍜', '👕', '🛒', '🚕', '🎮', '🏠', '💊', '📚', '☕', '✈️',
@@ -132,9 +114,160 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   // Quick category creation modal state
   const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
-  const [newCatName, setNewCatName] = useState<string>('');
-  const [newCatIcon, setNewCatIcon] = useState<string>('🍜');
-  const [isSavingCategory, setIsSavingCategory] = useState<boolean>(false);
+
+  // Custom Styled Date Picker Popover State
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState<boolean>(false);
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => {
+    return new Date();
+  });
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Sync calendarViewDate when date changes or modal opens
+  useEffect(() => {
+    if (date) {
+      const [y, m, d] = date.split('-').map(Number);
+      if (y && m && d) {
+        setCalendarViewDate(new Date(y, m - 1, d));
+      }
+    }
+  }, [date, isOpen]);
+
+  // Click outside to close custom date picker
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setIsDatePickerOpen(false);
+      }
+    };
+    if (isDatePickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDatePickerOpen]);
+
+  const handlePrevCalMonth = () => {
+    setCalendarViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextCalMonth = () => {
+    setCalendarViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const formatDisplayDate = (dStr: string) => {
+    if (!dStr) return '';
+    const [y, m, d] = dStr.split('-');
+    if (!y || !m || !d) return dStr;
+    return `${d}/${m}/${y}`;
+  };
+
+  // Manual Date Input State
+  const [dateInput, setDateInput] = useState<string>(() => formatDisplayDate(date));
+
+  // Sync dateInput when date changes
+  useEffect(() => {
+    setDateInput(formatDisplayDate(date));
+  }, [date]);
+
+  const handleDateInputChange = (val: string) => {
+    setDateInput(val);
+    const parts = val.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      let [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setDate(validIso);
+        setCalendarViewDate(new Date(y, m - 1, d));
+      }
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+      setDate(val.trim());
+      const [y, m, d] = val.trim().split('-').map(Number);
+      setCalendarViewDate(new Date(y, m - 1, d));
+    }
+  };
+
+  const handleDateInputBlur = () => {
+    const parts = dateInput.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      let [d, m, y] = parts.map(Number);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const padD = String(d).padStart(2, '0');
+        const padM = String(m).padStart(2, '0');
+        const validIso = `${y}-${padM}-${padD}`;
+        setDate(validIso);
+        setDateInput(`${padD}/${padM}/${y}`);
+        return;
+      }
+    }
+    setDateInput(formatDisplayDate(date));
+  };
+
+  const calendarDays = useMemo(() => {
+    const calYear = calendarViewDate.getFullYear();
+    const calMonth = calendarViewDate.getMonth() + 1; // 1-12
+
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+    const startOffset = (firstDay + 6) % 7; // Monday = 0
+
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const daysInPrevMonth = new Date(calYear, calMonth - 1, 0).getDate();
+
+    const cells: {
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isSelected: boolean;
+      isToday: boolean;
+    }[] = [];
+
+    // 1. Prev month trailing days
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const prevM = calMonth === 1 ? 12 : calMonth - 1;
+      const prevY = calMonth === 1 ? calYear - 1 : calYear;
+      const dateStr = `${prevY}-${String(prevM).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: false,
+        isSelected: dateStr === date,
+        isToday: dateStr === getTodayLocalDateStr(),
+      });
+    }
+
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isSelected: dateStr === date,
+        isToday: dateStr === getTodayLocalDateStr(),
+      });
+    }
+
+    // 3. Next month leading days (fill to 35 or 42)
+    const targetTotal = cells.length <= 35 ? 35 : 42;
+    const nextPadCount = targetTotal - cells.length;
+    const nextM = calMonth === 12 ? 1 : calMonth + 1;
+    const nextY = calMonth === 12 ? calYear + 1 : calYear;
+    for (let d = 1; d <= nextPadCount; d++) {
+      const dateStr = `${nextY}-${String(nextM).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: false,
+        isSelected: dateStr === date,
+        isToday: dateStr === getTodayLocalDateStr(),
+      });
+    }
+
+    return cells;
+  }, [calendarViewDate, date]);
 
   // Sync form state when editingTransaction, initialTransaction, or isOpen changes
   useEffect(() => {
@@ -557,56 +690,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     }
   };
 
-  // Handle creating a new category on the fly
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-
-    try {
-      setIsSavingCategory(true);
-      const created = await categoryService.createCategory({
-        name: newCatName.trim(),
-        type: type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-        icon: newCatIcon,
-      });
-
-      setCategoriesList((prev) => [...prev, created]);
-      setSelectedCategory(created);
-      if (onCategoryCreated) {
-        onCategoryCreated(created);
-      }
-      setNewCatName('');
-      setShowAddCategoryModal(false);
-    } catch (err) {
-      console.error('Lỗi khi tạo danh mục mới:', err);
-      alert('Không thể tạo danh mục mới. Vui lòng thử lại!');
-    } finally {
-      setIsSavingCategory(false);
-    }
-  };
-
   const hasNoAccounts = accountsList.length === 0;
 
   // Render Category Icon (handles emoji vs material symbol)
-  const renderCategoryIcon = (cat: Category, isSelected: boolean) => {
-    const style = CATEGORY_STYLES[cat.name];
-    const displayIcon = style?.emoji || cat.icon || '🏷️';
-
-    // If icon is an emoji (length <= 4 and contains non-ascii)
-    if (/\p{Extended_Pictographic}/u.test(displayIcon)) {
-      return <span>{displayIcon}</span>;
-    }
-
-    // Material symbol name
-    return (
-      <span
-        className={`material-symbols-outlined text-[20px] ${
-          isSelected ? 'text-white' : style?.text || 'text-slate-700'
-        }`}
-      >
-        {displayIcon}
-      </span>
-    );
+  const renderCategoryIcon = (cat: Category, _isSelected: boolean) => {
+    const theme = getCategoryTheme(cat);
+    return <span>{theme.emoji}</span>;
   };
 
   return (
@@ -1034,7 +1123,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto custom-scroll pr-1">
                   {filteredCategories.map((cat) => {
                     const isSelected = selectedCategory?.id === cat.id;
-                    const style = CATEGORY_STYLES[cat.name];
+                    const theme = getCategoryTheme(cat);
                     return (
                       <button
                         key={cat.id}
@@ -1054,7 +1143,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                               ? type === 'EXPENSE'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'bg-emerald-600 text-white shadow-md'
-                              : style?.bg || 'bg-slate-200/70 text-slate-700'
+                              : theme.bgClass || 'bg-slate-200/70 text-slate-700'
                           }`}
                         >
                           {renderCategoryIcon(cat, isSelected)}
@@ -1272,7 +1361,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <button
                       type="button"
                       onClick={handleSetYesterday}
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${
                         isYesterday
                           ? type === 'EXPENSE'
                             ? 'bg-red-100 text-red-700'
@@ -1286,18 +1375,172 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative">
-                    <input
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold py-2 px-3 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                    />
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Date Input with Manual Typing & Compact Calendar Popover */}
+                  <div className="relative" ref={datePickerRef}>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        value={dateInput}
+                        onChange={(e) => handleDateInputChange(e.target.value)}
+                        onBlur={handleDateInputBlur}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleDateInputBlur();
+                            setIsDatePickerOpen(false);
+                          }
+                        }}
+                        placeholder="DD/MM/YYYY"
+                        className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 rounded-xl text-sm font-semibold py-2 pl-3 pr-8 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono tracking-wide"
+                        title="Nhập ngày thủ công (ví dụ: 06/10/2026) hoặc nhấn biểu tượng lịch"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsDatePickerOpen((prev) => !prev)}
+                        className="absolute right-2 text-slate-400 hover:text-slate-700 transition-colors p-0.5 rounded cursor-pointer flex items-center justify-center"
+                        title="Mở lịch chọn ngày"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          calendar_today
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Compact Custom Calendar Popover (Thu nhỏ gọn gàng) */}
+                    {isDatePickerOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-2.5 animate-in fade-in zoom-in-95 select-none">
+                        {/* Header: < [Tháng M v] [Năm YYYY v] > */}
+                        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100">
+                          <button
+                            type="button"
+                            onClick={handlePrevCalMonth}
+                            className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-slate-100 text-slate-600 cursor-pointer transition-colors"
+                            title="Tháng trước"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                          </button>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Chọn Tháng */}
+                            <select
+                              value={calendarViewDate.getMonth() + 1}
+                              onChange={(e) => {
+                                const newM = Number(e.target.value);
+                                setCalendarViewDate(
+                                  new Date(calendarViewDate.getFullYear(), newM - 1, 1)
+                                );
+                              }}
+                              className="bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs hover:border-slate-300"
+                              title="Chọn tháng"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                <option key={m} value={m}>
+                                  Tháng {m}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Chọn Năm: Các năm liên tiếp từ 2015 đến 2040 */}
+                            <select
+                              value={calendarViewDate.getFullYear()}
+                              onChange={(e) => {
+                                const newY = Number(e.target.value);
+                                setCalendarViewDate(
+                                  new Date(newY, calendarViewDate.getMonth(), 1)
+                                );
+                              }}
+                              className="bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5 text-xs font-bold text-blue-600 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs hover:border-slate-300"
+                              title="Chọn năm"
+                            >
+                              {Array.from({ length: 26 }, (_, i) => 2015 + i).map((y) => (
+                                <option key={y} value={y}>
+                                  Năm {y}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleNextCalMonth}
+                            className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-slate-100 text-slate-600 cursor-pointer transition-colors"
+                            title="Tháng sau"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                          </button>
+                        </div>
+
+                        {/* Weekday headers: T2 -> CN */}
+                        <div className="grid grid-cols-7 mb-1 text-center">
+                          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
+                            <div key={d} className="text-[10px] font-bold text-slate-400 py-0.5">
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Days Grid - Compact */}
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {calendarDays.map((cell, idx) => {
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setDate(cell.dateStr);
+                                  setIsDatePickerOpen(false);
+                                }}
+                                className={`h-7 rounded-md text-[11px] font-semibold flex items-center justify-center transition-all cursor-pointer relative ${
+                                  cell.isSelected
+                                    ? type === 'EXPENSE'
+                                      ? 'bg-red-600 text-white font-bold shadow-xs scale-105'
+                                      : type === 'INCOME'
+                                      ? 'bg-emerald-600 text-white font-bold shadow-xs scale-105'
+                                      : 'bg-blue-600 text-white font-bold shadow-xs scale-105'
+                                    : cell.isCurrentMonth
+                                    ? 'text-slate-700 hover:bg-slate-100'
+                                    : 'text-slate-300 hover:bg-slate-50'
+                                }`}
+                              >
+                                {cell.dayNumber}
+                                {cell.isToday && !cell.isSelected && (
+                                  <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-red-500" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSetToday();
+                              setIsDatePickerOpen(false);
+                            }}
+                            className="font-bold text-red-600 hover:underline cursor-pointer"
+                          >
+                            Hôm nay
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsDatePickerOpen(false)}
+                            className="text-slate-500 hover:text-slate-700 cursor-pointer font-medium"
+                          >
+                            Đóng
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Time Input */}
                   <div className="relative">
                     <input
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold py-2 px-3 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold py-2 px-3 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       type="time"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
@@ -1424,81 +1667,20 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </footer>
         </form>
 
-        {/* Inline Quick Add Category Modal */}
-        {showAddCategoryModal && (
-          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 p-6 space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">add_circle</span>
-                  Thêm danh mục {type === 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập'} mới
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAddCategoryModal(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-lg">close</span>
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateCategory} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Tên danh mục <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: Du lịch, Thú cưng, Bảo hiểm..."
-                    value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Chọn biểu tượng icon
-                  </label>
-                  <div className="grid grid-cols-5 gap-2 max-h-36 overflow-y-auto custom-scroll p-1 bg-slate-50 rounded-xl border border-slate-200">
-                    {PRESET_ICONS.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        onClick={() => setNewCatIcon(icon)}
-                        className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all cursor-pointer ${
-                          newCatIcon === icon
-                            ? 'bg-red-600 text-white shadow-md scale-105'
-                            : 'bg-white hover:bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCategoryModal(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!newCatName.trim() || isSavingCategory}
-                    className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-container rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSavingCategory ? 'Đang tạo...' : 'Tạo danh mục'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* Unified Add Category Modal */}
+        <AddCategoryModal
+          isOpen={showAddCategoryModal}
+          onClose={() => setShowAddCategoryModal(false)}
+          initialType={type === 'INCOME' ? 'INCOME' : 'EXPENSE'}
+          showTypeSelector={false}
+          onSuccess={(created) => {
+            setCategoriesList((prev) => [...prev, created]);
+            setSelectedCategory(created);
+            if (onCategoryCreated) {
+              onCategoryCreated(created);
+            }
+          }}
+        />
       </section>
     </div>
   );
