@@ -4,10 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finman.client.GeminiClient;
 import com.finman.client.GeminiClientImpl;
 import com.finman.config.GeminiConfig;
+import com.finman.dto.request.AiChatMessageDto;
 import com.finman.dto.response.AiChatResponse;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import com.finman.dto.response.AiInsightsResponse;
 import com.finman.dto.response.AiQuickAddResponse;
+import com.finman.dto.response.CategoryAggregationResponse;
 import com.finman.entity.Account;
+import com.finman.entity.Budget;
 import com.finman.entity.Category;
 import com.finman.entity.User;
 import com.finman.entity.enums.AccountType;
@@ -365,5 +370,417 @@ class AiServiceTest {
         assertEquals(LocalDate.now().minusDays(1), response.getTransactionDate());
         assertFalse(response.getNote().toLowerCase().contains("hôm qua"));
     }
-}
 
+    @Test
+    @DisplayName("Monthly Insights: Tháng không có giao dịch tài chính nào")
+    void testGenerateMonthlyInsights_NoTransactions() {
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), any(), any(), any())).thenReturn(0L);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertEquals("2026-09", response.getMonth());
+        assertEquals(0L, response.getTotalIncome());
+        assertEquals(0L, response.getTotalExpense());
+        assertEquals(0L, response.getNetSavings());
+        assertEquals(0.0, response.getSavingsRate());
+        assertTrue(response.getOverview().contains("chưa ghi nhận giao dịch"));
+        assertFalse(response.getRecommendations().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Đầy đủ thu chi, tính đúng net savings, savings rate và highest expense category")
+    void testGenerateMonthlyInsights_IncomeAndExpenseDetails() {
+        LocalDate start = LocalDate.of(2026, 9, 1);
+        LocalDate end = LocalDate.of(2026, 9, 30);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(start), eq(end))).thenReturn(30_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(start), eq(end))).thenReturn(18_000_000L);
+
+        List<CategoryAggregationResponse> expenseAgg = List.of(
+                new CategoryAggregationResponse(10L, "Ăn uống", "restaurant", TransactionType.EXPENSE, 10_000_000L, 15L),
+                new CategoryAggregationResponse(11L, "Mua sắm", "shopping", TransactionType.EXPENSE, 5_000_000L, 5L),
+                new CategoryAggregationResponse(12L, "Giao thông", "car", TransactionType.EXPENSE, 3_000_000L, 8L)
+        );
+        when(transactionRepository.aggregateByCategory(eq(1L), eq(start), eq(end), eq(TransactionType.EXPENSE)))
+                .thenReturn(expenseAgg);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertEquals(30_000_000L, response.getTotalIncome());
+        assertEquals(18_000_000L, response.getTotalExpense());
+        assertEquals(12_000_000L, response.getNetSavings());
+        assertEquals(40.0, response.getSavingsRate());
+
+        assertNotNull(response.getKeyMetrics());
+        assertEquals("Ăn uống", response.getKeyMetrics().getHighestExpenseCategory());
+        assertEquals(10_000_000L, response.getKeyMetrics().getHighestExpenseAmount());
+        assertEquals(55.6, response.getKeyMetrics().getHighestExpensePercentage());
+
+        assertEquals(3, response.getTopExpenseCategories().size());
+        assertEquals("Ăn uống", response.getTopExpenseCategories().get(0).getCategoryName());
+        assertEquals(55.6, response.getTopExpenseCategories().get(0).getPercentage());
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: So sánh tăng/giảm phần trăm với tháng trước")
+    void testGenerateMonthlyInsights_PreviousMonthComparison() {
+        LocalDate curStart = LocalDate.of(2026, 9, 1);
+        LocalDate curEnd = LocalDate.of(2026, 9, 30);
+        LocalDate prevStart = LocalDate.of(2026, 8, 1);
+        LocalDate prevEnd = LocalDate.of(2026, 8, 31);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(curStart), eq(curEnd))).thenReturn(30_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(curStart), eq(curEnd))).thenReturn(18_000_000L);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(prevStart), eq(prevEnd))).thenReturn(25_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(prevStart), eq(prevEnd))).thenReturn(15_000_000L);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertNotNull(response.getKeyMetrics());
+        assertEquals(20.0, response.getKeyMetrics().getIncomeChangePercentage()); // (30-25)/25 = +20.0%
+        assertEquals(20.0, response.getKeyMetrics().getExpenseChangePercentage()); // (18-15)/15 = +20.0%
+        assertEquals(20.0, response.getKeyMetrics().getSavingsChangePercentage()); // (12-10)/10 = +20.0%
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Tháng trước không có dữ liệu -> Trả về null cho change percentage")
+    void testGenerateMonthlyInsights_WithoutPreviousMonth() {
+        LocalDate curStart = LocalDate.of(2026, 9, 1);
+        LocalDate curEnd = LocalDate.of(2026, 9, 30);
+        LocalDate prevStart = LocalDate.of(2026, 8, 1);
+        LocalDate prevEnd = LocalDate.of(2026, 8, 31);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(curStart), eq(curEnd))).thenReturn(20_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(curStart), eq(curEnd))).thenReturn(10_000_000L);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(prevStart), eq(prevEnd))).thenReturn(0L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(prevStart), eq(prevEnd))).thenReturn(0L);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertNotNull(response.getKeyMetrics());
+        assertNull(response.getKeyMetrics().getIncomeChangePercentage());
+        assertNull(response.getKeyMetrics().getExpenseChangePercentage());
+        assertNull(response.getKeyMetrics().getSavingsChangePercentage());
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Phát hiện danh mục vượt ngân sách (Overbudget Alerts)")
+    void testGenerateMonthlyInsights_BudgetOverspentAlerts() {
+        LocalDate curStart = LocalDate.of(2026, 9, 1);
+        LocalDate curEnd = LocalDate.of(2026, 9, 30);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(curStart), eq(curEnd))).thenReturn(20_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(curStart), eq(curEnd))).thenReturn(12_000_000L);
+
+        Category food = new Category("Ăn uống", CategoryType.EXPENSE, "restaurant", true);
+        food.setId(10L);
+        Category shopping = new Category("Mua sắm", CategoryType.EXPENSE, "shopping", true);
+        shopping.setId(11L);
+
+        List<CategoryAggregationResponse> expenseAgg = List.of(
+                new CategoryAggregationResponse(10L, "Ăn uống", "restaurant", TransactionType.EXPENSE, 8_000_000L, 10L),
+                new CategoryAggregationResponse(11L, "Mua sắm", "shopping", TransactionType.EXPENSE, 4_000_000L, 4L)
+        );
+        when(transactionRepository.aggregateByCategory(eq(1L), eq(curStart), eq(curEnd), eq(TransactionType.EXPENSE)))
+                .thenReturn(expenseAgg);
+
+        Budget foodBudget = new Budget(testUser, food, "2026-09", 5_000_000L); // chi 8tr / ngân sách 5tr -> 160% (VƯỢT)
+        Budget shoppingBudget = new Budget(testUser, shopping, "2026-09", 4_500_000L); // chi 4tr / 4.5tr -> 88.9% (CẢNH BÁO)
+        when(budgetRepository.findByUserIdAndMonthWithCategory(1L, "2026-09"))
+                .thenReturn(List.of(foodBudget, shoppingBudget));
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertFalse(response.getAlerts().isEmpty());
+        assertTrue(response.getAlerts().stream().anyMatch(a -> a.contains("Ăn uống") && a.contains("vượt ngân sách")));
+        assertTrue(response.getAlerts().stream().anyMatch(a -> a.contains("Mua sắm") && a.contains("hạn mức ngân sách")));
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Gemini API sinh phân tích thành công kèm overview, recommendations và alerts")
+    void testGenerateMonthlyInsights_GeminiSuccess() {
+        geminiConfig.setApiKey("valid-gemini-key");
+        String geminiJson = """
+                {
+                  "overview": "Tháng 09/2026 của bạn duy trì thặng dư rất tốt với tỷ lệ tiết kiệm 40%.",
+                  "recommendations": [
+                    "Duy trì hạn mức chi tiêu ăn uống dưới 6 triệu",
+                    "Trích 5 triệu vào quỹ đầu tư tích lũy"
+                  ],
+                  "alerts": [
+                    "Chi tiêu danh mục Mua sắm đang có dấu hiệu tăng nhanh"
+                  ]
+                }
+                """;
+        when(geminiClient.generateContent(anyString(), eq(true))).thenReturn(geminiJson);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), any(), any(), any())).thenReturn(10_000_000L);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertEquals("Tháng 09/2026 của bạn duy trì thặng dư rất tốt với tỷ lệ tiết kiệm 40%.", response.getOverview());
+        assertEquals(2, response.getRecommendations().size());
+        assertTrue(response.getAlerts().contains("Chi tiêu danh mục Mua sắm đang có dấu hiệu tăng nhanh"));
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Gemini lỗi -> Tự động Fallback sang Local Rule-based với dữ liệu động")
+    void testGenerateMonthlyInsights_GeminiFailureFallback() {
+        geminiConfig.setApiKey("valid-gemini-key");
+        when(geminiClient.generateContent(anyString(), eq(true)))
+                .thenThrow(new RuntimeException("Gemini quota exceeded"));
+
+        LocalDate start = LocalDate.of(2026, 9, 1);
+        LocalDate end = LocalDate.of(2026, 9, 30);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(start), eq(end))).thenReturn(10_000_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(start), eq(end))).thenReturn(15_000_000L); // thâm hụt
+
+        List<CategoryAggregationResponse> expenseAgg = List.of(
+                new CategoryAggregationResponse(10L, "Ăn uống sang trọng", "restaurant", TransactionType.EXPENSE, 12_000_000L, 5L)
+        );
+        when(transactionRepository.aggregateByCategory(eq(1L), eq(start), eq(end), eq(TransactionType.EXPENSE)))
+                .thenReturn(expenseAgg);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertEquals(-5_000_000L, response.getNetSavings());
+        assertTrue(response.getOverview().contains("Cảnh báo: Dòng tiền tháng 2026-09 đang bị thâm hụt"));
+        assertTrue(response.getOverview().contains("Ăn uống sang trọng"));
+        assertFalse(response.getRecommendations().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Monthly Insights: Edge case Income = 0, xử lý an toàn không chia cho 0")
+    void testGenerateMonthlyInsights_ZeroIncome() {
+        LocalDate start = LocalDate.of(2026, 9, 1);
+        LocalDate end = LocalDate.of(2026, 9, 30);
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(start), eq(end))).thenReturn(0L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(start), eq(end))).thenReturn(5_000_000L);
+
+        AiInsightsResponse response = aiService.generateMonthlyInsights(1L, "2026-09");
+
+        assertNotNull(response);
+        assertEquals(0L, response.getTotalIncome());
+        assertEquals(5_000_000L, response.getTotalExpense());
+        assertEquals(-5_000_000L, response.getNetSavings());
+        assertEquals(0.0, response.getSavingsRate());
+    }
+
+    // ==========================================
+    // TESTS FOR UPGRADED FINANCIAL CHATBOT
+    // ==========================================
+
+    @Test
+    @DisplayName("Chatbot: Gemini online -> Tạo prompt với đầy đủ Context (Nhóm A-G) và System Prompt chuẩn")
+    void testChatbot_GeminiOnline_ContextAndSystemPrompt() {
+        geminiConfig.setApiKey("test-api-key");
+        when(geminiClient.generateContent(anyString(), eq(false)))
+                .thenReturn("Tháng này bạn đã chi tiêu tổng cộng **10.000.000 ₫**.");
+
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(accounts);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(eq(1L), any(), any(), any()))
+                .thenReturn(10_000_000L);
+        when(transactionRepository.findByUserId(eq(1L), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        AiChatResponse response = aiService.processUserChat(1L, "Tháng này tôi tiêu bao nhiêu?");
+
+        assertNotNull(response);
+        assertEquals("QUERY_ANSWER", response.getResponseType());
+        assertEquals("GEMINI_2.5_FLASH", response.getSource());
+        assertTrue(response.getText().contains("10.000.000 ₫"));
+
+        // Verify that geminiClient was called with prompt containing anti-injection & structured context
+        verify(geminiClient).generateContent(argThat(prompt ->
+                prompt.contains("DỮ LIỆU TÀI CHÍNH THỰC TẾ CỦA NGƯỜI DÙNG (SOURCE OF TRUTH") &&
+                prompt.contains("[NHÓM A: THỜI GIAN THAM CHIẾU HỆ THỐNG]") &&
+                prompt.contains("[NHÓM B: TÀI KHOẢN VÀ VÍ TIỀN]") &&
+                prompt.contains("[NHÓM C: TỔNG QUAN THÁNG HIỆN TẠI") &&
+                prompt.contains("QUY TẮC PHÂN TÍCH VÀ TRẢ LỜI") &&
+                prompt.contains("Tháng này tôi tiêu bao nhiêu?")
+        ), eq(false));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Hỗ trợ Conversation History trong context gửi cho AI")
+    void testChatbot_WithConversationHistory() {
+        geminiConfig.setApiKey("test-api-key");
+        when(geminiClient.generateContent(anyString(), eq(false)))
+                .thenReturn("Số dư còn lại của bạn là 5.000.000 ₫.");
+
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(accounts);
+        when(transactionRepository.findByUserId(eq(1L), any())).thenReturn(new PageImpl<>(List.of()));
+
+        List<AiChatMessageDto> history = List.of(
+                new AiChatMessageDto("user", "Chào bot"),
+                new AiChatMessageDto("assistant", "Chào bạn! Tôi có thể giúp gì?")
+        );
+
+        AiChatResponse response = aiService.processUserChat(1L, "Tôi còn bao nhiêu tiền?", history);
+
+        assertNotNull(response);
+        assertEquals("GEMINI_2.5_FLASH", response.getSource());
+
+        verify(geminiClient).generateContent(argThat(prompt ->
+                prompt.contains("[NHÓM H: LỊCH SỬ HỘI THOẠI GẦN ĐÂY (CONTEXT)]") &&
+                prompt.contains("Người dùng: Chào bot") &&
+                prompt.contains("Trợ lý: Chào bạn! Tôi có thể giúp gì?")
+        ), eq(false));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Local Fallback khi hỏi về Hôm qua (có giao dịch)")
+    void testChatbot_YesterdayInquiry_LocalFallback() {
+        geminiConfig.setApiKey(""); // Local fallback mode
+
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.EXPENSE), eq(yesterday), eq(yesterday))).thenReturn(250_000L);
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                eq(1L), eq(TransactionType.INCOME), eq(yesterday), eq(yesterday))).thenReturn(0L);
+
+        com.finman.entity.Transaction tx = new com.finman.entity.Transaction();
+        tx.setAmount(250_000L);
+        tx.setNote("Ăn tối với bạn");
+        tx.setType(TransactionType.EXPENSE);
+        tx.setCategory(categories.get(0)); // Ăn uống
+        tx.setAccount(accounts.get(0)); // Tiền mặt
+
+        when(transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                eq(1L), eq(yesterday), eq(yesterday))).thenReturn(List.of(tx));
+
+        AiChatResponse response = aiService.processUserChat(1L, "Hôm qua tôi tiêu gì?");
+
+        assertNotNull(response);
+        assertEquals("LOCAL_FALLBACK", response.getSource());
+        assertTrue(response.getText().contains("250.000 ₫"));
+        assertTrue(response.getText().contains("Ăn tối với bạn"));
+        assertTrue(response.getText().contains("Ăn uống"));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Local Fallback khi hỏi về Hôm qua (không có giao dịch)")
+    void testChatbot_YesterdayNoTransaction_LocalFallback() {
+        geminiConfig.setApiKey("");
+
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        when(transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                eq(1L), eq(yesterday), eq(yesterday))).thenReturn(List.of());
+
+        AiChatResponse response = aiService.processUserChat(1L, "Hôm qua tôi có tiêu gì không?");
+
+        assertNotNull(response);
+        assertEquals("LOCAL_FALLBACK", response.getSource());
+        assertTrue(response.getText().contains("không có giao dịch nào"));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Local Fallback tra cứu Ngân sách không bị N+1 query và có cảnh báo vượt mức")
+    void testChatbot_BudgetInquiry_LocalFallback() {
+        geminiConfig.setApiKey("");
+
+        Budget foodBudget = new Budget(testUser, categories.get(0), "2026-09", 1_000_000L); // Limit 1M
+        when(budgetRepository.findByUserIdAndMonthWithCategory(eq(1L), anyString()))
+                .thenReturn(List.of(foodBudget));
+
+        List<CategoryAggregationResponse> catAgg = List.of(
+                new CategoryAggregationResponse(10L, "Ăn uống", "restaurant", TransactionType.EXPENSE, 1_200_000L, 10L) // Spent 1.2M -> Over budget
+        );
+        when(transactionRepository.aggregateByCategory(eq(1L), any(), any(), eq(TransactionType.EXPENSE)))
+                .thenReturn(catAgg);
+
+        AiChatResponse response = aiService.processUserChat(1L, "Ngân sách tháng này thế nào?");
+
+        assertNotNull(response);
+        assertEquals("LOCAL_FALLBACK", response.getSource());
+        assertTrue(response.getText().contains("Ăn uống"));
+        assertTrue(response.getText().contains("1.200.000 ₫"));
+        assertTrue(response.getText().contains("Vượt hạn mức"));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Local Fallback tra cứu Chi tiêu theo danh mục")
+    void testChatbot_CategoryBreakdown_LocalFallback() {
+        geminiConfig.setApiKey("");
+
+        when(transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(eq(1L), eq(TransactionType.EXPENSE), any(), any()))
+                .thenReturn(5_000_000L);
+
+        List<CategoryAggregationResponse> catAgg = List.of(
+                new CategoryAggregationResponse(10L, "Ăn uống", "restaurant", TransactionType.EXPENSE, 3_000_000L, 15L),
+                new CategoryAggregationResponse(11L, "Áo quần", "apparel", TransactionType.EXPENSE, 2_000_000L, 4L)
+        );
+        when(transactionRepository.aggregateByCategory(eq(1L), any(), any(), eq(TransactionType.EXPENSE)))
+                .thenReturn(catAgg);
+
+        AiChatResponse response = aiService.processUserChat(1L, "Chi tiêu theo danh mục tháng này");
+
+        assertNotNull(response);
+        assertEquals("LOCAL_FALLBACK", response.getSource());
+        assertTrue(response.getText().contains("Ăn uống"));
+        assertTrue(response.getText().contains("3.000.000 ₫"));
+        assertTrue(response.getText().contains("60.0%"));
+        assertTrue(response.getText().contains("Áo quần"));
+        assertTrue(response.getText().contains("40.0%"));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Gemini ném ngoại lệ -> Tự động Fallback về Local Solver không crash")
+    void testChatbot_GeminiFailureFallback() {
+        geminiConfig.setApiKey("valid-key");
+        when(geminiClient.generateContent(anyString(), eq(false)))
+                .thenThrow(new RuntimeException("Gemini server 503 unavailable"));
+
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(accounts);
+        when(transactionRepository.findByUserId(eq(1L), any())).thenReturn(new PageImpl<>(List.of()));
+
+        AiChatResponse response = aiService.processUserChat(1L, "Số dư tài khoản ví của tôi?");
+
+        assertNotNull(response);
+        assertEquals("LOCAL_FALLBACK", response.getSource());
+        assertTrue(response.getText().contains("Tổng số dư"));
+    }
+
+    @Test
+    @DisplayName("Chatbot: Đảm bảo User Isolation - UserId được truyền đúng vào mọi repository query")
+    void testChatbot_UserIsolation() {
+        geminiConfig.setApiKey("");
+
+        when(accountRepository.findByUserIdAndIsArchivedFalse(2L)).thenReturn(List.of());
+
+        AiChatResponse response = aiService.processUserChat(2L, "Xem số dư");
+
+        assertNotNull(response);
+        verify(accountRepository).findByUserIdAndIsArchivedFalse(eq(2L));
+        verify(accountRepository, never()).findByUserIdAndIsArchivedFalse(eq(1L));
+    }
+}

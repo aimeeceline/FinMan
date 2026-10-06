@@ -40,6 +40,24 @@ export interface AiQuickAddResult {
   items?: AiQuickAddItem[];
 }
 
+export interface AiInsightsKeyMetrics {
+  savingsRate?: number;
+  highestExpenseCategory?: string;
+  highestExpenseAmount?: number;
+  highestExpensePercentage?: number;
+  incomeChangePercentage?: number;
+  expenseChangePercentage?: number;
+  savingsChangePercentage?: number;
+}
+
+export interface CategorySpendingItem {
+  categoryId?: number;
+  categoryName: string;
+  categoryIcon?: string;
+  totalAmount: number;
+  percentage: number;
+}
+
 export interface AiInsightsResult {
   month: string;
   overview: string;
@@ -47,6 +65,10 @@ export interface AiInsightsResult {
   totalIncome: number;
   totalExpense: number;
   netSavings: number;
+  savingsRate?: number;
+  keyMetrics?: AiInsightsKeyMetrics;
+  topExpenseCategories?: CategorySpendingItem[];
+  alerts?: string[];
   generatedAt: string;
 }
 

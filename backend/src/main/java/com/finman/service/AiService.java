@@ -16,6 +16,9 @@ import com.finman.exception.BusinessValidationException;
 import com.finman.repository.AccountRepository;
 import com.finman.repository.CategoryRepository;
 import com.finman.repository.TransactionRepository;
+import com.finman.dto.response.AiInsightsKeyMetrics;
+import com.finman.dto.response.CategoryAggregationResponse;
+import com.finman.dto.response.CategorySpendingItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,7 +29,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.text.Normalizer;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -34,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.finman.dto.request.AiChatMessageDto;
 import com.finman.dto.response.AiChatResponse;
 import com.finman.entity.Budget;
 import com.finman.entity.Transaction;
@@ -51,6 +58,8 @@ public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
     private static final String PARSE_TRANSACTION_PROMPT_TEMPLATE = loadPromptTemplate();
+    private static final String MONTHLY_INSIGHTS_PROMPT_TEMPLATE = loadMonthlyInsightsPromptTemplate();
+    private static final String FINANCIAL_CHATBOT_PROMPT_TEMPLATE = loadFinancialChatbotPromptTemplate();
 
     private final GeminiClient geminiClient;
     private final GeminiConfig geminiConfig;
@@ -585,6 +594,14 @@ public class AiService {
                 return credit;
         }
 
+        if (normalized.contains("dau tu") || normalized.contains("invest")
+                || normalized.contains("chung khoan") || normalized.contains("co phieu")
+                || normalized.contains("crypto") || normalized.contains("vang")) {
+            Account investment = findAccountByType(userAccounts, AccountType.INVESTMENT);
+            if (investment != null)
+                return investment;
+        }
+
         // Mặc định hoặc khi có chữ "tiền mặt", "ví", "cash"
         Account cash = findAccountByType(userAccounts, AccountType.CASH);
         if (cash != null)
@@ -650,7 +667,7 @@ public class AiService {
      * minh).
      */
     public AiInsightsResponse generateMonthlyInsights(Long userId, String month) {
-        if (month == null || !month.matches("^\\d{4}-\\d{2}$")) {
+        if (month == null || !month.matches("^\\d{4}-(0[1-9]|1[0-2])$")) {
             throw new BusinessValidationException("Định dạng tháng không hợp lệ (yêu cầu YYYY-MM)");
         }
 
@@ -658,47 +675,186 @@ public class AiService {
         LocalDate startDate = ym.atDay(1);
         LocalDate endDate = ym.atEndOfMonth();
 
-        Long totalIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+        YearMonth prevYm = ym.minusMonths(1);
+        LocalDate prevStartDate = prevYm.atDay(1);
+        LocalDate prevEndDate = prevYm.atEndOfMonth();
+
+        // 1. Lấy dữ liệu tổng quan thu - chi tháng hiện tại
+        Long dbIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.INCOME, startDate, endDate);
-        Long totalExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+        Long dbExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.EXPENSE, startDate, endDate);
 
+        long totalIncome = (dbIncome != null) ? dbIncome : 0L;
+        long totalExpense = (dbExpense != null) ? dbExpense : 0L;
         long netSavings = totalIncome - totalExpense;
+        double savingsRate = (totalIncome > 0) ? Math.round(((double) netSavings / totalIncome * 100.0) * 10.0) / 10.0 : 0.0;
 
+        // 2. Lấy dữ liệu phân tích theo danh mục chi tiêu & thu nhập
+        List<CategoryAggregationResponse> expenseAgg = transactionRepository.aggregateByCategory(
+                userId, startDate, endDate, TransactionType.EXPENSE);
+        List<CategoryAggregationResponse> incomeAgg = transactionRepository.aggregateByCategory(
+                userId, startDate, endDate, TransactionType.INCOME);
+
+        List<CategorySpendingItem> topExpenseCategories = new ArrayList<>();
+        String highestExpenseCategory = null;
+        Long highestExpenseAmount = null;
+        Double highestExpensePercentage = null;
+
+        if (expenseAgg != null && !expenseAgg.isEmpty()) {
+            for (CategoryAggregationResponse agg : expenseAgg) {
+                long amt = agg.getTotalAmount() != null ? agg.getTotalAmount() : 0L;
+                double pct = (totalExpense > 0) ? Math.round(((double) amt / totalExpense * 100.0) * 10.0) / 10.0 : 0.0;
+                topExpenseCategories.add(new CategorySpendingItem(
+                        agg.getCategoryId(), agg.getCategoryName(), agg.getCategoryIcon(), amt, pct));
+            }
+            CategorySpendingItem top = topExpenseCategories.get(0);
+            highestExpenseCategory = top.getCategoryName();
+            highestExpenseAmount = top.getTotalAmount();
+            highestExpensePercentage = top.getPercentage();
+        }
+
+        // 3. So sánh với tháng trước
+        Long prevDbIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                userId, TransactionType.INCOME, prevStartDate, prevEndDate);
+        Long prevDbExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                userId, TransactionType.EXPENSE, prevStartDate, prevEndDate);
+
+        long prevIncome = (prevDbIncome != null) ? prevDbIncome : 0L;
+        long prevExpense = (prevDbExpense != null) ? prevDbExpense : 0L;
+        long prevNetSavings = prevIncome - prevExpense;
+        boolean hasPreviousMonthData = (prevIncome > 0 || prevExpense > 0);
+
+        Double incomeChangePercentage = null;
+        Double expenseChangePercentage = null;
+        Double savingsChangePercentage = null;
+
+        if (hasPreviousMonthData) {
+            if (prevIncome > 0) {
+                incomeChangePercentage = Math.round(((double) (totalIncome - prevIncome) / prevIncome * 100.0) * 10.0) / 10.0;
+            }
+            if (prevExpense > 0) {
+                expenseChangePercentage = Math.round(((double) (totalExpense - prevExpense) / prevExpense * 100.0) * 10.0) / 10.0;
+            }
+            if (prevNetSavings != 0) {
+                savingsChangePercentage = Math.round(((double) (netSavings - prevNetSavings) / Math.abs(prevNetSavings) * 100.0) * 10.0) / 10.0;
+            }
+        }
+
+        // 4. Lấy ngân sách và kiểm tra thực thi (tránh N+1)
+        Map<Long, Long> expenseByCatId = topExpenseCategories.stream()
+                .filter(item -> item.getCategoryId() != null)
+                .collect(Collectors.toMap(CategorySpendingItem::getCategoryId, CategorySpendingItem::getTotalAmount, (a, b) -> a));
+
+        List<Budget> budgets = budgetRepository.findByUserIdAndMonthWithCategory(userId, month);
+        List<String> budgetAlerts = new ArrayList<>();
+        StringBuilder budgetContextBuilder = new StringBuilder();
+
+        if (budgets == null || budgets.isEmpty()) {
+            budgetContextBuilder.append("- Người dùng chưa thiết lập hạn mức ngân sách nào trong tháng này.\n");
+        } else {
+            for (Budget b : budgets) {
+                String catName = (b.getCategory() != null && b.getCategory().getName() != null) ? b.getCategory().getName() : "Khác";
+                long allocated = (b.getAmount() != null) ? b.getAmount() : 0L;
+                long spent = (b.getCategory() != null) ? expenseByCatId.getOrDefault(b.getCategory().getId(), 0L) : 0L;
+                double usagePct = (allocated > 0) ? Math.round(((double) spent / allocated * 100.0) * 10.0) / 10.0 : 0.0;
+
+                String statusStr;
+                if (usagePct > 100.0) {
+                    statusStr = String.format("VƯỢT NGÂN SÁCH (%.1f%%)", usagePct);
+                    budgetAlerts.add(String.format("Chi tiêu danh mục '%s' đã vượt ngân sách (%,d / %,d VNĐ - %.1f%%).",
+                            catName, spent, allocated, usagePct));
+                } else if (usagePct >= 80.0) {
+                    statusStr = String.format("GẦN CHẠM HẠN MỨC (%.1f%%)", usagePct);
+                    budgetAlerts.add(String.format("Danh mục '%s' đã dùng %.1f%% hạn mức ngân sách (%,d / %,d VNĐ).",
+                            catName, usagePct, spent, allocated));
+                } else {
+                    statusStr = String.format("AN TOÀN (%.1f%%)", usagePct);
+                }
+
+                budgetContextBuilder.append(String.format("- %s: Đã chi %,d / %,d VNĐ (%.1f%%) -> Trạng thái: %s\n",
+                        catName, spent, allocated, usagePct, statusStr));
+            }
+        }
+
+        // 5. Xây dựng Financial Context gửi cho Gemini
+        StringBuilder context = new StringBuilder();
+        context.append(String.format("THÁNG: %s\n\n", month));
+        context.append("1. TỔNG QUAN TÀI CHÍNH:\n");
+        context.append(String.format("- Tổng thu nhập: %,d VNĐ\n", totalIncome));
+        context.append(String.format("- Tổng chi tiêu: %,d VNĐ\n", totalExpense));
+        context.append(String.format("- Tiết kiệm ròng: %,d VNĐ\n", netSavings));
+        context.append(String.format("- Tỷ lệ tiết kiệm (Savings Rate): %.1f%%\n\n", savingsRate));
+
+        context.append("2. CHI TIÊU THEO DANH MỤC:\n");
+        if (topExpenseCategories.isEmpty()) {
+            context.append("- Không có giao dịch chi tiêu trong tháng.\n\n");
+        } else {
+            for (CategorySpendingItem item : topExpenseCategories) {
+                context.append(String.format("- %s: %,d VNĐ (%.1f%% tổng chi)\n",
+                        item.getCategoryName(), item.getTotalAmount(), item.getPercentage()));
+            }
+            context.append(String.format("\n* Danh mục chi tiêu lớn nhất: %s (%,d VNĐ - %.1f%% tổng chi)\n\n",
+                    highestExpenseCategory, highestExpenseAmount, highestExpensePercentage));
+        }
+
+        context.append("3. THU NHẬP THEO DANH MỤC:\n");
+        if (incomeAgg == null || incomeAgg.isEmpty()) {
+            context.append("- Không có giao dịch thu nhập trong tháng.\n\n");
+        } else {
+            for (CategoryAggregationResponse inc : incomeAgg) {
+                long incAmt = inc.getTotalAmount() != null ? inc.getTotalAmount() : 0L;
+                double incPct = (totalIncome > 0) ? Math.round(((double) incAmt / totalIncome * 100.0) * 10.0) / 10.0 : 0.0;
+                context.append(String.format("- %s: %,d VNĐ (%.1f%% tổng thu)\n",
+                        inc.getCategoryName(), incAmt, incPct));
+            }
+            context.append("\n");
+        }
+
+        context.append(String.format("4. SO SÁNH VỚI THÁNG TRƯỚC (%s):\n", prevYm.toString()));
+        if (!hasPreviousMonthData) {
+            context.append("- Không có dữ liệu giao dịch tháng trước để so sánh.\n\n");
+        } else {
+            context.append(String.format("- Thu nhập tháng trước: %,d VNĐ (Thay đổi: %s)\n",
+                    prevIncome, incomeChangePercentage != null ? String.format("%+.1f%%", incomeChangePercentage) : "N/A"));
+            context.append(String.format("- Chi tiêu tháng trước: %,d VNĐ (Thay đổi: %s)\n",
+                    prevExpense, expenseChangePercentage != null ? String.format("%+.1f%%", expenseChangePercentage) : "N/A"));
+            context.append(String.format("- Tiết kiệm ròng tháng trước: %,d VNĐ (Thay đổi: %s)\n\n",
+                    prevNetSavings, savingsChangePercentage != null ? String.format("%+.1f%%", savingsChangePercentage) : "N/A"));
+        }
+
+        context.append("5. TÌNH HÌNH THỰC HIỆN NGÂN SÁCH (BUDGET):\n");
+        context.append(budgetContextBuilder);
+
+        // 6. Phân tích qua Gemini hoặc Fallback Rule-based
         String overview = null;
         List<String> recommendations = new ArrayList<>();
+        List<String> alerts = new ArrayList<>(budgetAlerts);
 
         if (geminiConfig.hasApiKey()) {
             try {
-                String prompt = String.format(
-                        """
-                                Bạn là chuyên gia tư vấn tài chính cá nhân cho ứng dụng FinMan tại Việt Nam.
-                                Phân tích tài chính tháng: %s
-                                Tổng thu nhập: %,d VNĐ
-                                Tổng chi tiêu: %,d VNĐ
-                                Tiết kiệm ròng: %,d VNĐ
-
-                                NHIỆM VỤ:
-                                Đưa ra nhận xét khách quan, hữu ích bằng tiếng Việt và 2-3 gợi ý hành động tiết kiệm cụ thể theo định dạng JSON sau:
-                                {
-                                  "overview": "Đoạn văn ngắn nhận xét tổng quan tình hình thu chi tháng...",
-                                  "recommendations": [
-                                    "Lời khuyên thiết thực 1...",
-                                    "Lời khuyên thiết thực 2..."
-                                  ]
-                                }
-
-                                LƯU Ý: Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích.
-                                """,
-                        month, totalIncome, totalExpense, netSavings);
-
+                String prompt = MONTHLY_INSIGHTS_PROMPT_TEMPLATE.contains("%s")
+                        ? MONTHLY_INSIGHTS_PROMPT_TEMPLATE.replace("%s", context.toString())
+                        : (MONTHLY_INSIGHTS_PROMPT_TEMPLATE + "\n\n" + context);
                 String jsonResult = geminiClient.generateContent(prompt, true);
                 JsonNode root = objectMapper.readTree(jsonResult);
                 overview = root.path("overview").asText(null);
                 JsonNode recNode = root.path("recommendations");
                 if (recNode.isArray()) {
                     for (JsonNode item : recNode) {
-                        recommendations.add(item.asText());
+                        String txt = item.asText("").trim();
+                        if (!txt.isBlank()) {
+                            recommendations.add(txt);
+                        }
+                    }
+                }
+                JsonNode alertNode = root.path("alerts");
+                if (alertNode.isArray()) {
+                    for (JsonNode item : alertNode) {
+                        String txt = item.asText("").trim();
+                        if (!txt.isBlank() && !alerts.contains(txt)) {
+                            alerts.add(txt);
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -707,28 +863,60 @@ public class AiService {
             }
         }
 
+        // 7. Local Rule-Based Engine (Fallback thông minh sử dụng số liệu thật)
         if (overview == null || overview.isBlank() || recommendations.isEmpty()) {
             recommendations.clear();
+            alerts = new ArrayList<>(budgetAlerts);
+
             if (totalIncome == 0 && totalExpense == 0) {
                 overview = String.format("Tháng %s chưa ghi nhận giao dịch tài chính nào trong lịch sử.", month);
                 recommendations.add("Hãy bắt đầu ghi chép các khoản chi tiêu hằng ngày để theo dõi dòng tiền.");
-                recommendations.add("Thiết lập ngân sách tháng cho các nhu cầu thiết yếu như Ăn uống và Sinh hoạt.");
+                recommendations.add("Thiết lập hạn mức ngân sách tháng cho các nhu cầu thiết yếu như Ăn uống và Sinh hoạt.");
             } else if (netSavings > 0) {
-                double savingsRate = totalIncome > 0 ? ((double) netSavings / totalIncome) * 100 : 0;
-                overview = String.format(
-                        "Tình hình tài chính tháng %s rất tích cực! Bạn đã tiết kiệm được %,d đ (đạt tỷ lệ thặng dư %.1f%%).",
-                        month, netSavings, savingsRate);
-                recommendations
-                        .add("Cân nhắc chuyển một phần thặng dư vào tài khoản tiết kiệm hoặc quỹ dự phòng khẩn cấp.");
-                recommendations
-                        .add("Duy trì việc kiểm soát hạn mức chi tiêu ăn uống và giải trí để gia tăng tích lũy.");
+                if (highestExpenseCategory != null) {
+                    overview = String.format(
+                            "Tình hình tài chính tháng %s rất tích cực! Bạn đã tiết kiệm được %,d VNĐ (tỷ lệ thặng dư đạt %.1f%%). Chi tiêu nhiều nhất ở danh mục '%s' với %,d VNĐ (chiếm %.1f%% tổng chi).",
+                            month, netSavings, savingsRate, highestExpenseCategory, highestExpenseAmount, highestExpensePercentage);
+                } else {
+                    overview = String.format(
+                            "Tình hình tài chính tháng %s rất tích cực! Bạn đã tiết kiệm được %,d VNĐ (đạt tỷ lệ thặng dư %.1f%%).",
+                            month, netSavings, savingsRate);
+                }
+                recommendations.add("Cân nhắc chuyển một phần thặng dư vào tài khoản tiết kiệm tích lũy hoặc quỹ dự phòng khẩn cấp.");
+                if (highestExpenseCategory != null) {
+                    recommendations.add(String.format("Duy trì việc kiểm soát hạn mức chi tiêu cho danh mục '%s' để gia tăng tích lũy.", highestExpenseCategory));
+                } else {
+                    recommendations.add("Duy trì việc kiểm soát hạn mức chi tiêu để gia tăng tích lũy.");
+                }
             } else {
-                overview = String.format("Cảnh báo: Dòng tiền tháng %s đang bị thâm hụt %,d đ so với tổng thu nhập.",
-                        month, Math.abs(netSavings));
-                recommendations.add("Rà soát các khoản chi không thiết yếu trong tháng để cắt giảm kịp thời.");
-                recommendations.add("Áp dụng quy tắc 50/30/20 để phân bổ lại hạn mức ngân sách các danh mục.");
+                if (highestExpenseCategory != null) {
+                    overview = String.format(
+                            "Cảnh báo: Dòng tiền tháng %s đang bị thâm hụt %,d VNĐ so với tổng thu nhập. Chi tiêu lớn nhất tập trung tại danh mục '%s' với %,d VNĐ (chiếm %.1f%% tổng chi).",
+                            month, Math.abs(netSavings), highestExpenseCategory, highestExpenseAmount, highestExpensePercentage);
+                } else {
+                    overview = String.format(
+                            "Cảnh báo: Dòng tiền tháng %s đang bị thâm hụt %,d VNĐ so với tổng thu nhập.",
+                            month, Math.abs(netSavings));
+                }
+                alerts.add(0, String.format("Dòng tiền thâm hụt: Chi tiêu vượt thu nhập %,d VNĐ.", Math.abs(netSavings)));
+                if (highestExpenseCategory != null) {
+                    recommendations.add(String.format("Rà soát và cắt giảm các khoản chi không thiết yếu thuộc danh mục '%s'.", highestExpenseCategory));
+                } else {
+                    recommendations.add("Rà soát và cắt giảm các khoản chi không thiết yếu trong tháng.");
+                }
+                recommendations.add("Áp dụng quy tắc quản lý tài chính 50/30/20 để phân bổ lại hạn mức ngân sách các danh mục.");
             }
         }
+
+        AiInsightsKeyMetrics keyMetrics = new AiInsightsKeyMetrics(
+                savingsRate,
+                highestExpenseCategory,
+                highestExpenseAmount,
+                highestExpensePercentage,
+                incomeChangePercentage,
+                expenseChangePercentage,
+                savingsChangePercentage
+        );
 
         return new AiInsightsResponse(
                 month,
@@ -737,6 +925,10 @@ public class AiService {
                 totalIncome,
                 totalExpense,
                 netSavings,
+                savingsRate,
+                keyMetrics,
+                topExpenseCategories,
+                alerts,
                 LocalDateTime.now());
     }
 
@@ -746,6 +938,10 @@ public class AiService {
      * liệu, hoặc Ghi nhận giao dịch.
      */
     public AiChatResponse processUserChat(Long userId, String message) {
+        return processUserChat(userId, message, null);
+    }
+
+    public AiChatResponse processUserChat(Long userId, String message, List<AiChatMessageDto> conversationHistory) {
         if (message == null || message.trim().isEmpty()) {
             throw new BusinessValidationException("Nội dung câu lệnh không được để trống");
         }
@@ -771,7 +967,7 @@ public class AiService {
         // 2. Kiểm tra câu hỏi tra cứu dữ liệu tài chính (Data Query)
         boolean isExplicitQuery = isQueryIntent(norm);
         if (isExplicitQuery) {
-            return executeDataQuery(userId, text);
+            return executeDataQuery(userId, text, conversationHistory);
         }
 
         // 3. Nếu không phải câu hỏi, thử phân tích giao dịch (Quick Add)
@@ -784,9 +980,8 @@ public class AiService {
             log.info("Quick add parse not matched, falling back to data query: {}", ex.getMessage());
         }
 
-        // 4. Nếu không thể bóc tách thành giao dịch, chuyển sang trả lời theo dạng trợ
-        // lý trò chuyện / tra cứu
-        return executeDataQuery(userId, text);
+        // 4. Nếu không thể bóc tách thành giao dịch, chuyển sang trả lời theo dạng trợ lý trò chuyện / tra cứu
+        return executeDataQuery(userId, text, conversationHistory);
     }
 
     /**
@@ -801,17 +996,26 @@ public class AiService {
                 || norm.contains("cho toi biet") || norm.contains("con bao nhieu") || norm.contains("da tieu bao nhieu")
                 || norm.contains("da chi bao nhieu") || norm.contains("toi co bao nhieu")
                 || norm.contains("con tien khong")
-                || norm.contains("so du") || norm.contains("con lai") || norm.contains("tien con");
+                || norm.contains("so du") || norm.contains("con lai") || norm.contains("tien con")
+                || norm.contains("hom qua") || norm.contains("hom nay") || norm.contains("thang truoc")
+                || norm.contains("thang nay") || norm.contains("ngan sach") || norm.contains("han muc")
+                || norm.contains("danh muc") || norm.contains("chi tieu") || norm.contains("thu nhap")
+                || norm.contains("gan day") || norm.contains("tai chinh") || norm.contains("tiet kiem")
+                || norm.contains("tong ket") || norm.contains("chao") || norm.contains("xin chao")
+                || norm.contains("tro giup") || norm.contains("help");
     }
 
     /**
-     * Thực thi truy vấn dữ liệu tài chính người dùng (qua Gemini RAG hoặc Local
-     * Fallback)
+     * Thực thi truy vấn dữ liệu tài chính người dùng (qua Gemini RAG hoặc Local Fallback)
      */
     public AiChatResponse executeDataQuery(Long userId, String query) {
+        return executeDataQuery(userId, query, null);
+    }
+
+    public AiChatResponse executeDataQuery(Long userId, String query, List<AiChatMessageDto> conversationHistory) {
         if (geminiConfig.hasApiKey()) {
             try {
-                String answer = queryFinancialDataWithGemini(userId, query);
+                String answer = queryFinancialDataWithGemini(userId, query, conversationHistory);
                 if (answer != null && !answer.isBlank()) {
                     return AiChatResponse.queryAnswer(answer, "GEMINI_2.5_FLASH", null);
                 }
@@ -827,24 +1031,35 @@ public class AiService {
      * Gọi Gemini API kèm ngữ cảnh tài chính thực tế của người dùng (RAG)
      */
     public String queryFinancialDataWithGemini(Long userId, String userQuery) {
-        String context = buildUserFinancialContext(userId);
-        String prompt = String.format(
-                """
-                        Bạn là Trợ lý Tài chính cá nhân FinMan AI thông minh, tận tâm và chính xác tại Việt Nam.
-                        Dưới đây là DỮ LIỆU TÀI CHÍNH THỰC TẾ của người dùng tại thời điểm hiện tại:
+        return queryFinancialDataWithGemini(userId, userQuery, null);
+    }
 
-                        %s
+    public String queryFinancialDataWithGemini(Long userId, String userQuery, List<AiChatMessageDto> conversationHistory) {
+        String context = buildUserFinancialContext(userId, conversationHistory);
+        String prompt;
+        if (FINANCIAL_CHATBOT_PROMPT_TEMPLATE != null && FINANCIAL_CHATBOT_PROMPT_TEMPLATE.contains("%s")) {
+            prompt = FINANCIAL_CHATBOT_PROMPT_TEMPLATE
+                    .replaceFirst("%s", Matcher.quoteReplacement(context))
+                    .replaceFirst("%s", Matcher.quoteReplacement(userQuery));
+        } else {
+            prompt = String.format(
+                    """
+                            Bạn là Trợ lý Tài chính cá nhân FinMan AI thông minh, tận tâm và chính xác tại Việt Nam.
+                            Dưới đây là DỮ LIỆU TÀI CHÍNH THỰC TẾ của người dùng tại thời điểm hiện tại:
 
-                        CÂU HỎI / YÊU CẦU CỦA NGƯỜI DÙNG: "%s"
+                            %s
 
-                        NHIỆM VỤ:
-                        1. Trả lời trực tiếp, chính xác, ngắn gọn, lịch sự và thân thiện bằng tiếng Việt.
-                        2. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
-                        3. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
-                        4. Sử dụng định dạng markdown (in đậm **số tiền**, danh sách gạch đầu dòng) để câu trả lời trực quan, chuyên nghiệp.
-                        5. Nếu người dùng hỏi điều gì mà dữ liệu chưa có (ví dụ: ngày đó chưa có giao dịch), hãy giải thích lịch sự dựa trên dữ liệu hiện có.
-                        """,
-                context, userQuery);
+                            CÂU HỎI / YÊU CẦU CỦA NGƯỜI DÙNG: "%s"
+
+                            NHIỆM VỤ:
+                            1. Trả lời trực tiếp, chính xác, ngắn gọn, lịch sự và thân thiện bằng tiếng Việt.
+                            2. Dựa HOÀN TOÀN vào dữ liệu thực tế được cung cấp ở trên. Tuyệt đối không bịa đặt số liệu hoặc giao dịch không có thật.
+                            3. Luôn định dạng số tiền rõ ràng theo chuẩn Việt Nam (ví dụ: 50.000 ₫, 1.250.000 ₫).
+                            4. Sử dụng định dạng markdown (in đậm **số tiền**, danh sách gạch đầu dòng) để câu trả lời trực quan, chuyên nghiệp.
+                            5. Nếu người dùng hỏi điều gì mà dữ liệu chưa có, hãy giải thích lịch sự dựa trên dữ liệu hiện có.
+                            """,
+                    context, userQuery);
+        }
 
         return geminiClient.generateContent(prompt, false);
     }
@@ -854,9 +1069,12 @@ public class AiService {
      * hoặc chưa có Gemini Key.
      */
     public String queryFinancialDataLocally(Long userId, String userQuery) {
-        String norm = removeAccents(userQuery).toLowerCase(Locale.ROOT);
+        String norm = removeAccents(userQuery != null ? userQuery : "").toLowerCase(Locale.ROOT);
         LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
         YearMonth currentMonth = YearMonth.now();
+        LocalDate startOfMonth = currentMonth.atDay(1);
+        LocalDate endOfMonth = currentMonth.atEndOfMonth();
 
         // 1. Câu hỏi về Số dư / Ví / Tài khoản
         if (norm.contains("so du") || norm.contains("con bao nhieu") || norm.contains("con lai")
@@ -868,21 +1086,50 @@ public class AiService {
                 String accNorm = removeAccents(acc.getName()).toLowerCase(Locale.ROOT);
                 if (norm.contains(accNorm)) {
                     return String.format(
-                            "Số dư hiện tại của tài khoản **%s** là **%,d ₫** (Tổng số dư tất cả các ví: **%,d ₫**).",
-                            acc.getName(), acc.getCurrentBalance(), totalBalance);
+                            "Số dư hiện tại của tài khoản **%s** là **%s** (Tổng số dư tất cả các ví: **%s**).",
+                            acc.getName(), formatMoney(acc.getCurrentBalance()), formatMoney(totalBalance));
                 }
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Tổng số dư khả dụng hiện tại của bạn là **%,d ₫** trên **%d** tài khoản ví:\n",
-                    totalBalance, accounts.size()));
+            sb.append(String.format("Tổng số dư khả dụng hiện tại của bạn là **%s** trên **%d** tài khoản ví:\n",
+                    formatMoney(totalBalance), accounts.size()));
             for (Account acc : accounts) {
-                sb.append(String.format("- **%s**: %,d ₫\n", acc.getName(), acc.getCurrentBalance()));
+                sb.append(String.format("- **%s**: %s (%s)\n", acc.getName(), formatMoney(acc.getCurrentBalance()), acc.getType()));
             }
             return sb.toString();
         }
 
-        // 2. Câu hỏi về Chi tiêu / Thu nhập Hôm nay
+        // 2. Câu hỏi về Hôm qua
+        if (norm.contains("hom qua")) {
+            Long yExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.EXPENSE, yesterday, yesterday);
+            Long yIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.INCOME, yesterday, yesterday);
+            List<Transaction> yTxns = transactionRepository
+                    .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                            userId, yesterday, yesterday);
+
+            if (yTxns.isEmpty()) {
+                return String.format("Hôm qua (%s), bạn **không có giao dịch nào** được ghi nhận.", yesterday);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Hôm qua (%s), bạn đã chi tiêu tổng cộng **%s**", yesterday, formatMoney(yExpense)));
+            if (yIncome > 0) {
+                sb.append(String.format(" (thu nhập: **%s**)", formatMoney(yIncome)));
+            }
+            sb.append(String.format(" với **%d giao dịch**:\n", yTxns.size()));
+            for (Transaction t : yTxns) {
+                sb.append(String.format("- **%s**: %s (%s | %s)\n",
+                        t.getNote(), formatMoney(t.getAmount()),
+                        getCategoryNameSafe(t),
+                        getAccountNameSafe(t)));
+            }
+            return sb.toString();
+        }
+
+        // 3. Câu hỏi về Chi tiêu / Thu nhập Hôm nay
         if (norm.contains("hom nay")) {
             Long todayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.EXPENSE, today, today);
@@ -900,45 +1147,110 @@ public class AiService {
 
             StringBuilder sb = new StringBuilder();
             sb.append(
-                    String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%,d ₫**", today.toString(), todayExpense));
+                    String.format("Hôm nay (%s), bạn đã chi tiêu tổng cộng **%s**", today.toString(), formatMoney(todayExpense)));
             if (todayIncome > 0) {
-                sb.append(String.format(" (thu nhập: **%,d ₫**)", todayIncome));
+                sb.append(String.format(" (thu nhập: **%s**)", formatMoney(todayIncome)));
             }
             sb.append(String.format(" với **%d giao dịch**:\n", todayTxns.size()));
             for (Transaction t : todayTxns) {
-                sb.append(String.format("- **%s**: %,d ₫ (%s | %s)\n",
-                        t.getNote(), t.getAmount(),
+                sb.append(String.format("- **%s**: %s (%s | %s)\n",
+                        t.getNote(), formatMoney(t.getAmount()),
                         getCategoryNameSafe(t),
                         getAccountNameSafe(t)));
             }
             return sb.toString();
         }
 
-        // 3. Câu hỏi về Chi tiêu / Thu nhập Tháng này
-        if (norm.contains("thang nay") || norm.contains("thang") || norm.contains("tong chi")
-                || norm.contains("tong thu")) {
-            LocalDate start = currentMonth.atDay(1);
-            LocalDate end = currentMonth.atEndOfMonth();
-            Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
-                    userId, TransactionType.EXPENSE, start, end);
-            Long monthIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
-                    userId, TransactionType.INCOME, start, end);
-            long netSavings = monthIncome - monthExpense;
+        // 4. Ngân sách / Hạn mức
+        if (norm.contains("ngan sach") || norm.contains("han muc")) {
+            List<Budget> budgets = budgetRepository.findByUserIdAndMonthWithCategory(userId, currentMonth.toString());
+            if (budgets.isEmpty()) {
+                return String.format("Bạn **chưa thiết lập hạn mức ngân sách** cho tháng %s.", currentMonth);
+            }
+            List<CategoryAggregationResponse> catAgg = transactionRepository.aggregateByCategory(
+                    userId, startOfMonth, endOfMonth, TransactionType.EXPENSE);
+            Map<Long, Long> expenseMap = catAgg.stream()
+                    .filter(c -> c.getCategoryId() != null)
+                    .collect(Collectors.toMap(CategoryAggregationResponse::getCategoryId, CategoryAggregationResponse::getTotalAmount, (a, b) -> a));
 
-            return String.format("""
-                    Tổng quan tình hình tài chính tháng **%s** của bạn:
-                    - **Tổng thu nhập**: %,d ₫
-                    - **Tổng chi tiêu**: %,d ₫
-                    - **Tiết kiệm ròng / Thặng dư**: %,d ₫ %s
-                    """,
-                    currentMonth.toString(),
-                    monthIncome,
-                    monthExpense,
-                    netSavings,
-                    netSavings >= 0 ? "✅" : "⚠️");
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Tình hình ngân sách tháng **%s** của bạn:\n", currentMonth));
+            for (Budget b : budgets) {
+                Long catId = b.getCategory() != null ? b.getCategory().getId() : null;
+                String catName = b.getCategory() != null ? b.getCategory().getName() : "Danh mục khác";
+                Long spent = catId != null ? expenseMap.getOrDefault(catId, 0L) : 0L;
+                long budgetAmount = b.getAmount() != null ? b.getAmount() : 0L;
+                long remaining = budgetAmount - spent;
+                double usedPct = budgetAmount > 0 ? ((double) spent / budgetAmount) * 100.0 : 0.0;
+
+                String status = usedPct > 100.0 ? "⚠️ Vượt hạn mức!" : (usedPct >= 80.0 ? "⚡ Sắp chạm hạn mức" : "✅ An toàn");
+                sb.append(String.format(Locale.US, "- **%s**: Đã chi **%s** / Hạn mức **%s** (%.1f%%) - %s (Còn lại: %s)\n",
+                        catName, formatMoney(spent), formatMoney(budgetAmount), usedPct, status, formatMoney(remaining)));
+            }
+            return sb.toString();
         }
 
-        // 4. Câu hỏi về Giao dịch gần đây
+        // 5. Chi tiêu theo danh mục
+        if (norm.contains("danh muc") || norm.contains("chi vao dau") || norm.contains("chi nhieu nhat")) {
+            List<CategoryAggregationResponse> categories = transactionRepository.aggregateByCategory(
+                    userId, startOfMonth, endOfMonth, TransactionType.EXPENSE);
+            if (categories.isEmpty()) {
+                return String.format("Tháng **%s** bạn chưa có khoản chi tiêu nào được ghi nhận.", currentMonth);
+            }
+            Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.EXPENSE, startOfMonth, endOfMonth);
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Phân bổ chi tiêu theo danh mục tháng **%s** (tổng chi: **%s**):\n", currentMonth, formatMoney(monthExpense)));
+            for (CategoryAggregationResponse cat : categories) {
+                double pct = monthExpense > 0 ? ((double) cat.getTotalAmount() / monthExpense) * 100.0 : 0.0;
+                sb.append(String.format(Locale.US, "- **%s**: %s (chiếm %.1f%%)\n", cat.getCategoryName(), formatMoney(cat.getTotalAmount()), pct));
+            }
+            return sb.toString();
+        }
+
+        // 6. Tháng trước
+        if (norm.contains("thang truoc")) {
+            YearMonth prevMonth = currentMonth.minusMonths(1);
+            Long prevExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.EXPENSE, prevMonth.atDay(1), prevMonth.atEndOfMonth());
+            Long prevIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.INCOME, prevMonth.atDay(1), prevMonth.atEndOfMonth());
+            long prevSavings = prevIncome - prevExpense;
+            return String.format("""
+                    Tổng quan tài chính **tháng trước (%s)**:
+                    - **Tổng thu nhập**: %s
+                    - **Tổng chi tiêu**: %s
+                    - **Tiết kiệm ròng**: %s %s
+                    """,
+                    prevMonth.toString(), formatMoney(prevIncome), formatMoney(prevExpense), formatMoney(prevSavings), prevSavings >= 0 ? "✅" : "⚠️");
+        }
+
+        // 7. Câu hỏi về Chi tiêu / Thu nhập Tháng này
+        if (norm.contains("thang nay") || norm.contains("thang") || norm.contains("tong chi")
+                || norm.contains("tong thu") || norm.contains("tiet kiem")) {
+            Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.EXPENSE, startOfMonth, endOfMonth);
+            Long monthIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                    userId, TransactionType.INCOME, startOfMonth, endOfMonth);
+            long netSavings = monthIncome - monthExpense;
+            double savingsRate = monthIncome > 0 ? ((double) netSavings / monthIncome) * 100.0 : 0.0;
+
+            return String.format(Locale.US, """
+                    Tổng quan tình hình tài chính tháng **%s** của bạn:
+                    - **Tổng thu nhập**: %s
+                    - **Tổng chi tiêu**: %s
+                    - **Tiết kiệm ròng**: %s %s
+                    - **Tỷ lệ tiết kiệm**: %.1f%%
+                    """,
+                    currentMonth.toString(),
+                    formatMoney(monthIncome),
+                    formatMoney(monthExpense),
+                    formatMoney(netSavings),
+                    netSavings >= 0 ? "✅" : "⚠️",
+                    savingsRate);
+        }
+
+        // 8. Câu hỏi về Giao dịch gần đây
         if (norm.contains("gan day") || norm.contains("moi nhat") || norm.contains("lich su")
                 || norm.contains("giao dich")) {
             Page<Transaction> page = transactionRepository.findByUserId(
@@ -949,137 +1261,270 @@ public class AiService {
             }
             StringBuilder sb = new StringBuilder("Dưới đây là 5 giao dịch gần đây nhất của bạn:\n");
             for (Transaction t : list) {
-                sb.append(String.format("- **%s** (%s): %s%,d ₫ | %s | Ví: %s\n",
+                String sign = t.getType() == TransactionType.INCOME ? "+" : (t.getType() == TransactionType.TRANSFER ? "⇄ " : "-");
+                sb.append(String.format("- **%s** (%s): %s%s | %s | Ví: %s\n",
                         t.getNote(),
                         t.getTransactionDate(),
-                        t.getType() == TransactionType.INCOME ? "+" : "-",
-                        t.getAmount(),
+                        sign,
+                        formatMoney(t.getAmount()),
                         getCategoryNameSafe(t),
                         getAccountNameSafe(t)));
             }
             return sb.toString();
         }
 
-        // 5. Câu trả lời mặc định tóm tắt nhanh tình trạng tài chính
+        // 9. Câu trả lời mặc định tóm tắt nhanh tình trạng tài chính
         List<Account> accounts = accountRepository.findByUserIdAndIsArchivedFalse(userId);
         long totalBalance = accounts.stream().mapToLong(Account::getCurrentBalance).sum();
         Long todayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.EXPENSE, today, today);
+        Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                userId, TransactionType.EXPENSE, startOfMonth, endOfMonth);
 
         return String.format(
                 """
                         Dưới đây là tóm tắt nhanh tình hình tài chính của bạn:
-                        - **Tổng tài sản/số dư hiện tại**: %,d ₫ (trên %d tài khoản ví)
-                        - **Chi tiêu hôm nay (%s)**: %,d ₫
-                        - Bạn có thể hỏi tôi cụ thể: *"Hôm nay tôi đã tiêu bao nhiêu?"*, *"Số dư các ví hiện tại"*, hoặc *"Tháng này chi tiêu ăn uống bao nhiêu?"*.
+                        - **Tổng tài sản/số dư hiện tại**: %s (trên %d tài khoản ví)
+                        - **Chi tiêu hôm nay (%s)**: %s
+                        - **Tổng chi tiêu tháng này (%s)**: %s
+                        - Bạn có thể hỏi tôi chi tiết: *"Hôm nay tôi đã tiêu bao nhiêu?"*, *"Hôm qua tôi tiêu gì?"*, *"Ngân sách tháng này thế nào?"*, hoặc *"So sánh chi tiêu với tháng trước"*.
                         """,
-                totalBalance, accounts.size(), today.toString(), todayExpense);
+                formatMoney(totalBalance), accounts.size(), today.toString(), formatMoney(todayExpense), currentMonth.toString(), formatMoney(monthExpense));
     }
 
     /**
-     * Tổng hợp dữ liệu tài chính thực tế của người dùng làm ngữ cảnh cho Gemini
-     * RAG.
+     * Tổng hợp dữ liệu tài chính thực tế của người dùng làm ngữ cảnh cho Gemini RAG.
      */
-    private String buildUserFinancialContext(Long userId) {
+    public String buildUserFinancialContext(Long userId) {
+        return buildUserFinancialContext(userId, null);
+    }
+
+    public String buildUserFinancialContext(Long userId, List<AiChatMessageDto> conversationHistory) {
         LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
         YearMonth currentMonth = YearMonth.now();
         LocalDate startOfMonth = currentMonth.atDay(1);
         LocalDate endOfMonth = currentMonth.atEndOfMonth();
-
-        // 1. Danh sách số dư tài khoản
-        List<Account> accounts = accountRepository.findByUserIdAndIsArchivedFalse(userId);
-        long totalBalance = accounts.stream().mapToLong(Account::getCurrentBalance).sum();
+        YearMonth prevMonth = currentMonth.minusMonths(1);
+        LocalDate startOfPrevMonth = prevMonth.atDay(1);
+        LocalDate endOfPrevMonth = prevMonth.atEndOfMonth();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("DỮ LIỆU TÀI CHÍNH THỰC TẾ CỦA NGƯỜI DÙNG (Thời gian hệ thống: %s):\n\n", today));
+        sb.append("DỮ LIỆU TÀI CHÍNH THỰC TẾ CỦA NGƯỜI DÙNG (SOURCE OF TRUTH TỪ FINMAN DATABASE):\n\n");
 
-        sb.append("1. TÀI KHOẢN VÀ SỐ DƯ HIỆN TẠI:\n");
-        sb.append(String.format("- Tổng tài sản/số dư khả dụng: %,d ₫\n", totalBalance));
+        // [NHÓM A: THỜI GIAN THAM CHIẾU HỆ THỐNG]
+        sb.append("[NHÓM A: THỜI GIAN THAM CHIẾU HỆ THỐNG]\n");
+        sb.append(String.format("- Ngày hệ thống hiện tại (Hôm nay): %s (%s)\n", today, getVietnameseDayOfWeek(today.getDayOfWeek())));
+        sb.append(String.format("- Hôm qua: %s (%s)\n", yesterday, getVietnameseDayOfWeek(yesterday.getDayOfWeek())));
+        sb.append(String.format("- Tháng hiện tại: %s (từ %s đến %s)\n", currentMonth, startOfMonth, endOfMonth));
+        sb.append(String.format("- Tháng trước: %s (từ %s đến %s)\n\n", prevMonth, startOfPrevMonth, endOfPrevMonth));
+
+        // [NHÓM B: TÀI KHOẢN VÀ VÍ TIỀN]
+        List<Account> accounts = accountRepository.findByUserIdAndIsArchivedFalse(userId);
+        long totalBalance = accounts.stream().mapToLong(Account::getCurrentBalance).sum();
+        sb.append("[NHÓM B: TÀI KHOẢN VÀ VÍ TIỀN]\n");
+        sb.append(String.format("- Tổng số dư khả dụng hiện tại: %s (trên %d tài khoản ví)\n", formatMoney(totalBalance), accounts.size()));
         if (accounts.isEmpty()) {
-            sb.append("- Chưa có tài khoản nào.\n");
+            sb.append("- Người dùng chưa tạo tài khoản nào trong hệ thống.\n");
         } else {
             for (Account acc : accounts) {
-                sb.append(String.format("  + %s (%s): %,d ₫\n", acc.getName(), acc.getType(), acc.getCurrentBalance()));
+                sb.append(String.format("  + %s (%s): %s\n", acc.getName(), acc.getType(), formatMoney(acc.getCurrentBalance())));
             }
         }
         sb.append("\n");
 
-        // 2. Giao dịch hôm nay
-        Long todayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
-                userId, TransactionType.EXPENSE, today, today);
-        Long todayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
-                userId, TransactionType.INCOME, today, today);
-        List<Transaction> todayTxns = transactionRepository
-                .findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
-                        userId, today, today);
-
-        sb.append(String.format("2. TÌNH HÌNH HÔM NAY (%s):\n", today));
-        sb.append(String.format("- Tổng chi tiêu hôm nay: %,d ₫\n", todayExpense));
-        sb.append(String.format("- Tổng thu nhập hôm nay: %,d ₫\n", todayIncome));
-        if (todayTxns.isEmpty()) {
-            sb.append("- Hôm nay chưa có giao dịch nào.\n");
-        } else {
-            sb.append(String.format("- Hôm nay có %d giao dịch:\n", todayTxns.size()));
-            for (Transaction t : todayTxns) {
-                sb.append(String.format("  + %s: %,d ₫ | %s | %s | Ví: %s\n",
-                        t.getNote(), t.getAmount(), t.getType(),
-                        getCategoryNameSafe(t),
-                        getAccountNameSafe(t)));
-            }
-        }
-        sb.append("\n");
-
-        // 3. Tổng quan tháng này
+        // [NHÓM C: TỔNG QUAN TÀI CHÍNH THÁNG HIỆN TẠI]
         Long monthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.EXPENSE, startOfMonth, endOfMonth);
         Long monthIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                 userId, TransactionType.INCOME, startOfMonth, endOfMonth);
         long netSavings = monthIncome - monthExpense;
+        double savingsRate = monthIncome > 0 ? ((double) netSavings / monthIncome) * 100.0 : 0.0;
 
-        sb.append(String.format("3. TỔNG QUAN THÁNG NÀY (%s):\n", currentMonth));
-        sb.append(String.format("- Tổng thu nhập tháng: %,d ₫\n", monthIncome));
-        sb.append(String.format("- Tổng chi tiêu tháng: %,d ₫\n", monthExpense));
-        sb.append(String.format("- Tiết kiệm ròng: %,d ₫\n", netSavings));
+        sb.append(String.format("[NHÓM C: TỔNG QUAN THÁNG HIỆN TẠI (%s)]\n", currentMonth));
+        sb.append(String.format("- Tổng thu nhập tháng: %s\n", formatMoney(monthIncome)));
+        sb.append(String.format("- Tổng chi tiêu tháng: %s\n", formatMoney(monthExpense)));
+        sb.append(String.format("- Tiết kiệm ròng: %s %s\n", formatMoney(netSavings), netSavings >= 0 ? "(Dương/Thặng dư)" : "(Âm/Thâm hụt)"));
+        sb.append(String.format(Locale.US, "- Tỷ lệ tiết kiệm (savingsRate): %.1f%%\n", savingsRate));
+
+        // Category Breakdown
+        List<CategoryAggregationResponse> expenseAgg = transactionRepository.aggregateByCategory(
+                userId, startOfMonth, endOfMonth, TransactionType.EXPENSE);
+        sb.append("- Phân bổ chi tiêu theo danh mục (sắp xếp giảm dần):\n");
+        if (expenseAgg.isEmpty()) {
+            sb.append("  + Chưa có chi tiêu nào trong tháng này.\n");
+        } else {
+            for (CategoryAggregationResponse cat : expenseAgg) {
+                double pct = monthExpense > 0 ? ((double) cat.getTotalAmount() / monthExpense) * 100.0 : 0.0;
+                sb.append(String.format(Locale.US, "  + %s: %s (chiếm %.1f%% tổng chi, %d giao dịch)\n",
+                        cat.getCategoryName(), formatMoney(cat.getTotalAmount()), pct, cat.getTransactionCount()));
+            }
+        }
         sb.append("\n");
 
-        // 4. Giao dịch gần đây nhất
+        // [NHÓM D: HẠN MỨC NGÂN SÁCH THÁNG HIỆN TẠI (NO N+1 QUERY)]
+        List<Budget> budgets = budgetRepository.findByUserIdAndMonthWithCategory(userId, currentMonth.toString());
+        Map<Long, Long> expenseByCategoryId = expenseAgg.stream()
+                .filter(c -> c.getCategoryId() != null)
+                .collect(Collectors.toMap(
+                        CategoryAggregationResponse::getCategoryId,
+                        CategoryAggregationResponse::getTotalAmount,
+                        (existing, replacement) -> existing
+                ));
+
+        sb.append(String.format("[NHÓM D: HẠN MỨC NGÂN SÁCH THÁNG HIỆN TẠI (%s)]\n", currentMonth));
+        if (budgets.isEmpty()) {
+            sb.append("- Người dùng chưa thiết lập hạn mức ngân sách cho tháng này.\n");
+        } else {
+            for (Budget b : budgets) {
+                Long catId = (b.getCategory() != null) ? b.getCategory().getId() : null;
+                String catName = (b.getCategory() != null) ? b.getCategory().getName() : "Danh mục khác";
+                Long spent = catId != null ? expenseByCategoryId.getOrDefault(catId, 0L) : 0L;
+                long budgetAmount = b.getAmount() != null ? b.getAmount() : 0L;
+                long remaining = budgetAmount - spent;
+                double usedPct = budgetAmount > 0 ? ((double) spent / budgetAmount) * 100.0 : 0.0;
+
+                String status;
+                if (usedPct > 100.0) {
+                    status = String.format("VƯỢT NGÂN SÁCH (vượt %s)", formatMoney(Math.abs(remaining)));
+                } else if (usedPct >= 80.0) {
+                    status = String.format("CẢNH BÁO (sắp chạm hạn mức, còn %s)", formatMoney(remaining));
+                } else {
+                    status = String.format("An toàn (còn lại %s)", formatMoney(remaining));
+                }
+                sb.append(String.format(Locale.US, "  + %s: Đã chi %s / Hạn mức %s (Đã dùng %.1f%%) -> Trạng thái: %s\n",
+                        catName, formatMoney(spent), formatMoney(budgetAmount), usedPct, status));
+            }
+        }
+        sb.append("\n");
+
+        // [NHÓM E: GIAO DỊCH HÔM NAY VÀ HÔM QUA]
+        Long todayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(userId, TransactionType.EXPENSE, today, today);
+        Long todayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(userId, TransactionType.INCOME, today, today);
+        List<Transaction> todayTxns = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, today, today);
+
+        Long yesterdayExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(userId, TransactionType.EXPENSE, yesterday, yesterday);
+        Long yesterdayIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(userId, TransactionType.INCOME, yesterday, yesterday);
+        List<Transaction> yesterdayTxns = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, yesterday, yesterday);
+
+        sb.append("[NHÓM E: GIAO DỊCH HÔM NAY VÀ HÔM QUA]\n");
+        sb.append(String.format("1. Hôm nay (%s): Tổng chi: %s | Tổng thu: %s\n", today, formatMoney(todayExpense), formatMoney(todayIncome)));
+        if (todayTxns.isEmpty()) {
+            sb.append("   - Hôm nay chưa có giao dịch nào được ghi nhận.\n");
+        } else {
+            for (Transaction t : todayTxns) {
+                sb.append(String.format("   + %s: %s | %s | %s | Ví: %s\n",
+                        t.getNote(), formatMoney(t.getAmount()), t.getType(), getCategoryNameSafe(t), getAccountNameSafe(t)));
+            }
+        }
+
+        sb.append(String.format("2. Hôm qua (%s): Tổng chi: %s | Tổng thu: %s\n", yesterday, formatMoney(yesterdayExpense), formatMoney(yesterdayIncome)));
+        if (yesterdayTxns.isEmpty()) {
+            sb.append("   - Hôm qua không có giao dịch nào được ghi nhận.\n");
+        } else {
+            for (Transaction t : yesterdayTxns) {
+                sb.append(String.format("   + %s: %s | %s | %s | Ví: %s\n",
+                        t.getNote(), formatMoney(t.getAmount()), t.getType(), getCategoryNameSafe(t), getAccountNameSafe(t)));
+            }
+        }
+        sb.append("\n");
+
+        // [NHÓM F: SO SÁNH VỚI THÁNG TRƯỚC (MoM)]
+        Long prevMonthExpense = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                userId, TransactionType.EXPENSE, startOfPrevMonth, endOfPrevMonth);
+        Long prevMonthIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
+                userId, TransactionType.INCOME, startOfPrevMonth, endOfPrevMonth);
+        long prevNetSavings = prevMonthIncome - prevMonthExpense;
+
+        sb.append(String.format("[NHÓM F: SO SÁNH BIẾN ĐỘNG VỚI THÁNG TRƯỚC (%s vs %s)]\n", prevMonth, currentMonth));
+        if (prevMonthExpense == 0 && prevMonthIncome == 0) {
+            sb.append(String.format("- Tháng trước (%s) người dùng chưa có dữ liệu giao dịch để so sánh biến động.\n", prevMonth));
+        } else {
+            long expenseDiff = monthExpense - prevMonthExpense;
+            long incomeDiff = monthIncome - prevMonthIncome;
+            String expenseDiffDesc;
+            if (prevMonthExpense > 0) {
+                double pctChange = ((double) expenseDiff / prevMonthExpense) * 100.0;
+                expenseDiffDesc = String.format(Locale.US, "%s %s (%+.1f%% so với tháng trước)",
+                        expenseDiff > 0 ? "TĂNG" : (expenseDiff < 0 ? "GIẢM" : "KHÔNG ĐỔI"),
+                        formatMoney(Math.abs(expenseDiff)), pctChange);
+            } else {
+                expenseDiffDesc = String.format("Tháng này chi %s (tháng trước là 0 ₫)", formatMoney(monthExpense));
+            }
+
+            String incomeDiffDesc;
+            if (prevMonthIncome > 0) {
+                double pctChange = ((double) incomeDiff / prevMonthIncome) * 100.0;
+                incomeDiffDesc = String.format(Locale.US, "%s %s (%+.1f%% so với tháng trước)",
+                        incomeDiff > 0 ? "TĂNG" : (incomeDiff < 0 ? "GIẢM" : "KHÔNG ĐỔI"),
+                        formatMoney(Math.abs(incomeDiff)), pctChange);
+            } else {
+                incomeDiffDesc = String.format("Tháng này thu %s (tháng trước là 0 ₫)", formatMoney(monthIncome));
+            }
+
+            sb.append(String.format("- Tháng trước (%s): Tổng thu %s | Tổng chi %s | Tiết kiệm ròng %s\n",
+                    prevMonth, formatMoney(prevMonthIncome), formatMoney(prevMonthExpense), formatMoney(prevNetSavings)));
+            sb.append(String.format("- Biến động chi tiêu MoM: %s\n", expenseDiffDesc));
+            sb.append(String.format("- Biến động thu nhập MoM: %s\n", incomeDiffDesc));
+        }
+        sb.append("\n");
+
+        // [NHÓM G: CÁC GIAO DỊCH GẦN ĐÂY NHẤT]
         Page<Transaction> recentPage = transactionRepository.findByUserId(
-                userId, PageRequest.of(0, 15, Sort.by(Sort.Direction.DESC, "transactionDate", "createdAt")));
+                userId, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "transactionDate", "createdAt")));
         List<Transaction> recentTxns = recentPage.getContent();
-        sb.append("4. GIAO DỊCH GẦN ĐÂY NHẤT:\n");
+        sb.append("[NHÓM G: CÁC GIAO DỊCH GẦN ĐÂY NHẤT (TỐI ĐA 10 GIAO DỊCH)]\n");
         if (recentTxns.isEmpty()) {
             sb.append("- Chưa có giao dịch nào được ghi nhận trong lịch sử.\n");
         } else {
             for (Transaction t : recentTxns) {
-                sb.append(String.format("  + %s | %s: %,d ₫ | %s | %s | Ví: %s\n",
-                        t.getTransactionDate(), t.getNote(), t.getAmount(), t.getType(),
+                sb.append(String.format("  + %s | %s: %s%s | %s | %s | Ví: %s\n",
+                        t.getTransactionDate(), t.getNote(),
+                        t.getType() == TransactionType.INCOME ? "+" : "-",
+                        formatMoney(t.getAmount()), t.getType(),
                         getCategoryNameSafe(t),
                         getAccountNameSafe(t)));
             }
         }
         sb.append("\n");
 
-        // 5. Ngân sách tháng này
-        List<Budget> budgets = budgetRepository.findByUserIdAndMonth(userId, currentMonth.toString());
-        sb.append(String.format("5. NGÂN SÁCH THÁNG NÀY (%s):\n", currentMonth));
-        if (budgets.isEmpty()) {
-            sb.append("- Chưa thiết lập hạn mức ngân sách tháng này.\n");
-        } else {
-            for (Budget b : budgets) {
-                Long spent = transactionRepository.sumAmountByUserIdAndCategoryIdAndDateBetween(
-                        userId, b.getCategory().getId(), TransactionType.EXPENSE, startOfMonth, endOfMonth);
-                sb.append(String.format("  + %s: Đã chi %,d ₫ / Hạn mức %,d ₫ (Còn lại: %,d ₫)\n",
-                        b.getCategory().getName(), spent, b.getAmount(), b.getAmount() - spent));
+        // [NHÓM H: LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ]
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            sb.append("[NHÓM H: LỊCH SỬ HỘI THOẠI GẦN ĐÂY (CONTEXT)]\n");
+            int startIdx = Math.max(0, conversationHistory.size() - 6);
+            for (int i = startIdx; i < conversationHistory.size(); i++) {
+                AiChatMessageDto msg = conversationHistory.get(i);
+                if (msg != null && msg.getContent() != null && !msg.getContent().isBlank()) {
+                    String role = "user".equalsIgnoreCase(msg.getRole()) ? "Người dùng" : "Trợ lý";
+                    sb.append(String.format("- %s: %s\n", role, msg.getContent().trim()));
+                }
             }
+            sb.append("\n");
         }
 
         return sb.toString();
+    }
+
+    private String getVietnameseDayOfWeek(DayOfWeek dayOfWeek) {
+        if (dayOfWeek == null) return "Không xác định";
+        return switch (dayOfWeek) {
+            case MONDAY -> "Thứ Hai";
+            case TUESDAY -> "Thứ Ba";
+            case WEDNESDAY -> "Thứ Tư";
+            case THURSDAY -> "Thứ Năm";
+            case FRIDAY -> "Thứ Sáu";
+            case SATURDAY -> "Thứ Bảy";
+            case SUNDAY -> "Chủ Nhật";
+        };
     }
 
     private String getCategoryNameSafe(Transaction t) {
         try {
             if (t == null)
                 return "Khác";
+            if (t.getType() == TransactionType.TRANSFER) {
+                return "Chuyển khoản nội bộ";
+            }
             Category c = t.getCategory();
             return (c != null && c.getName() != null) ? c.getName() : "Khác";
         } catch (Exception e) {
@@ -1092,10 +1537,21 @@ public class AiService {
             if (t == null)
                 return "Ví";
             Account a = t.getAccount();
-            return (a != null && a.getName() != null) ? a.getName() : "Ví";
+            String fromName = (a != null && a.getName() != null) ? a.getName() : "Ví";
+            if (t.getType() == TransactionType.TRANSFER) {
+                Account to = t.getToAccount();
+                String toName = (to != null && to.getName() != null) ? to.getName() : "Ví nhận";
+                return fromName + " ➔ " + toName;
+            }
+            return fromName;
         } catch (Exception e) {
             return "Ví";
         }
+    }
+
+    private static String formatMoney(Long amount) {
+        if (amount == null) amount = 0L;
+        return String.format(Locale.US, "%,d", amount).replace(',', '.') + " ₫";
     }
 
     private static String removeAccents(String s) {
@@ -1150,6 +1606,88 @@ public class AiService {
                 Tài khoản: %s
                 Nội dung: %s
                 Hôm nay: %s, Hôm qua: %s, Mặc định: %s, %s
+                """;
+    }
+
+    private static String loadMonthlyInsightsPromptTemplate() {
+        String[] devPaths = {
+                "backend/src/main/resources/prompts/monthly-insights.txt",
+                "src/main/resources/prompts/monthly-insights.txt"
+        };
+        for (String p : devPaths) {
+            try {
+                Path path = Paths.get(p);
+                if (Files.exists(path)) {
+                    String raw = Files.readString(path, StandardCharsets.UTF_8);
+                    String cleaned = cleanPromptText(raw);
+                    if (!cleaned.isBlank()) {
+                        log.info("Đã nạp AI monthly insights prompt template từ file ngoài: {}", path.toAbsolutePath());
+                        return cleaned;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        try (InputStream is = AiService.class.getClassLoader().getResourceAsStream("prompts/monthly-insights.txt")) {
+            if (is != null) {
+                String raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                String cleaned = cleanPromptText(raw);
+                if (!cleaned.isBlank()) {
+                    return cleaned;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể nạp monthly insights prompt template từ classpath: {}", e.getMessage());
+        }
+
+        return """
+                Bạn là chuyên gia tài chính cá nhân cho FinMan.
+                Dữ liệu tài chính:
+                %s
+                Trả về JSON có overview, recommendations và alerts.
+                """;
+    }
+
+    private static String loadFinancialChatbotPromptTemplate() {
+        String[] devPaths = {
+                "backend/src/main/resources/prompts/financial-chatbot.txt",
+                "src/main/resources/prompts/financial-chatbot.txt"
+        };
+        for (String p : devPaths) {
+            try {
+                Path path = Paths.get(p);
+                if (Files.exists(path)) {
+                    String raw = Files.readString(path, StandardCharsets.UTF_8);
+                    String cleaned = cleanPromptText(raw);
+                    if (!cleaned.isBlank()) {
+                        log.info("Đã nạp AI financial chatbot prompt template từ file ngoài: {}", path.toAbsolutePath());
+                        return cleaned;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        try (InputStream is = AiService.class.getClassLoader().getResourceAsStream("prompts/financial-chatbot.txt")) {
+            if (is != null) {
+                String raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                String cleaned = cleanPromptText(raw);
+                if (!cleaned.isBlank()) {
+                    return cleaned;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể nạp financial chatbot prompt template từ classpath: {}", e.getMessage());
+        }
+
+        return """
+                Bạn là Trợ lý Tài chính FinMan AI.
+                DỮ LIỆU TÀI CHÍNH:
+                %s
+
+                CÂU HỎI: "%s"
+                Trả lời trực tiếp, chính xác, định dạng tiền VNĐ.
                 """;
     }
 

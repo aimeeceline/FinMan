@@ -57,8 +57,8 @@ public class StatisticsService {
                     userId, accountId, TransactionType.INCOME, range.startDate, range.endDate);
             totalExpense = transactionRepository.sumAmountByUserIdAndAccountIdAndTypeAndDateBetween(
                     userId, accountId, TransactionType.EXPENSE, range.startDate, range.endDate);
-            transactionCount = transactionRepository.countByUserIdAndDateBetween(
-                    userId, range.startDate, range.endDate);
+            transactionCount = transactionRepository.countByUserIdAndAccountIdAndDateBetween(
+                    userId, accountId, range.startDate, range.endDate);
         } else {
             totalIncome = transactionRepository.sumAmountByUserIdAndTypeAndDateBetween(
                     userId, TransactionType.INCOME, range.startDate, range.endDate);

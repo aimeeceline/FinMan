@@ -224,4 +224,48 @@ class ExportServiceTest {
         assertThrows(ResourceNotFoundException.class, () ->
                 exportService.exportTransactionsToExcel(999L, null, null, null, null, null));
     }
+
+    @Test
+    @DisplayName("TC_EXP_04: Xuất Excel chứa giao dịch TRANSFER - Hiển thị Chuyển khoản, Chuyển khoản nội bộ và Ví nguồn ➔ Ví đích")
+    void testExportTransactionsToExcel_WithTransferTransaction() throws IOException {
+        LocalDate start = LocalDate.of(2026, 9, 1);
+        LocalDate end = LocalDate.of(2026, 9, 30);
+
+        Account toAcc = new Account(testUser, "Nuôi con nhỏ", AccountType.CASH, 2_000_000L);
+        toAcc.setId(11L);
+
+        Transaction transferTxn = new Transaction(
+                testUser, testAccount, toAcc, null, TransactionType.TRANSFER, 500_000L,
+                LocalDate.of(2026, 9, 10), "Trích quỹ nuôi con");
+        transferTxn.setId(1004L);
+
+        List<Transaction> txns = List.of(transferTxn);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findTransactionsForExport(
+                eq(1L), eq(start), eq(end), isNull(), isNull(), isNull()))
+                .thenReturn(txns);
+        when(transactionRepository.aggregateByCategory(
+                eq(1L), eq(start), eq(end), isNull(), isNull(), isNull()))
+                .thenReturn(Collections.emptyList());
+
+        byte[] excelBytes = exportService.exportTransactionsToExcel(1L, start, end, null, null, null);
+
+        assertNotNull(excelBytes);
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(excelBytes))) {
+            Sheet sheet1 = workbook.getSheetAt(0);
+            Row row = sheet1.getRow(9);
+            assertNotNull(row);
+            // Col 2: Loại giao dịch
+            assertEquals("Chuyển khoản", row.getCell(2).getStringCellValue());
+            // Col 3: Danh mục
+            assertEquals("Chuyển khoản nội bộ", row.getCell(3).getStringCellValue());
+            // Col 4: Tài khoản nguồn ➔ đích
+            assertEquals("Ví MoMo ➔ Nuôi con nhỏ", row.getCell(4).getStringCellValue());
+            // Col 5: Số tiền
+            assertEquals(500_000.0, row.getCell(5).getNumericCellValue());
+            // Col 6: Ghi chú
+            assertEquals("Trích quỹ nuôi con", row.getCell(6).getStringCellValue());
+        }
+    }
 }

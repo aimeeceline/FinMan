@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
@@ -33,9 +36,10 @@ public class AccountController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<AccountSummaryResponse>> getAccounts(
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam(value = "includeArchived", required = false, defaultValue = "false") Boolean includeArchived) {
         validateUser(userPrincipal);
-        AccountSummaryResponse response = accountService.getAccountsSummary(userPrincipal.getId());
+        AccountSummaryResponse response = accountService.getAccountsSummary(userPrincipal.getId(), includeArchived);
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy danh sách tài khoản thành công"));
     }
 
@@ -67,6 +71,17 @@ public class AccountController {
         validateUser(userPrincipal);
         AccountResponse response = accountService.updateAccount(userPrincipal.getId(), id, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật thông tin tài khoản thành công"));
+    }
+
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<ApiResponse<AccountResponse>> archiveAccount(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long id,
+            @RequestParam(value = "archived", required = false, defaultValue = "true") Boolean archived) {
+        validateUser(userPrincipal);
+        AccountResponse response = accountService.archiveAccount(userPrincipal.getId(), id, archived);
+        String msg = Boolean.TRUE.equals(archived) ? "Lưu trữ tài khoản thành công" : "Khôi phục tài khoản thành công";
+        return ResponseEntity.ok(ApiResponse.success(response, msg));
     }
 
     @DeleteMapping("/{id}")

@@ -275,4 +275,213 @@ class TransactionServiceTest {
         assertThrows(RuntimeException.class, () ->
                 transactionService.createTransaction(1L, request));
     }
+
+    @Test
+    @DisplayName("TC_TXN_10: Thêm giao dịch TRANSFER trừ tiền ví nguồn và cộng tiền ví đích thành công")
+    void testCreateTransferTransaction_Success() {
+        testCashAccount.setCurrentBalance(5_000_000L);
+
+        Account testTargetAccount = new Account(testUser, "Nuôi con", AccountType.BANK, 1_000_000L);
+        testTargetAccount.setId(30L);
+        testTargetAccount.setCurrentBalance(1_000_000L);
+
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, 30L, null, TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Chuyển tiền nuôi con");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(testCashAccount));
+        when(accountRepository.findByIdAndUserId(30L, 1L)).thenReturn(Optional.of(testTargetAccount));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+            Transaction t = invocation.getArgument(0);
+            t.setId(600L);
+            return t;
+        });
+
+        TransactionResponse response = transactionService.createTransaction(1L, request);
+
+        assertNotNull(response);
+        assertEquals(TransactionType.TRANSFER, response.getType());
+        assertEquals(2_000_000L, response.getAmount());
+        assertNotNull(response.getAccount());
+        assertEquals(10L, response.getAccount().getId());
+        assertNotNull(response.getToAccount());
+        assertEquals(30L, response.getToAccount().getId());
+        assertNull(response.getCategory());
+
+        // Số dư ví nguồn: 5M - 2M = 3M
+        assertEquals(3_000_000L, testCashAccount.getCurrentBalance());
+        // Số dư ví đích: 1M + 2M = 3M
+        assertEquals(3_000_000L, testTargetAccount.getCurrentBalance());
+
+        verify(accountRepository).save(testCashAccount);
+        verify(accountRepository).save(testTargetAccount);
+        verify(transactionRepository).save(any(Transaction.class));
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Chuyển khoản cùng tài khoản (fromAccountId == toAccountId) ném ngoại lệ")
+    void testCreateTransferTransaction_SameAccount_ThrowsException() {
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, 10L, null, TransactionType.TRANSFER, 1_000_000L, LocalDate.now(), "Chuyển cho chính mình");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        BusinessValidationException ex = assertThrows(BusinessValidationException.class, () ->
+                transactionService.createTransaction(1L, request));
+        assertEquals("Tài khoản nhận tiền phải khác tài khoản chuyển", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Chuyển khoản thiếu toAccountId ném ngoại lệ")
+    void testCreateTransferTransaction_MissingToAccount_ThrowsException() {
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, null, null, TransactionType.TRANSFER, 1_000_000L, LocalDate.now(), "Thiếu toAccount");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        BusinessValidationException ex = assertThrows(BusinessValidationException.class, () ->
+                transactionService.createTransaction(1L, request));
+        assertEquals("Tài khoản nhận tiền không được để trống", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Chuyển tiền tới hoặc từ tài khoản đã lưu trữ (Archived) ném ngoại lệ")
+    void testCreateTransferTransaction_ArchivedAccount_ThrowsException() {
+        testCashAccount.setIsArchived(true);
+        Account target = new Account(testUser, "Ví B", AccountType.BANK, 500_000L);
+        target.setId(31L);
+
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, 31L, null, TransactionType.TRANSFER, 200_000L, LocalDate.now(), "Từ ví archived");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(testCashAccount));
+
+        assertThrows(BusinessValidationException.class, () ->
+                transactionService.createTransaction(1L, request));
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Cập nhật giao dịch TRANSFER hoàn tác số dư cũ và áp dụng số dư mới")
+    void testUpdateTransferTransaction_Success() {
+        testCashAccount.setCurrentBalance(3_000_000L); // Ban đầu đã bị trừ 2M (từ 5M)
+        Account testTargetAccount = new Account(testUser, "Nuôi con", AccountType.BANK, 3_000_000L); // Ban đầu đã nhận 2M (từ 1M)
+        testTargetAccount.setId(30L);
+
+        Transaction existingTransfer = new Transaction(
+                601L, testUser, testCashAccount, testTargetAccount, null,
+                TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Cũ"
+        );
+
+        when(transactionRepository.findByIdAndUserId(601L, 1L)).thenReturn(Optional.of(existingTransfer));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Sửa số tiền chuyển từ 2M thành 1M
+        TransactionUpdateRequest updateRequest = new TransactionUpdateRequest(
+                10L, 30L, null, TransactionType.TRANSFER, 1_000_000L, LocalDate.now(), "Mới: 1M"
+        );
+
+        TransactionResponse response = transactionService.updateTransaction(1L, 601L, updateRequest);
+
+        assertNotNull(response);
+        assertEquals(1_000_000L, response.getAmount());
+        // Sau khi hoàn tác 2M (Cash=5M, Target=1M), rồi áp dụng 1M:
+        // Cash = 5M - 1M = 4M
+        assertEquals(4_000_000L, testCashAccount.getCurrentBalance());
+        // Target = 1M + 1M = 2M
+        assertEquals(2_000_000L, testTargetAccount.getCurrentBalance());
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Cập nhật đổi tài khoản đích của giao dịch TRANSFER")
+    void testUpdateTransferTransaction_TargetAccountChanged_Success() {
+        testCashAccount.setCurrentBalance(3_000_000L); // Từ 5M đã chuyển 2M
+        Account oldTarget = new Account(testUser, "Nuôi con", AccountType.BANK, 3_000_000L); // Nhận 2M
+        oldTarget.setId(30L);
+
+        Account newTarget = new Account(testUser, "Tiết kiệm", AccountType.BANK, 5_000_000L);
+        newTarget.setId(35L);
+
+        Transaction existingTransfer = new Transaction(
+                603L, testUser, testCashAccount, oldTarget, null,
+                TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Chuyển cũ"
+        );
+
+        when(transactionRepository.findByIdAndUserId(603L, 1L)).thenReturn(Optional.of(existingTransfer));
+        when(accountRepository.findByIdAndUserId(35L, 1L)).thenReturn(Optional.of(newTarget));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Đổi sang ví newTarget (35L) và chuyển 1_500_000L
+        TransactionUpdateRequest updateRequest = new TransactionUpdateRequest(
+                10L, 35L, null, TransactionType.TRANSFER, 1_500_000L, LocalDate.now(), "Chuyển sang tiết kiệm"
+        );
+
+        TransactionResponse response = transactionService.updateTransaction(1L, 603L, updateRequest);
+
+        assertNotNull(response);
+        assertEquals(1_500_000L, response.getAmount());
+        // Cash: hoàn tác +2M (5M) rồi trừ 1.5M = 3.5M
+        assertEquals(3_500_000L, testCashAccount.getCurrentBalance());
+        // OldTarget: hoàn tác -2M = 1M
+        assertEquals(1_000_000L, oldTarget.getCurrentBalance());
+        // NewTarget: cộng 1.5M = 6.5M
+        assertEquals(6_500_000L, newTarget.getCurrentBalance());
+
+        verify(accountRepository).save(oldTarget);
+        verify(accountRepository).save(newTarget);
+        verify(accountRepository, times(2)).save(testCashAccount);
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Xóa giao dịch TRANSFER hoàn tác số dư cả hai tài khoản")
+    void testDeleteTransferTransaction_RevertsBothAccounts() {
+        testCashAccount.setCurrentBalance(3_000_000L);
+        Account testTargetAccount = new Account(testUser, "Tiết kiệm", AccountType.BANK, 3_000_000L);
+        testTargetAccount.setId(35L);
+
+        Transaction existingTransfer = new Transaction(
+                602L, testUser, testCashAccount, testTargetAccount, null,
+                TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Chuyển tiết kiệm"
+        );
+
+        when(transactionRepository.findByIdAndUserId(602L, 1L)).thenReturn(Optional.of(existingTransfer));
+
+        transactionService.deleteTransaction(1L, 602L);
+
+        // Nguồn được cộng lại 2M: 3M + 2M = 5M
+        assertEquals(5_000_000L, testCashAccount.getCurrentBalance());
+        // Đích bị trừ lại 2M: 3M - 2M = 1M
+        assertEquals(1_000_000L, testTargetAccount.getCurrentBalance());
+
+        verify(accountRepository).save(testCashAccount);
+        verify(accountRepository).save(testTargetAccount);
+        verify(transactionRepository).delete(existingTransfer);
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Chuyển khoản từ Bank sang Thẻ tín dụng làm giảm dư nợ thẻ (trả nợ thẻ)")
+    void testCreateTransferTransaction_ToCreditCard_ReducesDebt() {
+        testCashAccount.setCurrentBalance(5_000_000L);
+        testCreditAccount.setCurrentBalance(3_000_000L); // Đang nợ 3 triệu
+
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                10L, 20L, null, TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Thanh toán dư nợ thẻ");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(accountRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(testCashAccount));
+        when(accountRepository.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(testCreditAccount));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TransactionResponse response = transactionService.createTransaction(1L, request);
+
+        assertNotNull(response);
+        // Bank bị trừ 2 triệu: 5M - 2M = 3M
+        assertEquals(3_000_000L, testCashAccount.getCurrentBalance());
+        // Thẻ tín dụng được trả nợ 2 triệu: dư nợ giảm từ 3M xuống 1M
+        assertEquals(1_000_000L, testCreditAccount.getCurrentBalance());
+
+        // Net Worth:
+        // Trước: 5M (Assets) - 3M (Liabilities) = 2M
+        // Sau: 3M (Assets) - 1M (Liabilities) = 2M (Bảo toàn tuyệt đối Net Worth!)
+    }
 }

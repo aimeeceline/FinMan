@@ -608,13 +608,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-gutter-desktop h-full max-h-full flex flex-col overflow-hidden py-3 select-none">
       {/* 1. Header Page Title & Model Indicator */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-3">
-        <div>
-          <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight font-bold">
-            Trợ lý Tài chính FinMan AI
-          </h1>
-        </div>
-
+      <div className="shrink-0 flex items-center justify-end gap-space-sm mb-3">
         <div className="flex items-center gap-space-sm flex-wrap">
           <div
             className={`px-3.5 py-1.5 rounded-full font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm border ${aiStatus?.geminiConnected

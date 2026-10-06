@@ -20,6 +20,9 @@ public class AccountUpdateRequest {
     @Size(max = 50, message = "Số tài khoản tối đa 50 ký tự")
     private String accountNumber;
 
+    @Size(max = 255, message = "Ghi chú tài khoản tối đa 255 ký tự")
+    private String note;
+
     public AccountUpdateRequest() {
     }
 
@@ -34,6 +37,11 @@ public class AccountUpdateRequest {
         this.creditLimit = creditLimit;
         this.isArchived = isArchived;
         this.accountNumber = accountNumber;
+    }
+
+    public AccountUpdateRequest(String name, Long creditLimit, Boolean isArchived, String accountNumber, String note) {
+        this(name, creditLimit, isArchived, accountNumber);
+        this.note = note;
     }
 
     public String getAccountNumber() {
@@ -66,5 +74,13 @@ public class AccountUpdateRequest {
 
     public void setIsArchived(Boolean isArchived) {
         this.isArchived = isArchived;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }

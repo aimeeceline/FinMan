@@ -85,6 +85,7 @@ public class ExportService {
             XSSFColor greenColor = new XSSFColor(new byte[]{(byte) 0, (byte) 108, (byte) 74}, colorMap); // #006C4A
             XSSFColor redColor = new XSSFColor(new byte[]{(byte) 183, (byte) 0, (byte) 17}, colorMap); // #B70011
             XSSFColor grayBorderColor = new XSSFColor(new byte[]{(byte) 215, (byte) 220, (byte) 235}, colorMap);
+            XSSFColor blueTransferColor = new XSSFColor(new byte[]{(byte) 30, (byte) 64, (byte) 175}, colorMap); // #1E40AF
 
             DataFormat dataFormat = workbook.createDataFormat();
             short currencyFormat = dataFormat.getFormat("#,##0 ₫");
@@ -123,6 +124,12 @@ public class ExportService {
             expenseFont.setFontHeightInPoints((short) 10);
             expenseFont.setBold(true);
             expenseFont.setColor(redColor);
+
+            XSSFFont transferFont = workbook.createFont();
+            transferFont.setFontName("Calibri");
+            transferFont.setFontHeightInPoints((short) 10);
+            transferFont.setBold(true);
+            transferFont.setColor(blueTransferColor);
 
             // ==================== SHEET 1: LỊCH SỬ GIAO DỊCH ====================
             Sheet sheet1 = workbook.createSheet("Lịch sử Giao dịch");
@@ -181,6 +188,17 @@ public class ExportService {
             expenseAmountStyle.setDataFormat(currencyFormat);
             expenseAmountStyle.setAlignment(HorizontalAlignment.RIGHT);
             applyBorders(expenseAmountStyle, grayBorderColor);
+
+            XSSFCellStyle transferTypeStyle = workbook.createCellStyle();
+            transferTypeStyle.setFont(transferFont);
+            transferTypeStyle.setAlignment(HorizontalAlignment.CENTER);
+            applyBorders(transferTypeStyle, grayBorderColor);
+
+            XSSFCellStyle transferAmountStyle = workbook.createCellStyle();
+            transferAmountStyle.setFont(transferFont);
+            transferAmountStyle.setDataFormat(currencyFormat);
+            transferAmountStyle.setAlignment(HorizontalAlignment.RIGHT);
+            applyBorders(transferAmountStyle, grayBorderColor);
 
             XSSFCellStyle zebraTextLeftStyle = workbook.createCellStyle();
             zebraTextLeftStyle.cloneStyleFrom(textLeftStyle);
@@ -318,23 +336,48 @@ public class ExportService {
                     // Col 2: Loại
                     org.apache.poi.ss.usermodel.Cell cType = row.createCell(2);
                     boolean isIncome = (t.getType() == TransactionType.INCOME);
-                    cType.setCellValue(isIncome ? "Thu nhập" : "Chi tiêu");
-                    cType.setCellStyle(isIncome ? incomeTypeStyle : expenseTypeStyle);
+                    boolean isTransfer = (t.getType() == TransactionType.TRANSFER);
+                    if (isIncome) {
+                        cType.setCellValue("Thu nhập");
+                        cType.setCellStyle(incomeTypeStyle);
+                    } else if (isTransfer) {
+                        cType.setCellValue("Chuyển khoản");
+                        cType.setCellStyle(transferTypeStyle);
+                    } else {
+                        cType.setCellValue("Chi tiêu");
+                        cType.setCellStyle(expenseTypeStyle);
+                    }
 
                     // Col 3: Danh mục
                     org.apache.poi.ss.usermodel.Cell cCat = row.createCell(3);
-                    cCat.setCellValue(t.getCategory() != null ? t.getCategory().getName() : "Khác");
+                    if (isTransfer) {
+                        cCat.setCellValue("Chuyển khoản nội bộ");
+                    } else {
+                        cCat.setCellValue(t.getCategory() != null ? t.getCategory().getName() : "Khác");
+                    }
                     cCat.setCellStyle(isZebra ? zebraTextLeftStyle : textLeftStyle);
 
                     // Col 4: Tài khoản
                     org.apache.poi.ss.usermodel.Cell cAcc = row.createCell(4);
-                    cAcc.setCellValue(t.getAccount() != null ? t.getAccount().getName() : "Không xác định");
+                    if (isTransfer) {
+                        String fromName = t.getAccount() != null ? t.getAccount().getName() : "Không xác định";
+                        String toName = t.getToAccount() != null ? t.getToAccount().getName() : "Không xác định";
+                        cAcc.setCellValue(fromName + " ➔ " + toName);
+                    } else {
+                        cAcc.setCellValue(t.getAccount() != null ? t.getAccount().getName() : "Không xác định");
+                    }
                     cAcc.setCellStyle(isZebra ? zebraTextLeftStyle : textLeftStyle);
 
                     // Col 5: Số tiền
                     org.apache.poi.ss.usermodel.Cell cAmt = row.createCell(5);
                     cAmt.setCellValue(t.getAmount());
-                    cAmt.setCellStyle(isIncome ? incomeAmountStyle : expenseAmountStyle);
+                    if (isIncome) {
+                        cAmt.setCellStyle(incomeAmountStyle);
+                    } else if (isTransfer) {
+                        cAmt.setCellStyle(transferAmountStyle);
+                    } else {
+                        cAmt.setCellStyle(expenseAmountStyle);
+                    }
 
                     // Col 6: Ghi chú
                     org.apache.poi.ss.usermodel.Cell cNote = row.createCell(6);

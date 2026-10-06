@@ -457,21 +457,16 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
   // Format month label (e.g., '2026-09' -> 'Th 9/2026')
   const formatMonthLabel = (monthStr: string) => {
     const [y, m] = monthStr.split('-');
-    return `Th ${parseInt(m, 10)}/${y}`;
+    return `Tháng  ${parseInt(m, 10)}/${y}`;
   };
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
       {/* 1. Top Command Action Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-lg">
-        <div className="flex flex-col">          
-          <div className="flex items-center gap-space-sm flex-wrap">
-            <h2 className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
-              Quản lý Ngân sách chi tiêu
-            </h2>
-
-            {/* Interactive Month & Year Navigator */}
-            <div className="flex items-center gap-1 bg-surface-container-high rounded-xl p-1 relative" ref={pickerRef}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
+        <div className="flex items-center gap-space-sm flex-wrap">
+          {/* Interactive Month & Year Navigator */}
+          <div className="flex items-center gap-1 bg-surface-container-high rounded-xl p-1 relative" ref={pickerRef}>
               <button
                 type="button"
                 onClick={handlePrevMonth}
@@ -596,7 +591,6 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
               )}
             </div>
           </div>
-        </div>
 
         {/* Quick CTA Button */}
         <div className="flex items-center gap-space-sm flex-wrap">

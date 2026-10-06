@@ -59,7 +59,7 @@ graph TD
 
 # 3. Database Architecture & ERD (Thiết Kế Cơ Sở Dữ Liệu)
 
-Hệ thống tập trung vào 5 bảng cốt lõi phục vụ trọn vẹn nghiệp vụ quản lý tài chính cá nhân:
+Hệ thống tập trung vào 5 bảng cốt lõi phục vụ trọn vẹn nghiệp vụ quản lý tài chính cá nhân, không phát sinh bảng "Fund" riêng biệt (mục đích quản lý như Nuôi con, Tiết kiệm, Cá nhân được biểu diễn bằng Account có tên tùy chỉnh):
 
 ```mermaid
 erDiagram
@@ -67,7 +67,8 @@ erDiagram
     USERS ||--o{ CATEGORIES : "creates"
     USERS ||--o{ TRANSACTIONS : "records"
     USERS ||--o{ BUDGETS : "sets"
-    ACCOUNTS ||--o{ TRANSACTIONS : "contains"
+    ACCOUNTS ||--o{ TRANSACTIONS : "source of (from_account)"
+    ACCOUNTS ||--o{ TRANSACTIONS : "destination of (to_account - transfer)"
     CATEGORIES ||--o{ TRANSACTIONS : "classifies"
     CATEGORIES ||--o{ BUDGETS : "limits"
 
@@ -84,12 +85,13 @@ erDiagram
     ACCOUNTS {
         bigint id PK
         bigint user_id FK
-        varchar name
-        varchar type "CASH | BANK | CREDIT_CARD"
+        varchar name "Tên tùy chỉnh: TPBank, Nuôi con, Tiết kiệm..."
+        varchar type "Scope: CASH, BANK, CREDIT_CARD, INVESTMENT, OTHER | Proposed: DEBIT_CARD, LOAN..."
         bigint initial_balance
         bigint current_balance
-        bigint credit_limit
-        boolean is_archived
+        bigint credit_limit "Hạn mức (CREDIT_CARD)"
+        varchar note "Ghi chú mục đích (Proposed)"
+        boolean is_archived "Lưu trữ bảo toàn lịch sử"
         timestamp created_at
         timestamp updated_at
     }
@@ -108,9 +110,10 @@ erDiagram
     TRANSACTIONS {
         bigint id PK
         bigint user_id FK
-        bigint account_id FK
-        bigint category_id FK
-        varchar type "INCOME | EXPENSE"
+        bigint account_id FK "Tài khoản nguồn (From Account)"
+        bigint to_account_id FK "Tài khoản đích nếu TRANSFER (Nullable)"
+        bigint category_id FK "Nullable đối với TRANSFER"
+        varchar type "INCOME | EXPENSE | TRANSFER"
         bigint amount
         date transaction_date
         varchar note
@@ -141,44 +144,48 @@ Lưu trữ tài khoản người dùng đăng nhập hệ thống.
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE)
 
 #### Bảng `accounts`
-Quản lý ví tiền mặt, tài khoản ngân hàng và thẻ tín dụng.
+Quản lý các đơn vị tài chính (Financial Units): tiền mặt, tài khoản ngân hàng, thẻ tín dụng, hoặc các tài khoản mục đích do người dùng tự đặt tên.
 - `id` (BIGINT, PK, Auto Increment)
 - `user_id` (BIGINT, FK -> users.id, NOT NULL): Định danh chủ sở hữu.
-- `name` (VARCHAR(50), NOT NULL): Tên tài khoản (Ví dụ: "Tiền mặt", "Vietcombank", "Thẻ Techcombank Visa").
-- `type` (VARCHAR(20), NOT NULL): Thuộc `CASH`, `BANK`, `CREDIT_CARD`.
-- `initial_balance` (BIGINT, NOT NULL, DEFAULT 0): Số dư lúc khởi tạo ví (đơn vị VNĐ).
+- `name` (VARCHAR(50), NOT NULL): Tên tài khoản tùy chỉnh do người dùng đặt (Ví dụ: "Tiền mặt cá nhân", "TPBank", "Nuôi con", "Tiết kiệm", "Techcombank Visa").
+- `type` (VARCHAR(20), NOT NULL):
+  - *Current Scope*: `CASH`, `BANK`, `CREDIT_CARD`, `INVESTMENT`, `OTHER`.
+  - *Proposed Scope*: `DEBIT_CARD`, `CREDIT_LIMIT`, `LOAN`, `INSURANCE`, `CRYPTO`.
+- `initial_balance` (BIGINT, NOT NULL, DEFAULT 0): Số dư lúc khởi tạo (đơn vị VNĐ).
 - `current_balance` (BIGINT, NOT NULL, DEFAULT 0): Số dư khả dụng hiện tại (hoặc dư nợ hiện tại đối với thẻ tín dụng).
 - `credit_limit` (BIGINT, NULL, DEFAULT 0): Hạn mức tín dụng (áp dụng cho `CREDIT_CARD`).
-- `is_archived` (BOOLEAN, NOT NULL, DEFAULT FALSE): Trạng thái đóng/ẩn tài khoản thay vì xóa cứng.
+- `note` (VARCHAR(255), NULL): Ghi chú mục đích tài khoản *(Proposed field)*.
+- `is_archived` (BOOLEAN, NOT NULL, DEFAULT FALSE): Trạng thái đóng/lưu trữ tài khoản khi đã có lịch sử giao dịch (thay vì xóa cứng).
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE)
 
 #### Bảng `categories`
-Phân loại các khoản chi tiêu và thu nhập.
+Phân loại các khoản chi tiêu và thu nhập (áp dụng cho Income/Expense và làm căn cứ giới hạn cho Budget).
 - `id` (BIGINT, PK, Auto Increment)
 - `user_id` (BIGINT, FK -> users.id, NULL): Nếu `NULL` là danh mục hệ thống mặc định, có giá trị là danh mục do người dùng tự tạo.
-- `name` (VARCHAR(50), NOT NULL): Tên danh mục ("Ăn uống", "Lương", "Áo quần"...).
+- `name` (VARCHAR(50), NOT NULL): Tên danh mục ("Ăn uống", "Lương", "Áo quần", "Trẻ em"...).
 - `type` (VARCHAR(20), NOT NULL): Thuộc `INCOME` hoặc `EXPENSE`.
 - `icon` (VARCHAR(50), NULL): Biểu tượng hoặc emoji (ví dụ: `🍜`, `💰`, `👕`).
 - `is_default` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu danh mục ban đầu do hệ thống tạo.
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE)
 
 #### Bảng `transactions`
-Lưu trữ toàn bộ lịch sử biến động tiền tệ.
+Lưu trữ toàn bộ lịch sử biến động tiền tệ với 3 loại nghiệp vụ: Thu nhập, Chi tiêu, và Chuyển khoản nội bộ.
 - `id` (BIGINT, PK, Auto Increment)
 - `user_id` (BIGINT, FK -> users.id, NOT NULL)
-- `account_id` (BIGINT, FK -> accounts.id, NOT NULL): Tài khoản phát sinh giao dịch.
-- `category_id` (BIGINT, FK -> categories.id, NOT NULL): Danh mục thu/chi.
-- `type` (VARCHAR(20), NOT NULL): Thuộc `INCOME` hoặc `EXPENSE` (Không có chuyển khoản).
+- `account_id` (BIGINT, FK -> accounts.id, NOT NULL): Tài khoản phát sinh giao dịch (Tài khoản nguồn / From Account đối với `TRANSFER`).
+- `to_account_id` (BIGINT, FK -> accounts.id, NULL): Tài khoản nhận tiền (Bắt buộc nếu `type = TRANSFER`, NULL đối với `INCOME` và `EXPENSE`).
+- `category_id` (BIGINT, FK -> categories.id, NULL): Danh mục thu/chi (Bắt buộc nếu `INCOME` hoặc `EXPENSE`, NULL đối với `TRANSFER`).
+- `type` (VARCHAR(20), NOT NULL): Thuộc `INCOME` (Thu), `EXPENSE` (Chi), hoặc `TRANSFER` (Chuyển khoản nội bộ giữa 2 tài khoản).
 - `amount` (BIGINT, NOT NULL): Số tiền giao dịch (luôn dương > 0).
 - `transaction_date` (DATE, NOT NULL): Ngày phát sinh giao dịch (YYYY-MM-DD).
 - `note` (VARCHAR(255), NULL): Ghi chú diễn giải.
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE)
 
 #### Bảng `budgets`
-Thiết lập hạn mức chi tiêu cho từng danh mục theo tháng.
+Thiết lập hạn mức chi tiêu cho từng danh mục theo tháng (hoàn toàn độc lập với Account balance).
 - `id` (BIGINT, PK, Auto Increment)
 - `user_id` (BIGINT, FK -> users.id, NOT NULL)
-- `category_id` (BIGINT, FK -> categories.id, NOT NULL): Danh mục chi tiêu được áp hạn mức.
+- `category_id` (BIGINT, FK -> categories.id, NOT NULL): Danh mục chi tiêu được áp hạn mức (`type = EXPENSE`).
 - `month` (VARCHAR(7), NOT NULL): Chu kỳ tháng áp dụng, định dạng `YYYY-MM` (Ví dụ: `2026-09`).
 - `amount` (BIGINT, NOT NULL): Hạn mức ngân sách tối đa trong tháng (VNĐ).
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE)
@@ -186,9 +193,10 @@ Thiết lập hạn mức chi tiêu cho từng danh mục theo tháng.
 
 ### 3.2 Database Indexes tối ưu hiệu năng
 - `CREATE INDEX idx_transactions_user_date ON transactions(user_id, transaction_date DESC);` (Tối ưu tải danh sách giao dịch phân trang theo thời gian).
-- `CREATE INDEX idx_transactions_user_account ON transactions(user_id, account_id);` (Tối ưu tính toán và kiểm tra số dư).
+- `CREATE INDEX idx_transactions_user_account ON transactions(user_id, account_id);` (Tối ưu tính toán và kiểm tra số dư tài khoản nguồn).
+- `CREATE INDEX idx_transactions_user_to_account ON transactions(user_id, to_account_id);` (Tối ưu kiểm tra dòng tiền chuyển khoản nhận).
 - `CREATE INDEX idx_budgets_user_month ON budgets(user_id, month);` (Tối ưu màn hình ngân sách).
-- `CREATE INDEX idx_accounts_user ON accounts(user_id) WHERE is_archived = FALSE;` (Tối ưu tải danh sách ví hoạt động).
+- `CREATE INDEX idx_accounts_user ON accounts(user_id) WHERE is_archived = FALSE;` (Tối ưu tải danh sách tài khoản hoạt động).
 
 ---
 
@@ -263,16 +271,25 @@ d:\FinMan/
 Backend được tổ chức theo kiến trúc chuẩn mực Spring Boot với phân tách rõ ràng các tầng:
 
 ### 4.1 Cơ chế cập nhật số dư tài khoản (Transaction Engine)
-Mỗi thao tác ghi nhận giao dịch tại `TransactionService` đều phải đảm bảo:
+Mỗi thao tác ghi nhận giao dịch tại `TransactionService` đều phải đảm bảo tính nguyên tử (ACID) thông qua annotation `@Transactional`:
 ```java
 @Transactional
 public TransactionResponse createTransaction(Long userId, CreateTransactionRequest request) {
-    // 1. Validate Account & Category thuộc sở hữu của User
-    // 2. Lưu Transaction Entity
-    // 3. Cập nhật số dư Account tương ứng:
-    //    - Nếu INCOME: account.setCurrentBalance(account.getCurrentBalance() + request.getAmount())
-    //    - Nếu EXPENSE: account.setCurrentBalance(account.getCurrentBalance() - request.getAmount())
-    // 4. Lưu Account Entity (Hibernate tự động commit hoặc rollback nếu lỗi)
+    // 1. Validate Account nguồn thuộc sở hữu của User và isArchived == false
+    // 2. Phân loại xử lý theo Transaction Type:
+    //    - INCOME:
+    //        Validate Category (loại INCOME)
+    //        account.setCurrentBalance(account.getCurrentBalance() + request.getAmount());
+    //    - EXPENSE:
+    //        Validate Category (loại EXPENSE)
+    //        account.setCurrentBalance(account.getCurrentBalance() - request.getAmount());
+    //        (Nếu chi tiêu thuộc tháng có Budget tương ứng: cập nhật tiến độ ngân sách)
+    //    - TRANSFER:
+    //        Validate toAccount thuộc sở hữu User, isArchived == false, và toAccountId != accountId
+    //        From Account: fromAccount.setCurrentBalance(fromAccount.getCurrentBalance() - request.getAmount());
+    //        To Account:   toAccount.setCurrentBalance(toAccount.getCurrentBalance() + request.getAmount());
+    //        (Transfer hoàn toàn không ảnh hưởng đến Budget và không tính vào Thu nhập hay Chi tiêu)
+    // 3. Lưu Transaction Entity & cập nhật Account Entities trong cùng 1 DB transaction
 }
 ```
 
@@ -290,11 +307,11 @@ sequenceDiagram
     participant API as Spring Boot (AiService)
     participant Gemini as Google Gemini API
 
-    User->>Web: Nhập text: "Ăn phở Thìn 65k ví tiền mặt hôm nay"
+    User->>Web: Nhập text: "Chuyển 10 triệu từ TPBank sang Nuôi con"
     Web->>API: POST /api/v1/ai/quick-add { text: "..." }
     API->>Gemini: Gửi Prompt + Structured JSON Schema yêu cầu bóc tách
-    Gemini-->>API: Trả về JSON: { type: "EXPENSE", amount: 65000, categoryName: "Ăn uống", accountName: "Tiền mặt", note: "phở Thìn", transactionDate: "2026-09-16" }
-    API->>API: Map với danh mục và tài khoản thực tế của User
+    Gemini-->>API: Trả về JSON: { type: "TRANSFER", amount: 10000000, categoryName: null, accountName: "TPBank", toAccountName: "Nuôi con", note: "Chuyển tiền nuôi con", transactionDate: "2026-09-16" }
+    API->>API: Map accountName và toAccountName với danh sách tài khoản thực tế của User
     API-->>Web: Trả về dữ liệu form chuẩn
     Web->>User: Hiển thị form đã điền sẵn để Người dùng xác nhận & Lưu
 ```
@@ -304,11 +321,12 @@ sequenceDiagram
 System: Bạn là trợ lý trích xuất dữ liệu giao dịch tài chính cho ứng dụng FinMan tại Việt Nam.
 Nhiệm vụ: Phân tích câu nói/văn bản của người dùng và trích xuất thành JSON thuần túy theo schema:
 {
-  "type": "INCOME" hoặc "EXPENSE",
-  "amount": số nguyên dương (đơn vị VNĐ, ví dụ: 50k -> 50000, 1.5 triệu -> 1500000),
-  "categoryName": tên danh mục gợi ý phù hợp nhất (Ăn uống, Giải trí, Lương, Áo quần...),
-  "accountName": tên tài khoản ví (Tiền mặt, Ngân hàng...),
-  "note": mô tả ngắn gọn nội dung chi tiêu,
+  "type": "INCOME" | "EXPENSE" | "TRANSFER",
+  "amount": số nguyên dương (đơn vị VNĐ, ví dụ: 50k -> 50000, 1.5 triệu -> 1500000, 10 triệu -> 10000000),
+  "categoryName": tên danh mục gợi ý phù hợp nhất (Ăn uống, Giải trí, Lương, Áo quần, Trẻ em...) nếu là INCOME hoặc EXPENSE; trả về null nếu là TRANSFER,
+  "accountName": tên tài khoản phát sinh / tài khoản chuyển (Tiền mặt, TPBank, MBBank, Nuôi con, Tiết kiệm...),
+  "toAccountName": tên tài khoản nhận nếu type là TRANSFER (ví dụ: Nuôi con, Tiết kiệm...); trả về null nếu type là INCOME hoặc EXPENSE,
+  "note": mô tả ngắn gọn nội dung giao dịch,
   "transactionDate": ngày theo định dạng YYYY-MM-DD (nếu nói 'hôm nay' thì lấy {currentDate}, 'hôm qua' thì trừ 1 ngày)
 }
 Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích thêm.
@@ -347,28 +365,31 @@ Khi có lỗi nghiệp vụ hoặc validation:
 
 | Module | Method | Endpoint | Mô tả |
 |---|---|---|---|
-| **Auth** | `POST` | `/api/v1/auth/register` | Đăng ký tài khoản mới + tự sinh ví mặc định và danh mục mẫu |
+| **Auth** | `POST` | `/api/v1/auth/register` | Đăng ký tài khoản mới + tự sinh ví mặc định ("Tiền mặt") và danh mục mẫu |
 | **Auth** | `POST` | `/api/v1/auth/login` | Đăng nhập bằng email/password, trả về JWT Access Token |
 | **Auth** | `GET` | `/api/v1/auth/me` | Lấy thông tin cá nhân của người dùng hiện tại |
-| **Accounts** | `GET` | `/api/v1/accounts` | Danh sách các ví/tài khoản (Tiền mặt, Ngân hàng, Thẻ tín dụng) kèm số dư |
-| **Accounts** | `POST` | `/api/v1/accounts` | Tạo tài khoản/ví tiền mới |
-| **Accounts** | `PUT` | `/api/v1/accounts/{id}` | Cập nhật thông tin tài khoản |
-| **Accounts** | `DELETE` | `/api/v1/accounts/{id}` | Lưu trữ (archive) hoặc xóa tài khoản nếu chưa có giao dịch |
+| **Accounts** | `GET` | `/api/v1/accounts` | Danh sách tài khoản (Type: CASH, BANK, CREDIT_CARD, INVESTMENT, OTHER; Name tùy chỉnh: TPBank, Nuôi con...) kèm số dư và trạng thái isArchived |
+| **Accounts** | `POST` | `/api/v1/accounts` | Tạo tài khoản mới (name, type, initialBalance, note [proposed]) |
+| **Accounts** | `PUT` | `/api/v1/accounts/{id}` | Cập nhật thông tin tài khoản (tên tùy chỉnh, ghi chú) |
+| **Accounts** | `PATCH` | `/api/v1/accounts/{id}/archive` | Lưu trữ tài khoản khi đã có lịch sử giao dịch (chặn tạo mới transaction, bảo toàn lịch sử) |
+| **Accounts** | `DELETE` | `/api/v1/accounts/{id}` | Xóa cứng tài khoản (chỉ cho phép nếu chưa phát sinh bất kỳ giao dịch nào) |
 | **Categories** | `GET` | `/api/v1/categories` | Lấy danh sách danh mục phân loại (hệ thống + người dùng tự tạo) |
 | **Categories** | `POST` | `/api/v1/categories` | Tạo danh mục mới |
 | **Categories** | `PUT` | `/api/v1/categories/{id}` | Đổi tên/icon danh mục |
 | **Categories** | `DELETE` | `/api/v1/categories/{id}` | Xóa danh mục (nếu chưa có giao dịch liên kết) |
-| **Transactions**| `GET` | `/api/v1/transactions` | Lấy danh sách giao dịch hỗ trợ filter: `month=YYYY-MM`, `from`, `to`, `accountId`, `categoryId`, `keyword` |
-| **Transactions**| `POST` | `/api/v1/transactions` | Tạo giao dịch Thu hoặc Chi (+/- số dư tài khoản tương ứng) |
+| **Transactions**| `GET` | `/api/v1/transactions` | Lấy danh sách giao dịch hỗ trợ filter: `month=YYYY-MM`, `from`, `to`, `accountId`, `categoryId`, `type=INCOME\|EXPENSE\|TRANSFER`, `keyword` |
+| **Transactions**| `GET` | `/api/v1/transactions/summary` | Lấy tổng quan Thu nhập, Chi tiêu, Dòng tiền ròng (hoàn toàn loại trừ các giao dịch TRANSFER) |
+| **Transactions**| `POST` | `/api/v1/transactions` | Tạo giao dịch (INCOME, EXPENSE, hoặc TRANSFER với `toAccountId`), cập nhật số dư tài khoản liên quan |
 | **Transactions**| `GET` | `/api/v1/transactions/{id}` | Chi tiết một giao dịch |
-| **Transactions**| `PUT` | `/api/v1/transactions/{id}` | Chỉnh sửa giao dịch (tự động hoàn tác số dư cũ và áp số dư mới) |
+| **Transactions**| `PUT` | `/api/v1/transactions/{id}` | Chỉnh sửa giao dịch (tự động hoàn tác số dư cũ và áp số dư mới cho các tài khoản liên quan) |
 | **Transactions**| `DELETE`| `/api/v1/transactions/{id}` | Xóa giao dịch (hoàn lại số tiền vào tài khoản tương ứng) |
-| **Budgets** | `GET` | `/api/v1/budgets` | Lấy danh sách ngân sách tháng `?month=YYYY-MM` kèm số tiền đã chi & còn lại |
-| **Budgets** | `POST` | `/api/v1/budgets` | Thiết lập hoặc cập nhật ngân sách cho danh mục |
+| **Budgets** | `GET` | `/api/v1/budgets` | Lấy danh sách ngân sách tháng `?month=YYYY-MM` kèm số tiền đã chi & còn lại (chỉ tính từ EXPENSE) |
+| **Budgets** | `POST` | `/api/v1/budgets` | Thiết lập hoặc cập nhật ngân sách cho danh mục chi tiêu |
 | **Budgets** | `DELETE` | `/api/v1/budgets/{id}` | Xóa thiết lập ngân sách |
-| **AI** | `POST` | `/api/v1/ai/quick-add` | Gửi câu văn bản tự nhiên để AI bóc tách thông tin giao dịch |
+| **AI** | `POST` | `/api/v1/ai/quick-add` | Gửi câu văn bản tự nhiên để AI bóc tách thông tin giao dịch (hỗ trợ cả INCOME, EXPENSE, TRANSFER) |
 | **AI** | `POST` | `/api/v1/ai/insights` | Yêu cầu AI tổng hợp phân tích tài chính và đưa ra nhận xét tháng `YYYY-MM` |
-| **Export** | `GET` | `/api/v1/export/excel` | Tải về file `.xlsx` toàn bộ lịch sử giao dịch theo khoảng thời gian |
+| **AI** | `POST` | `/api/v1/ai/chat` | Trợ lý tài chính AI đàm thoại đa lượt dựa trên dữ liệu thực tế từ Database |
+| **Export** | `GET` | `/api/v1/export/excel` | Tải về file `.xlsx` toàn bộ lịch sử giao dịch (phân rõ Thu, Chi, Chuyển khoản) |
 
 ---
 

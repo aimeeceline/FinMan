@@ -15,14 +15,21 @@ Mọi hành vi vi phạm các nguyên tắc dưới đây đều bị coi là **
   - [CODE_PLAN.md](file:///d:/FinMan/plans/CODE_PLAN.md): Nắm rõ vị trí của task hiện tại trong lộ trình phát triển.
 - **Tuyệt đối không suy đoán nghiệp vụ**: Mọi công thức tính toán dòng tiền, số dư ví, tài sản ròng Net Worth và ngân sách đều phải đối chiếu chính xác với PRD.
 
-### 📌 Nguyên Tắc 2: Giới Hạn Phạm Vi Tuyệt Đối (Strict Scope Adherence)
+### 📌 Nguyên Tắc 2: Giới Hạn Phạm Vi & Tuân Thủ Chuẩn Domain (Strict Scope & Domain Adherence)
 - **Chỉ làm ĐÚNG Task ID được giao**: Không tự ý làm trước các task khác, không tự ý sửa các file ngoài phạm vi task hiện tại.
-- **Nghiêm cấm tự mở rộng scope (No Scope Creep)**:
-  - ❌ **KHÔNG** làm tính năng Chuyển khoản (Transfer) giữa các ví. FinMan chỉ có 2 luồng: Thu nhập (INCOME) và Chi tiêu (EXPENSE).
+- **Thống nhất Domain Transaction (3 Luồng Chuẩn)**:
+  - Hệ thống hỗ trợ 3 loại giao dịch: `INCOME` (Thu nhập), `EXPENSE` (Chi tiêu), và `TRANSFER` (Chuyển khoản nội bộ).
+  - **Quy tắc TRANSFER**: Dịch chuyển tiền giữa 2 tài khoản cùng thuộc sở hữu của User. Transfer **KHÔNG** phải Thu nhập, **KHÔNG** phải Chi tiêu, và **KHÔNG** làm thay đổi tổng tài sản ròng. Tuyệt đối không cộng dồn Transfer vào tổng Thu nhập hoặc Chi tiêu trên Dashboard/Thống kê.
+- **Thống nhất Domain Account & Quyết định Kiến trúc**:
+  - Account là đơn vị tài chính (Financial Unit) có Loại (`type`) và Tên tùy chỉnh do người dùng đặt (`name`).
+  - **KHÔNG tạo bảng hoặc entity "Fund" riêng**: Các mục đích như "Nuôi con", "Cá nhân", "Tiết kiệm", "Du lịch"... được biểu diễn bằng Account với tên tùy chỉnh (ví dụ: `BANK + "Nuôi con"`).
+  - **Phân biệt rạch ròi Account vs Budget**: Account quản lý nơi giữ tiền/tài sản và số dư thực tế; Budget quản lý hạn mức chi tiêu dự kiến theo tháng và danh mục. Tuyệt đối không đánh đồng hoặc dùng Budget thay thế Account.
+  - **Vòng đời & Bảo toàn lịch sử**: Không xóa cứng (Hard Delete) tài khoản đã có lịch sử giao dịch; chuyển sang trạng thái lưu trữ (`is_archived = true`).
+- **Nghiêm cấm tự mở rộng scope vô căn cứ (No Uncontrolled Scope Creep)**:
   - ❌ **KHÔNG** làm tính năng OCR / Quét ảnh hóa đơn (Receipt Scanning).
   - ❌ **KHÔNG** làm engine học máy phân loại tự động (Auto-categorization engine).
-  - ❌ **KHÔNG** tự ý tạo thêm các bảng phức tạp (`RecurringTransaction`, `FinancialGoal`, `ReceiptScanLog`, `AuditLog`). Hệ thống chỉ có 5 bảng: `users`, `accounts`, `categories`, `transactions`, `budgets`.
-- **Giữ vững Tech Stack**: Backend là **Java Spring Boot 3.x**, Cơ sở dữ liệu quan hệ **PostgreSQL/MySQL**, AI là **Google Gemini REST API**. Không tự tiện đổi framework hoặc cài thêm các thư viện lạ không cần thiết.
+  - ❌ **KHÔNG** tự ý tạo thêm các bảng phức tạp ngoài 5 bảng cốt lõi (`users`, `accounts`, `categories`, `transactions`, `budgets`).
+- **Giữ vững Tech Stack**: Backend là **Java Spring Boot 3.x**, Cơ sở dữ liệu quan hệ **PostgreSQL/MySQL**, AI là **Google Gemini REST API**, Frontend là **React 19 + TypeScript + Tailwind CSS**.
 
 ### 📌 Nguyên Tắc 3: Kiểm Tra Hiện Trạng Trước Khi Sửa (Inspect Before Edit)
 - Trước khi sửa bất kỳ file nào, Agent **bắt buộc phải đọc nội dung hiện tại** của file đó (`view_file`).
@@ -32,6 +39,9 @@ Mọi hành vi vi phạm các nguyên tắc dưới đây đều bị coi là **
 ### 📌 Nguyên Tắc 4: Bảo Đảm Tính Toàn Vẹn Số Liệu Tài Chính (Financial Math & Data Integrity)
 - **Đơn vị tiền tệ**: Luôn sử dụng đơn vị Đồng Việt Nam (VND).
 - **Kiểu dữ liệu tiền tệ**: Tuyệt đối dùng kiểu số nguyên `Long` trong Java và `BIGINT` trong SQL. **Cấm tuyệt đối dùng kiểu số thực `float` hay `double`** để tính toán tiền tệ vì sẽ gây sai số làm tròn số thực.
+- **Công thức số dư chính xác**:
+  - Tài sản: $\text{Balance} = \text{Initial Balance} + \sum \text{Income} + \sum \text{Transfer In} - \sum \text{Expense} - \sum \text{Transfer Out}$.
+  - Nợ thẻ tín dụng: Chi tiêu làm tăng dư nợ; Thanh toán/Thu nhập làm giảm dư nợ.
 - **Giao dịch nguyên tử (Atomic Transactions)**: Tất cả các hàm thêm/sửa/xóa giao dịch tác động lên số dư ví bắt buộc phải có annotation `@Transactional`.
 - **Bảo mật Multi-tenant**: Mọi câu lệnh truy vấn dữ liệu từ database **bắt buộc** phải có điều kiện ràng buộc `user_id = :currentUserId` lấy từ Security Context. Không được tin tưởng `userId` gửi lên từ body hoặc query param nếu không được xác thực.
 

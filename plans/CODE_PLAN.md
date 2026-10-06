@@ -86,9 +86,9 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 ### Task 1.1: Tạo 5 Thực Thể Entity Cốt Lõi (JPA)
 - **Mục tiêu**: Xây dựng 5 entity JPA theo đúng thiết kế ERD trong `ARCHITECTURE.md`:
   - `User.java`: `id`, `email`, `passwordHash`, `fullName`, `avatarUrl`, `createdAt`, `updatedAt`.
-  - `Account.java`: `id`, `user`, `name`, `type` (`CASH`, `BANK`, `CREDIT_CARD`), `initialBalance`, `currentBalance`, `creditLimit`, `isArchived`.
+  - `Account.java`: Đơn vị tài chính (`id`, `user`, `name` [tên tùy chỉnh do user đặt: TPBank, Nuôi con, Tiết kiệm...], `type` [`CASH`, `BANK`, `CREDIT_CARD`, `INVESTMENT`, `OTHER`], `initialBalance`, `currentBalance`, `creditLimit`, `note` [proposed], `isArchived`).
   - `Category.java`: `id`, `user`, `name`, `type` (`INCOME`, `EXPENSE`), `icon`, `isDefault`.
-  - `Transaction.java`: `id`, `user`, `account`, `category`, `type` (`INCOME`, `EXPENSE`), `amount` (Long), `transactionDate`, `note`.
+  - `Transaction.java`: `id`, `user`, `account` (tài khoản nguồn), `toAccount` (tài khoản nhận nếu TRANSFER), `category`, `type` (`INCOME`, `EXPENSE`, `TRANSFER`), `amount` (Long), `transactionDate`, `note`.
   - `Budget.java`: `id`, `user`, `category`, `month`, `amount`.
 - **Files**: `backend/src/main/java/com/finman/entity/*`.
 - **DoD**: Hibernate sinh đúng các bảng và khóa ngoại, số tiền lưu dạng `BIGINT`, không dùng float.
@@ -154,10 +154,11 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 3.1: Backend Accounts & Categories APIs
 - **Mục tiêu**:
-  - CRUD Accounts: `GET /api/v1/accounts` (tính Net Worth = Assets - Liabilities), `POST`, `PUT`, `DELETE` (chuyển `isArchived = true`).
+  - CRUD Accounts: `GET /api/v1/accounts` (hỗ trợ tên tùy chỉnh do user đặt: TPBank, Nuôi con, Tiết kiệm...; tính Net Worth = Assets - Liabilities), `POST`, `PUT`, `PATCH /archive` (chuyển `isArchived = true` bảo toàn lịch sử), `DELETE` (chỉ cho phép khi chưa có giao dịch).
+  - Phân định rõ ràng: Account là Financial Unit (không tạo entity Fund riêng).
   - Categories: `GET /api/v1/categories`, `POST`, `DELETE`.
 - **Files**: `backend/src/main/java/com/finman/service/AccountService.java`, `controller/AccountController.java`, `service/CategoryService.java`.
-- **DoD**: Trả về danh sách ví kèm số dư và tính đúng Net Worth.
+- **DoD**: Trả về danh sách tài khoản kèm số dư và tính đúng Net Worth.
 
 ### Task 3.2: Frontend Accounts Screen (Bóc tách từ Stitch)
 - **Mục tiêu**:
@@ -167,8 +168,8 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
     - Thẻ VIP Dark Gunmetal hiển thị Tài sản ròng (Net Worth = Assets - Liabilities) và nút ẩn/hiện số dư bảo mật.
     - Dải phương trình tài chính (Tổng tài sản thực có, Khoản nợ / Dư nợ thẻ, Thặng dư ròng).
     - Biểu đồ phân bổ dòng vốn Donut SVG vector tự động tính % tỷ trọng dòng tiền.
-    - 3 Cột nhóm tài khoản: Tiền mặt (`CASH`), Tài khoản ngân hàng (`BANK`), Thẻ tín dụng & Nợ (`CREDIT_CARD`).
-    - Modal thêm tài khoản mới chuẩn Stitch Web.
+    - Các nhóm tài khoản: Tiền mặt (`CASH`), Tài khoản ngân hàng (`BANK`), Thẻ tín dụng & Nợ (`CREDIT_CARD`), Tài khoản đầu tư (`INVESTMENT`), Tài khoản khác (`OTHER`).
+    - Modal thêm tài khoản mới chuẩn Stitch Web (cho phép đặt tên tùy chỉnh).
 - **Files**: `frontend/src/pages/accounts/AccountsPage.tsx`.
 - **DoD**: Giao diện hiển thị đúng layout Desktop-First sang trọng của Stitch, có nút thêm ví và lưu trữ ví tiện lợi.
 
@@ -187,11 +188,14 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 
 ### Task 4.1: Backend Transaction Service (`@Transactional`)
 - **Mục tiêu**:
-  - Triển khai logic ghi nhận giao dịch: `INCOME` (+ balance ví), `EXPENSE` (- balance ví).
-  - Chỉnh sửa & Xóa giao dịch: Hoàn tác tác động cũ, áp dụng tác động mới chuẩn xác.
-  - Lọc giao dịch theo tháng (`month=YYYY-MM`), khoảng ngày, tài khoản, danh mục, từ khóa.
+  - Triển khai logic ghi nhận 3 loại giao dịch:
+    + `INCOME`: Tăng số dư tài khoản nhận.
+    + `EXPENSE`: Giảm số dư tài khoản nguồn.
+    + `TRANSFER`: Giảm số dư tài khoản chuyển (`fromAccount`), tăng số dư tài khoản nhận (`toAccount`), không tính vào Thu nhập hay Chi tiêu.
+  - Chỉnh sửa & Xóa giao dịch: Hoàn tác tác động cũ, áp dụng tác động mới chuẩn xác trên các tài khoản liên quan.
+  - Lọc giao dịch theo tháng (`month=YYYY-MM`), khoảng ngày, tài khoản, danh mục, loại giao dịch (`type`), từ khóa.
 - **Files**: `backend/src/main/java/com/finman/service/TransactionService.java`, `controller/TransactionController.java`.
-- **DoD**: Đảm bảo tính toán số dư chính xác từng đồng VNĐ, có rollback khi lỗi.
+- **DoD**: Đảm bảo tính toán số dư chính xác từng đồng VNĐ, có rollback khi lỗi, Transfer không làm biến động Net Worth.
 
 ### Task 4.2: Frontend Transactions Web Dashboard (Bóc tách từ Stitch)
 - **Mục tiêu**:
@@ -366,3 +370,56 @@ Tài liệu này xác định thứ tự lập trình chi tiết cho dự án Fi
 - **Mục tiêu**: Tạo Dockerfile đa tầng cho Spring Boot backend và Nginx cho Frontend, cấu hình `docker-compose.prod.yml` chạy đồng bộ PostgreSQL + Backend + Frontend.
 - **Files**: `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.prod.yml`.
 - **DoD**: Khởi chạy toàn bộ hệ thống bằng 1 lệnh duy nhất: `docker-compose -f docker-compose.prod.yml up -d`.
+
+---
+
+## Phase 10: Extended Account Domain & Full Transfer Implementation (Next Phase Roadmap)
+
+> [!NOTE]
+> Giai đoạn này là lộ trình kỹ thuật chi tiết cho các thay đổi implementation ở phase tiếp theo. Tại TASK hiện tại, chỉ cập nhật quy hoạch tài liệu (Planning Only), tuyệt đối chưa chỉnh sửa mã nguồn backend/frontend.
+
+### Task 10.1: Database Schema Migration Cho Transfer & Extended Account Attributes [COMPLETED]
+- **Mục tiêu**: Mở rộng bảng `transactions` thêm cột `to_account_id BIGINT NULL REFERENCES accounts(id)` và cho phép `category_id` NULL khi `type = 'TRANSFER'`. Bổ sung cột `note VARCHAR(255) NULL` vào bảng `accounts`.
+- **Files**: `backend/src/main/java/com/finman/entity/Transaction.java`, `backend/src/main/java/com/finman/entity/Account.java`.
+- **DoD**: Schema migration thành công, backwards-compatible 100% với dữ liệu giao dịch hiện hữu.
+- **Trạng thái**: Đã hoàn thành (176/176 tests PASS, tích hợp schema, entity, DTOs và kiểm thử integration test).
+
+### Task 10.2: Backend Transaction Service Processing Cho Luồng TRANSFER [COMPLETED]
+- **Mục tiêu**: Xử lý logic chuyển khoản nguyên tử `@Transactional`: trừ tiền tài khoản nguồn (`fromAccount`) và cộng tiền tài khoản đích (`toAccount`). Kiểm tra ràng buộc `fromAccountId != toAccountId`, cả hai tài khoản thuộc cùng user và không bị archived.
+- **Files**: `backend/src/main/java/com/finman/service/TransactionService.java`, `backend/src/main/java/com/finman/dto/request/TransactionCreateRequest.java`, `backend/src/main/java/com/finman/dto/request/TransactionUpdateRequest.java`.
+- **DoD**: Giao dịch Transfer thực thi thành công, hoàn tác chuẩn xác khi sửa/xóa, tổng tài sản của user bảo toàn tuyệt đối.
+- **Trạng thái**: Đã hoàn thành (187/187 tests PASS, kiểm thử đầy đủ logic tạo/sửa/xóa Transfer, kiểm tra ràng buộc cùng tài khoản, tài khoản archived, bảo toàn Net Worth và tích hợp kiểm thử Controller).
+
+### Task 10.3: Cô Lập Thống Kê & Báo Cáo Không Bị Ảnh Hưởng Bởi TRANSFER [COMPLETED]
+- **Mục tiêu**: Rà soát và cập nhật toàn bộ các câu truy vấn tổng hợp (`findTotalIncomeByMonth`, `findTotalExpenseByMonth`, `aggregateByCategory`, `aggregateDailyCashflow`, `AiService.buildUserFinancialContext`, `ExportService`) để cô lập các giao dịch có `type = 'TRANSFER'`.
+- **Files**: `backend/src/main/java/com/finman/repository/TransactionRepository.java`, `backend/src/main/java/com/finman/service/StatisticsService.java`, `backend/src/main/java/com/finman/service/AiService.java`, `backend/src/main/java/com/finman/service/ExportService.java`.
+- **DoD**: Thống kê Thu nhập và Chi tiêu không bị tăng khống khi có giao dịch chuyển tiền nội bộ. Báo cáo Excel hiển thị giao dịch chuyển tiền trực quan (`Ví A ➔ Ví B`) với màu xanh navy đặc thù. Context AI phân biệt rạch ròi giao dịch chuyển ví. Toàn bộ 190 backend unit & integration tests pass 100%.
+- **Trạng thái**: Đã hoàn thành (190/190 tests PASS, thêm unit test `TC_EXP_04` cho ExportService).
+
+### Task 10.4: Frontend Transfer Tab & UI Modal Cập Nhật [COMPLETED]
+- **Mục tiêu**: Bổ sung tab "Chuyển khoản" trong modal `AddTransactionModal.tsx` cho phép chọn Khoản tiền nguồn và Khoản tiền đích, dự toán số dư sau chuyển và chặn điều chuyển cùng một ví. Cập nhật thẻ giao dịch trên Dashboard & Statistics hiển thị biểu tượng điều chuyển trung tính (`Ví Nguồn ➔ Ví Đích`, số tiền `⇄ X ₫`).
+- **Files**: `frontend/src/components/modals/AddTransactionModal.tsx`, `frontend/src/pages/dashboard/DashboardPage.tsx`, `frontend/src/pages/statistics/StatisticsPage.tsx`, `frontend/src/types/index.ts`, `frontend/src/services/transactionService.ts`.
+- **DoD**: Người dùng dễ dàng tạo giao dịch chuyển khoản giữa các khoản tiền trực tiếp trên giao diện Web với Canvas trực quan, an toàn kiểu dữ liệu và 0 lỗi TypeScript build.
+- **Trạng thái**: Đã hoàn thành (Build production `npm run build` thành công 100%).
+
+### Task 10.5: AI Natural Language Quick Add Nhận Diện Intent TRANSFER
+- **Mục tiêu**: Nâng cấp Prompt và schema bóc tách của Gemini API để nhận diện intent chuyển tiền (ví dụ: "Chuyển 10tr từ TPBank sang Nuôi con") và trả về đúng `fromAccountName` và `toAccountName`.
+- **Files**: `backend/src/main/java/com/finman/service/AiService.java`, `backend/src/main/resources/prompts/quick-add.txt`.
+- **DoD**: AI bóc tách chính xác giao dịch Transfer và tự động điền form chuyển khoản để người dùng xác nhận.
+
+### Task 10.6: Backend Account Lifecycle & Purpose Pocket Management [COMPLETED]
+- **Mục tiêu**: Hoàn thiện vòng đời tài khoản mục đích: bổ sung endpoint lưu trữ / khôi phục tài khoản (`PATCH /api/v1/accounts/{id}/archive`), chặn xóa cứng nếu tài khoản đã có lịch sử giao dịch (bảo toàn toàn vẹn dữ liệu), hỗ trợ tham số lọc `includeArchived` trong danh sách tài khoản.
+- **Files**: `backend/src/main/java/com/finman/controller/AccountController.java`, `backend/src/main/java/com/finman/service/AccountService.java`, `backend/src/main/java/com/finman/repository/AccountRepository.java`.
+- **DoD**: API archive/unarchive hoạt động chuẩn xác, bảo đảm an toàn dữ liệu lịch sử và phân quyền người dùng.
+- **Trạng thái**: Đã hoàn thành (189/189 tests backend PASS, bao phủ kiểm thử archive, unarchive và lọc `includeArchived`).
+
+### Task 10.7: Frontend Purpose-based Accounts Redesign (`AccountsPage.tsx` & Account Modal) [COMPLETED]
+- **Mục tiêu**: Tái thiết kế toàn diện trang Tài khoản và modal theo triết lý "Khoản tiền cho mục đích sử dụng":
+  + Bổ sung gợi ý chip mục đích nhanh (🍼 Nuôi con, 👵 Phụng dưỡng bố mẹ, ☕ Đầu tư quán cà phê, 🚨 Dự phòng khẩn cấp, 🏠 Mua nhà/xe, 🛒 Chi tiêu sinh hoạt) và trường nhập `Ghi chú (note)`.
+  + Chuyển layout từ chia cột ngân hàng cứng nhắc sang Lưới các **Khoản tiền mục đích (Purpose Allocation Cards)** với icon/màu sắc nhận diện, số dư khả dụng, ghi chú kế hoạch.
+  + Hỗ trợ chuyển đổi xem danh sách Khoản tiền đang hoạt động vs Khoản tiền đã lưu trữ (Archive/Unarchive).
+- **Files**: `frontend/src/pages/accounts/AccountsPage.tsx`, `frontend/src/services/accountService.ts`, `frontend/src/types/index.ts`.
+- **DoD**: Giao diện phản ánh đúng nghĩa các khoản tiền mục đích, mượt mà, đầy đủ tính năng và 0 lỗi TypeScript.
+- **Trạng thái**: Đã hoàn thành (Biên dịch `npm run build` thành công, kiểm thử chức năng tạo khoản tiền theo presets, ghi chú, chuyển tab active/archived và khôi phục khoản tiền mượt mà).
+
+

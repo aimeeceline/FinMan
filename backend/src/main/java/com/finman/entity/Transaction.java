@@ -29,6 +29,7 @@ import java.util.Objects;
         indexes = {
                 @Index(name = "idx_transactions_user_date", columnList = "user_id, transaction_date DESC"),
                 @Index(name = "idx_transactions_user_account", columnList = "user_id, account_id"),
+                @Index(name = "idx_transactions_user_to_account", columnList = "user_id, to_account_id"),
                 @Index(name = "idx_transactions_user_category", columnList = "user_id, category_id"),
                 @Index(name = "idx_transactions_user_type_date", columnList = "user_id, type, transaction_date DESC")
         }
@@ -49,9 +50,12 @@ public class Transaction {
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
-    @NotNull(message = "Danh mục không được để trống")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_account_id")
+    private Account toAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @NotNull(message = "Loại giao dịch không được để trống")
@@ -91,10 +95,33 @@ public class Transaction {
         this.note = note;
     }
 
+    public Transaction(User user, Account account, Account toAccount, Category category, TransactionType type, Long amount, LocalDate transactionDate, String note) {
+        this.user = user;
+        this.account = account;
+        this.toAccount = toAccount;
+        this.category = category;
+        this.type = type;
+        this.amount = amount;
+        this.transactionDate = transactionDate;
+        this.note = note;
+    }
+
     public Transaction(Long id, User user, Account account, Category category, TransactionType type, Long amount, LocalDate transactionDate, String note) {
         this.id = id;
         this.user = user;
         this.account = account;
+        this.category = category;
+        this.type = type;
+        this.amount = amount;
+        this.transactionDate = transactionDate;
+        this.note = note;
+    }
+
+    public Transaction(Long id, User user, Account account, Account toAccount, Category category, TransactionType type, Long amount, LocalDate transactionDate, String note) {
+        this.id = id;
+        this.user = user;
+        this.account = account;
+        this.toAccount = toAccount;
         this.category = category;
         this.type = type;
         this.amount = amount;
@@ -136,6 +163,14 @@ public class Transaction {
 
     public void setAccount(Account account) {
         this.account = account;
+    }
+
+    public Account getToAccount() {
+        return toAccount;
+    }
+
+    public void setToAccount(Account toAccount) {
+        this.toAccount = toAccount;
     }
 
     public Category getCategory() {

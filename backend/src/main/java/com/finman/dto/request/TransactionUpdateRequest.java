@@ -14,7 +14,8 @@ public class TransactionUpdateRequest {
     @NotNull(message = "Tài khoản không được để trống")
     private Long accountId;
 
-    @NotNull(message = "Danh mục không được để trống")
+    private Long toAccountId;
+
     private Long categoryId;
 
     @NotNull(message = "Loại giao dịch không được để trống")
@@ -42,12 +43,30 @@ public class TransactionUpdateRequest {
         this.note = note;
     }
 
+    public TransactionUpdateRequest(Long accountId, Long toAccountId, Long categoryId, TransactionType type, Long amount, LocalDate transactionDate, String note) {
+        this.accountId = accountId;
+        this.toAccountId = toAccountId;
+        this.categoryId = categoryId;
+        this.type = type;
+        this.amount = amount;
+        this.transactionDate = transactionDate;
+        this.note = note;
+    }
+
     public Long getAccountId() {
         return accountId;
     }
 
     public void setAccountId(Long accountId) {
         this.accountId = accountId;
+    }
+
+    public Long getToAccountId() {
+        return toAccountId;
+    }
+
+    public void setToAccountId(Long toAccountId) {
+        this.toAccountId = toAccountId;
     }
 
     public Long getCategoryId() {

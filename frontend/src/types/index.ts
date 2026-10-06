@@ -1,5 +1,5 @@
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
-export type AccountType = 'CASH' | 'BANK' | 'CREDIT_CARD';
+export type AccountType = 'CASH' | 'BANK' | 'CREDIT_CARD' | 'INVESTMENT' | 'OTHER';
 
 export interface User {
   id: number;
@@ -18,6 +18,7 @@ export interface Account {
   creditLimit?: number;
   accountNumber?: string;
   bankName?: string;
+  note?: string;
   napasLinked?: boolean;
   isArchived?: boolean;
   createdAt?: string;
@@ -38,6 +39,7 @@ export interface AccountCreatePayload {
   creditLimit?: number;
   accountNumber?: string;
   bankName?: string;
+  note?: string;
 }
 
 export interface AccountUpdatePayload {
@@ -45,6 +47,8 @@ export interface AccountUpdatePayload {
   creditLimit?: number;
   accountNumber?: string;
   bankName?: string;
+  note?: string;
+  isArchived?: boolean;
 }
 
 export interface Category {
@@ -60,11 +64,13 @@ export interface Transaction {
   id: number;
   amount: number;
   type: TransactionType;
-  category: Category;
+  category?: Category;
   account: Account;
+  toAccount?: Account;
   date: string; // YYYY-MM-DD
   time?: string;
   note?: string;
+  isAiParsed?: boolean;
   createdAt?: string;
 }
 

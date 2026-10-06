@@ -24,7 +24,8 @@ export interface TransactionSummary {
 
 export interface TransactionCreatePayload {
   accountId: number;
-  categoryId: number;
+  toAccountId?: number;
+  categoryId?: number;
   type: TransactionType;
   amount: number;
   transactionDate: string; // YYYY-MM-DD
@@ -33,6 +34,7 @@ export interface TransactionCreatePayload {
 
 export interface TransactionUpdatePayload {
   accountId?: number;
+  toAccountId?: number;
   categoryId?: number;
   type?: TransactionType;
   amount?: number;
@@ -82,13 +84,20 @@ export const transactionService = {
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
       },
-      category: {
-        id: item.category?.id,
-        name: item.category?.name,
-        type: item.category?.type,
-        icon: item.category?.icon || 'payments',
-        color: item.category?.color,
-      },
+      toAccount: item.toAccount ? {
+        id: item.toAccount.id,
+        name: item.toAccount.name,
+        type: item.toAccount.type,
+        accountNumber: item.toAccount.accountNumber,
+        currentBalance: item.toAccount.currentBalance ?? 0,
+      } : undefined,
+      category: item.category ? {
+        id: item.category.id,
+        name: item.category.name,
+        type: item.category.type,
+        icon: item.category.icon || 'payments',
+        color: item.category.color,
+      } : undefined,
     }));
   },
 
@@ -126,13 +135,20 @@ export const transactionService = {
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
       },
-      category: {
-        id: item.category?.id,
-        name: item.category?.name,
-        type: item.category?.type,
-        icon: item.category?.icon || 'payments',
-        color: item.category?.color,
-      },
+      toAccount: item.toAccount ? {
+        id: item.toAccount.id,
+        name: item.toAccount.name,
+        type: item.toAccount.type,
+        accountNumber: item.toAccount.accountNumber,
+        currentBalance: item.toAccount.currentBalance ?? 0,
+      } : undefined,
+      category: item.category ? {
+        id: item.category.id,
+        name: item.category.name,
+        type: item.category.type,
+        icon: item.category.icon || 'payments',
+        color: item.category.color,
+      } : undefined,
     };
   },
 
@@ -157,13 +173,20 @@ export const transactionService = {
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
       },
-      category: {
-        id: item.category?.id,
-        name: item.category?.name,
-        type: item.category?.type,
-        icon: item.category?.icon || 'payments',
-        color: item.category?.color,
-      },
+      toAccount: item.toAccount ? {
+        id: item.toAccount.id,
+        name: item.toAccount.name,
+        type: item.toAccount.type,
+        accountNumber: item.toAccount.accountNumber,
+        currentBalance: item.toAccount.currentBalance ?? 0,
+      } : undefined,
+      category: item.category ? {
+        id: item.category.id,
+        name: item.category.name,
+        type: item.category.type,
+        icon: item.category.icon || 'payments',
+        color: item.category.color,
+      } : undefined,
     };
   },
 

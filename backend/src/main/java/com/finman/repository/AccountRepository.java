@@ -17,6 +17,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     List<Account> findByUserIdAndIsArchivedFalse(Long userId);
 
+    List<Account> findByUserIdAndIsArchived(Long userId, Boolean isArchived);
+
     Optional<Account> findByIdAndUserId(Long id, Long userId);
 
     boolean existsByIdAndUserId(Long id, Long userId);

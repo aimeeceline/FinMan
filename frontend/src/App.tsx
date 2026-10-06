@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ScreenZoomProvider } from './context/ScreenZoomContext';
 import { Sidebar, type NavRoute } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { AddTransactionModal } from './components/modals/AddTransactionModal';
@@ -149,12 +150,22 @@ const MainApp: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Listen for account updates across components
+  useEffect(() => {
+    const handleAccountsUpdated = () => {
+      loadData();
+    };
+    window.addEventListener('finman_accounts_updated', handleAccountsUpdated);
+    return () => window.removeEventListener('finman_accounts_updated', handleAccountsUpdated);
+  }, [loadData]);
+
   // Handle adding new transaction into database
   const handleAddTransaction = async (newTx: Omit<Transaction, 'id'>) => {
     try {
       await transactionService.createTransaction({
         accountId: newTx.account.id,
-        categoryId: newTx.category.id,
+        toAccountId: newTx.toAccount?.id,
+        categoryId: newTx.category?.id,
         type: newTx.type,
         amount: newTx.amount,
         transactionDate: newTx.date,
@@ -168,7 +179,7 @@ const MainApp: React.FC = () => {
       );
     } catch (err: any) {
       console.error('Error saving transaction to database:', err);
-      alert(err.response?.data?.message || 'Không thể lưu giao dịch vào cơ sở dữ liệu');
+      throw err;
     }
   };
 
@@ -177,7 +188,8 @@ const MainApp: React.FC = () => {
     try {
       await transactionService.updateTransaction(id, {
         accountId: updatedTx.account.id,
-        categoryId: updatedTx.category.id,
+        toAccountId: updatedTx.toAccount?.id,
+        categoryId: updatedTx.category?.id,
         type: updatedTx.type,
         amount: updatedTx.amount,
         transactionDate: updatedTx.date,
@@ -191,7 +203,7 @@ const MainApp: React.FC = () => {
       );
     } catch (err: any) {
       console.error('Error updating transaction in database:', err);
-      alert(err.response?.data?.message || 'Không thể cập nhật giao dịch');
+      throw err;
     }
   };
 
@@ -213,10 +225,17 @@ const MainApp: React.FC = () => {
 
   const [initialTransaction, setInitialTransaction] = useState<Partial<Transaction> | null>(null);
 
-  const handleOpenAddModal = (initialData?: Partial<Transaction>) => {
+  const handleOpenAddModal = (initialData?: Partial<Transaction> | unknown) => {
+    const isSyntheticEvent =
+      initialData &&
+      typeof initialData === 'object' &&
+      ('nativeEvent' in initialData || '_reactName' in initialData || 'isDefaultPrevented' in initialData);
+
     setEditingTransaction(null);
-    setInitialTransaction(initialData || null);
+    setInitialTransaction(isSyntheticEvent ? null : ((initialData as Partial<Transaction>) || null));
     setIsAddModalOpen(true);
+    // Refresh latest data when modal opens
+    loadData();
   };
 
   const handleOpenEditModal = (tx: Transaction) => {
@@ -269,8 +288,9 @@ const MainApp: React.FC = () => {
     const q = searchQuery.toLowerCase();
     return (
       (t.note && t.note.toLowerCase().includes(q)) ||
-      t.category.name.toLowerCase().includes(q) ||
+      (t.category?.name && t.category.name.toLowerCase().includes(q)) ||
       t.account.name.toLowerCase().includes(q) ||
+      (t.toAccount?.name && t.toAccount.name.toLowerCase().includes(q)) ||
       t.amount.toString().includes(q)
     );
   });
@@ -332,7 +352,11 @@ const MainApp: React.FC = () => {
         )}
 
         {currentRoute === 'thong-ke-va-bao-cao' && (
-          <StatisticsPage transactions={transactions} />
+          <StatisticsPage
+            transactions={transactions}
+            accounts={accounts}
+            onNavigateToAccounts={() => handleNavigate('tai-khoan-va-tai-san')}
+          />
         )}
 
         {currentRoute === 'tro-ly-finman-ai' && (
@@ -367,7 +391,9 @@ const MainApp: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <ScreenZoomProvider>
+        <MainApp />
+      </ScreenZoomProvider>
     </AuthProvider>
   );
 }

@@ -17,6 +17,7 @@ public class TransactionResponse {
     private LocalDate transactionDate;
     private String note;
     private AccountInfo account;
+    private AccountInfo toAccount;
     private CategoryInfo category;
     private Instant createdAt;
     private Instant updatedAt;
@@ -36,6 +37,19 @@ public class TransactionResponse {
         this.updatedAt = updatedAt;
     }
 
+    public TransactionResponse(Long id, Long amount, TransactionType type, LocalDate transactionDate, String note, AccountInfo account, AccountInfo toAccount, CategoryInfo category, Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.amount = amount;
+        this.type = type;
+        this.transactionDate = transactionDate;
+        this.note = note;
+        this.account = account;
+        this.toAccount = toAccount;
+        this.category = category;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
     public static TransactionResponse from(Transaction transaction) {
         if (transaction == null) {
             return null;
@@ -45,6 +59,12 @@ public class TransactionResponse {
         if (transaction.getAccount() != null) {
             Account acc = transaction.getAccount();
             accInfo = new AccountInfo(acc.getId(), acc.getName(), acc.getType(), acc.getAccountNumber());
+        }
+
+        AccountInfo toAccInfo = null;
+        if (transaction.getToAccount() != null) {
+            Account toAcc = transaction.getToAccount();
+            toAccInfo = new AccountInfo(toAcc.getId(), toAcc.getName(), toAcc.getType(), toAcc.getAccountNumber());
         }
 
         CategoryInfo catInfo = null;
@@ -60,6 +80,7 @@ public class TransactionResponse {
                 transaction.getTransactionDate(),
                 transaction.getNote(),
                 accInfo,
+                toAccInfo,
                 catInfo,
                 transaction.getCreatedAt(),
                 transaction.getUpdatedAt()
@@ -112,6 +133,14 @@ public class TransactionResponse {
 
     public void setAccount(AccountInfo account) {
         this.account = account;
+    }
+
+    public AccountInfo getToAccount() {
+        return toAccount;
+    }
+
+    public void setToAccount(AccountInfo toAccount) {
+        this.toAccount = toAccount;
     }
 
     public CategoryInfo getCategory() {

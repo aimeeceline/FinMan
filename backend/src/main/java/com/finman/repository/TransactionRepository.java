@@ -75,12 +75,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+            "WHERE t.user.id = :userId " +
+            "AND (t.account.id = :accountId OR t.toAccount.id = :accountId) " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate")
+    Long countByUserIdAndAccountIdAndDateBetween(
+            @Param("userId") Long userId,
+            @Param("accountId") Long accountId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     @Query("SELECT t FROM Transaction t " +
             "JOIN FETCH t.account a " +
-            "JOIN FETCH t.category c " +
+            "LEFT JOIN FETCH t.toAccount ta " +
+            "LEFT JOIN FETCH t.category c " +
             "WHERE t.user.id = :userId " +
             "AND t.transactionDate BETWEEN :startDate AND :endDate " +
-            "AND (:accountId IS NULL OR a.id = :accountId) " +
+            "AND (:accountId IS NULL OR a.id = :accountId OR ta.id = :accountId) " +
             "AND (:categoryId IS NULL OR c.id = :categoryId) " +
             "AND (:type IS NULL OR t.type = :type) " +
             "ORDER BY t.transactionDate DESC, t.id DESC")
@@ -119,6 +130,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     @Query("SELECT t.transactionDate, t.type, COALESCE(SUM(t.amount), 0L) " +
             "FROM Transaction t " +
             "WHERE t.user.id = :userId " +
+            "AND t.type IN (com.finman.entity.enums.TransactionType.INCOME, com.finman.entity.enums.TransactionType.EXPENSE) " +
             "AND t.transactionDate BETWEEN :startDate AND :endDate " +
             "AND (:accountId IS NULL OR t.account.id = :accountId) " +
             "GROUP BY t.transactionDate, t.type " +

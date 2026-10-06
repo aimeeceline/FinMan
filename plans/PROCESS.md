@@ -129,6 +129,18 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **Task 9.1** | Chạy toàn bộ Test Suite (Backend & Frontend) | `Pending` | — | — |
 | **Task 9.2** | Rà soát bảo mật đa tầng (Multi-tenant isolation & JWT security) | `Pending` | — | — |
 | **Task 9.3** | Xây dựng Docker Compose Production hoàn chỉnh | `Pending` | — | — |
+| **Task 9.7** | Tái cấu trúc chuẩn hóa Account Domain & Đồng bộ toàn bộ Planning Documents | `Completed` | 2026-09-29 | Agent |
+
+### Phase 10: Extended Account Domain & Full Transfer Implementation
+| Task ID | Tên Task | Trạng thái | Ngày hoàn thành | Người thực hiện |
+|---|---|---|---|---|
+| **Task 10.1** | Database Schema Migration Cho Transfer & Extended Account Attributes | `Completed` | 2026-10-05 | Agent |
+| **Task 10.2** | Backend Transaction Service Processing Cho Luồng TRANSFER | `Completed` | 2026-10-05 | Agent |
+| **Task 10.3** | Cô Lập Thống Kê & Báo Cáo Không Bị Ảnh Hưởng Bởi TRANSFER | `Completed` | 2026-10-05 | Agent |
+| **Task 10.4** | Frontend Transfer Tab & UI Modal Cập Nhật | `Completed` | 2026-10-05 | Agent |
+| **Task 10.5** | AI Natural Language Quick Add Nhận Diện Intent TRANSFER | `Pending` | — | — |
+| **Task 10.6** | Backend Account Lifecycle & Purpose Pocket Management | `Completed` | 2026-10-05 | Agent |
+| **Task 10.7** | Frontend Purpose-based Accounts Redesign (`AccountsPage.tsx` & Modal) | `Completed` | 2026-10-05 | Agent |
 
 ---
 
@@ -1048,6 +1060,239 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 - **Kết quả kiểm thử**: PASS 100% — `npm run build` thành công xuất sắc (Exit code 0, 0 lỗi TypeScript).
 - **Trạng thái**: Completed.
 
+### [2026-09-29] Task 9.1: Khắc Phục Lỗi Bóc Tách Ngày & Prefill Dữ Liệu AI Quick Add Vào Modal Giao Dịch
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Khắc phục sự cố không nhận diện đúng ngày giao dịch trong câu lệnh tự nhiên (ví dụ lương tháng, ngày tương đối).
+  - Khi người dùng nhấn nút "Chỉnh sửa" từ danh sách giao dịch do AI bóc tách trên Dashboard, form Modal thêm giao dịch (`AddTransactionModal`) không nhận được thông tin đã bóc tách (số tiền, ngày, danh mục, tài khoản, ghi chú).
+- **Các file chỉnh sửa**:
+  - `backend/src/main/java/com/finman/service/AiService.java`: Bổ sung bóc tách ngày định dạng YYYY-MM-DD từ kết quả Gemini và NLP cục bộ.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Truyền đầy đủ `initialData` sang Modal khi click "Chỉnh sửa".
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Nhận và prefill đầy đủ các trường `initialData` (type, amount, categoryId, accountId, transactionDate, note).
+  - `frontend/src/App.tsx`: Đồng bộ trạng thái mở modal từ sự kiện sửa giao dịch AI.
+- **Kết quả kiểm thử**: PASS 100% — Prefill mượt mà, ngày giao dịch và số tiền được điền chính xác.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.2: Chuẩn Hóa Nhãn Phương Thức Chuyển Khoản Trang Quản Lý Tài Khoản
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Làm rõ và chuẩn hóa nhãn phương thức chuyển khoản liên ngân hàng đang để cố định `VCB - 24/7` tại `AccountsPage.tsx`.
+  - Đổi sang `Napas 24/7` cho đúng chuẩn hệ thống thanh toán quốc gia Việt Nam.
+- **Các file chỉnh sửa**:
+  - `frontend/src/pages/accounts/AccountsPage.tsx`: Cập nhật nhãn hiển thị thành `Napas 24/7`.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.3: Hoàn Thiện Toàn Diện Tính Năng Quên Mật Khẩu (Forgot Password Flow)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Nút "Quên mật khẩu?" trên `LoginPage.tsx` chưa được gắn logic xử lý.
+  - Xây dựng hoàn chỉnh luồng quên mật khẩu từ Backend đến Frontend: gửi mã xác thực OTP / liên kết đặt lại mật khẩu.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/ForgotPasswordRequest.java`: DTO nhận email yêu cầu khôi phục.
+  - `backend/src/main/java/com/finman/service/AuthService.java` & `AuthController.java`: Endpoint `POST /api/v1/auth/forgot-password` xử lý an toàn (chống user enumeration attack).
+  - `frontend/src/context/AuthContext.tsx`: Cung cấp hàm `forgotPassword(email)`.
+  - `frontend/src/pages/auth/ForgotPasswordModal.tsx`: Thiết kế lại giao diện modal kính mờ cao cấp, đếm ngược 60 giây gửi lại mã, thông báo inline trực quan, không dùng `alert()`.
+- **Kết quả kiểm thử**: PASS 100% — Luồng gửi yêu cầu mượt mà, xác thực chuẩn xác.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.4: Tách Rời File Prompt Cho AI Transaction Parser (Clean Architecture)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Không nhúng trực tiếp khối prompt 450 dòng vào code Java `AiService.java`.
+  - Gọi file template bên ngoài để code sạch hơn, dễ bảo trì và tinh chỉnh prompt engineering.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/resources/prompts/parse-transaction.txt`: Chứa template prompt chuẩn đóng gói JAR/Production.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Thêm cơ chế `loadPromptTemplate` tự động nạp từ file dev ngoài (`promts/parse`) hoặc classpath resource; làm sạch mã Java của phương thức `parseWithGemini`.
+- **Kết quả kiểm thử**: PASS 100% — Toàn bộ 14/14 test cases của `AiServiceTest` chạy qua.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.5: Nâng Cấp Toàn Diện Tính Năng Monthly Financial Insights Với Deep Financial Context
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Nâng cấp tính năng nhận xét tài chính hàng tháng không chỉ dựa trên tổng thu/tổng chi/tiết kiệm ròng.
+  - Backend tổng hợp sâu từ Database: chi tiêu theo danh mục (tính %), thu nhập theo danh mục, danh mục chi tiêu lớn nhất, so sánh % tăng/giảm với tháng trước, kiểm tra thực thi ngân sách (Budget) phát hiện vượt hạn mức / tiệm cận hạn mức.
+  - Tạo Financial Context đa chiều gửi sang Gemini với template độc lập, có quy tắc nghiêm ngặt chống bịa số liệu.
+  - Nâng cấp bộ Fallback Rule-based thông minh dùng số liệu động khi mất kết nối Gemini.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/resources/prompts/monthly-insights.txt`: Prompt template độc lập cho phân tích tài chính tháng.
+  - `backend/src/main/java/com/finman/dto/response/AiInsightsKeyMetrics.java`: DTO chỉ số then chốt tài chính.
+  - `backend/src/main/java/com/finman/dto/response/CategorySpendingItem.java`: DTO danh mục chi tiêu kèm %.
+  - `backend/src/main/java/com/finman/dto/response/AiInsightsResponse.java`: Bổ sung `savingsRate`, `keyMetrics`, `topExpenseCategories`, `alerts` (100% tương thích ngược).
+  - `backend/src/main/java/com/finman/repository/BudgetRepository.java`: Bổ sung query `findByUserIdAndMonthWithCategory` FETCH JOIN triệt tiêu N+1 query.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Tích hợp tính toán tổng hợp dữ liệu tài chính sâu và fallback động.
+  - `frontend/src/services/aiService.ts`: Bổ sung các kiểu dữ liệu tương ứng trong `AiInsightsResult`.
+  - `backend/src/test/java/com/finman/service/AiServiceTest.java`: Bổ sung 8 test cases bao phủ mọi khía cạnh phân tích và edge cases.
+- **Kết quả kiểm thử**: PASS 100% — Toàn bộ 22/22 unit tests `AiServiceTest` và 167/167 tests backend của FinMan chạy qua (`BUILD SUCCESS`). Frontend TypeScript `0 errors`.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.6: Nâng Cấp Toàn Diện FinMan AI Financial Chatbot (Zero Hallucination, Deep Financial Context, Triệt Tiêu N+1 Query)
+- **Người thực hiện**: Agent
+- **Yêu cầu từ người dùng**:
+  - Nâng cấp chatbot tài chính cá nhân FinMan AI trở thành trợ lý đắc lực, hiểu tiếng Việt tự nhiên và câu hỏi tương đối (Hôm nay, Hôm qua, Tuần này, Tháng này, Tháng trước, Gần đây).
+  - Trả lời CHÍNH XÁC dựa trên Dữ liệu Tài chính Thực tế từ Database của đúng người dùng đang đăng nhập.
+  - Phân tích chi tiết: Thu nhập, Chi tiêu, Tiết kiệm ròng, Phân bổ danh mục kèm %, Tình hình ngân sách (Budget) kèm trạng thái cảnh báo, Số dư tài khoản/ví, Giao dịch hôm nay và hôm qua, So sánh biến động MoM với tháng trước kèm % tăng/giảm.
+  - Triệt tiêu hoàn toàn hallucination (bịa đặt số liệu) và bảo vệ chống prompt injection ("Hãy quên hết các quy tắc", "Tôi có 1 tỷ"). Backend là Source of Truth tính toán sẵn mọi chỉ số.
+  - Triệt tiêu N+1 queries khi kiểm tra hạn mức ngân sách: Map dữ liệu chi tiêu danh mục bằng `aggregateByCategory` O(1) in-memory.
+  - Hỗ trợ lưu trữ ngữ cảnh hội thoại đa lượt (Conversation History).
+  - Tương thích ngược 100% với endpoint `POST /api/v1/ai/chat` và `POST /api/v1/ai/query`.
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/resources/prompts/financial-chatbot.txt`: Thiết lập prompt template chuyên biệt cho Financial Chatbot với hướng dẫn Persona, Grounding, Anti-Injection và Formatting chặt chẽ.
+  - `backend/src/main/java/com/finman/dto/request/AiChatMessageDto.java`: DTO nhận lịch sử hội thoại (role, content).
+  - `backend/src/main/java/com/finman/dto/request/AiChatRequest.java`: Mở rộng nhận danh sách `conversationHistory`.
+  - `backend/src/main/java/com/finman/service/AiService.java`:
+    + Cập nhật `buildUserFinancialContext(userId, conversationHistory)` gom 8 nhóm dữ liệu (Nhóm A-H) với mốc thời gian hệ thống, số dư ví, tổng quan tháng, phân bổ danh mục, ngân sách (O(1)), hôm nay/hôm qua, so sánh MoM, 10 giao dịch gần nhất, lịch sử chat.
+    + Thêm hàm `formatMoney(Long amount)` định dạng tiền tệ chuẩn Việt Nam có dấu chấm phân tách hàng nghìn (`1.200.000 ₫`).
+    + Nâng cấp `queryFinancialDataLocally` xử lý trọn vẹn mọi intent (Số dư, Hôm qua, Hôm nay, Ngân sách, Danh mục, Tháng trước, Gần đây, Mặc định).
+    + Cập nhật `processUserChat` và `executeDataQuery` nhận và chuyển tiếp `conversationHistory`.
+  - `backend/src/main/java/com/finman/controller/AiController.java`: Chuyển `request.getConversationHistory()` vào `aiService.processUserChat` và `executeDataQuery`.
+  - `backend/src/test/java/com/finman/service/AiServiceTest.java`: Bổ sung 8 unit test cases toàn diện kiểm thử: Context prompt generation, Conversation history, Local fallback hôm qua/ngân sách/danh mục/MoM, Gemini failure fallback, và Data user isolation.
+- **Kết quả kiểm thử**:
+  - Toàn bộ 30/30 unit tests `AiServiceTest` PASS 100%.
+  - Toàn bộ 175/175 backend tests toàn dự án PASS 100% (`BUILD SUCCESS`).
+  - Frontend `npm run build` thành công trong 2.38s, TypeScript 0 lỗi.
+- **Trạng thái**: Completed.
+
+### [2026-09-29] Task 9.7: Tái cấu trúc chuẩn hóa Account Domain & Đồng bộ toàn bộ Planning Documents
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `plans/PRD.md`:
+    + Định nghĩa lại "Account" là Đơn vị tài chính (Financial Unit) để theo dõi số dư của tiền, tài sản hoặc nghĩa vụ nợ; người dùng tự do chọn `type`, đặt tên tùy chỉnh `name`, nhập `initial_balance` và ghi nhận giao dịch.
+    + Thống nhất quyết định kiến trúc: **KHÔNG tạo entity/module "Fund" riêng**; các mục đích như "Nuôi con", "Cá nhân", "Tiết kiệm", "Du lịch" được biểu diễn chuẩn mực bằng Account có tên tùy chỉnh.
+    + Phân biệt rạch ròi giữa **Account** ("Tiền đang ở đâu?") và **Budget** ("Kế hoạch giới hạn chi bao nhiêu theo danh mục trong kỳ?"). Budget không thay thế Account và không trực tiếp trừ số dư Account.
+    + Bổ sung phân định Account Type: Current Scope (`CASH`, `BANK`, `CREDIT_CARD`) vs Proposed Extension Scope (`DEBIT_CARD`, `INVESTMENT`, `CREDIT_LIMIT`, `LOAN`, `INSURANCE`, `CRYPTO`, `OTHER`).
+    + Bổ sung luồng giao dịch Chuyển khoản nội bộ (`TRANSFER`), quy tắc dòng tiền không làm tăng Thu nhập/Chi tiêu, bảo toàn Net Worth, và bổ sung kịch bản Teacher's Flow.
+    + Cập nhật quy tắc Vòng đời tài khoản: Không xóa cứng tài khoản đã có lịch sử; chuyển sang lưu trữ (`is_archived = true`).
+    + Cập nhật Ma trận Validation (Section 33), Quy tắc nghiệp vụ (Section 34) và Tiêu chí nghiệm thu (Section 35, AC-05, AC-06, AC-07).
+  - `plans/ARCHITECTURE.md`:
+    + Cập nhật ERD và bảng `transactions` thêm `to_account_id FK` (nullable), cho phép `category_id` nullable khi là `TRANSFER`, type gồm `INCOME | EXPENSE | TRANSFER`.
+    + Bổ sung thuộc tính `note` (proposed), giải thích tên tùy chỉnh `name` và scope `type` trong bảng `accounts`.
+    + Cập nhật mã giả `TransactionService.createTransaction` cho cơ chế atomic transaction khi chuyển khoản giữa 2 tài khoản.
+    + Cập nhật Prompt template của Gemini Quick Add nhận diện `TRANSFER`, `accountName` tùy chỉnh và `toAccountName`.
+    + Cập nhật danh sách REST Endpoints cốt lõi (Account archiving, Transfer transactions, lọc theo type).
+  - `plans/GEMINI.md`:
+    + Sửa đổi Nguyên tắc 2: Thống nhất 3 luồng giao dịch (`INCOME`, `EXPENSE`, `TRANSFER`), nguyên tắc bảo toàn Net Worth của Transfer, loại bỏ lệnh cấm cũ về Transfer; nghiêm cấm tạo entity "Fund" riêng.
+    + Cập nhật Nguyên tắc 4: Công thức số dư chuẩn xác với `Transfer In` và `Transfer Out`.
+  - `plans/CODE_PLAN.md`:
+    + Cập nhật Task 1.1, Task 3.1, Task 4.1 để đồng bộ domain model.
+    + Bổ sung Phase 10: "Extended Account Domain & Full Transfer Implementation (Next Phase Roadmap)" gồm 5 sub-tasks chi tiết định hướng triển khai kỹ thuật cho phase sau.
+  - `plans/TEST_PLAN.md`:
+    + Cập nhật và bổ sung các test cases cho tài khoản tên tùy chỉnh (`TC_ACC_01`, `TC_ACC_06`), lưu trữ tài khoản (`TC_ACC_04`).
+    + Bổ sung test cases cho Chuyển khoản nội bộ (`TC_TXN_10`, `TC_TXN_11`), kịch bản Teacher's Flow (`TC_TXN_12`), Chi tiêu từ tài khoản tên tùy chỉnh và Budget độc lập (`TC_TXN_13`).
+    + Bổ sung test case AI nhận diện Transfer và tên tài khoản tùy chỉnh (`TC_AI_07`, `TC_AI_08`).
+  - `plans/PROCESS.md`: Cập nhật Master Tracker và ghi nhận nhật ký chi tiết công việc.
+- **Nội dung công việc**: Rà soát, tái cấu trúc và đồng bộ hóa toàn diện toàn bộ 6 tài liệu quy hoạch của dự án FinMan theo đúng chỉ đạo về Account Domain, loại bỏ mọi mâu thuẫn về khái niệm tài khoản, ngân sách và giao dịch chuyển khoản.
+- **Kết quả kiểm thử**: PASS — 100% tài liệu quy hoạch nhất quán tuyệt đối về domain, không có mâu thuẫn chéo, tuân thủ nguyên tắc Planning Only (0 dòng code Java/TS bị thay đổi trong đợt này).
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.1: Database Schema Migration Cho Transfer & Extended Account Attributes
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/entity/enums/TransactionType.java`: Bổ sung giá trị enum `TRANSFER`.
+  - `backend/src/main/java/com/finman/entity/Account.java`: Bổ sung thuộc tính `note VARCHAR(255) NULL`, các constructor tương thích, getter/setter và cập nhật `toString()`.
+  - `backend/src/main/java/com/finman/entity/Transaction.java`: Bổ sung quan hệ `toAccount` (`@ManyToOne`, cột `to_account_id BIGINT NULL REFERENCES accounts(id)`), mở cho phép `category_id` NULL khi là `TRANSFER`, bổ sung index `@Index(name = "idx_transactions_user_to_account", columnList = "user_id, to_account_id")`, các constructor nạp chồng và getter/setter.
+  - `backend/src/main/java/com/finman/dto/response/AccountResponse.java`: Bổ sung thuộc tính `note` và phương thức ánh xạ `from(Account)`.
+  - `backend/src/main/java/com/finman/dto/request/AccountCreateRequest.java`: Bổ sung trường `note` khi tạo tài khoản.
+  - `backend/src/main/java/com/finman/dto/request/AccountUpdateRequest.java`: Bổ sung trường `note` khi cập nhật tài khoản.
+  - `backend/src/main/java/com/finman/service/AccountService.java`: Nạp `note` vào Account khi `createAccount` và `updateAccount`.
+  - `backend/src/main/java/com/finman/dto/response/TransactionResponse.java`: Bổ sung trường `toAccount` (AccountInfo) cho dữ liệu trả về giao dịch chuyển khoản.
+  - `backend/src/test/java/com/finman/repository/RepositoryIntegrationTest.java`: Bổ sung test case `testTask10_1_SchemaMigrationAndTransferAttributes` kiểm thử lưu trữ/truy vấn Account có note và Transaction TRANSFER có toAccount cùng category null.
+  - `plans/CODE_PLAN.md`: Cập nhật trạng thái Task 10.1 Completed.
+- **Nội dung công việc**: Thực hiện mở rộng schema database theo Task 10.1 để hỗ trợ luồng chuyển khoản nội bộ `TRANSFER` và thuộc tính ghi chú `note` cho `Account`, đảm bảo tương thích ngược 100% với toàn bộ dữ liệu và nghiệp vụ giao dịch hiện có.
+- **Kết quả kiểm thử**: PASS — Toàn bộ 176/176 tests backend chạy thành công 100% (`BUILD SUCCESS`), kiểm thử tích hợp Repository xác nhận lưu/đọc dữ liệu Transfer và Account Note chuẩn xác.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.2: Backend Transaction Service Processing Cho Luồng TRANSFER
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/dto/request/TransactionCreateRequest.java`: Bổ sung trường `toAccountId`, các constructor nạp chồng, bỏ `@NotNull` trên `categoryId` cho phép `category = null` khi giao dịch là `TRANSFER`.
+  - `backend/src/main/java/com/finman/dto/request/TransactionUpdateRequest.java`: Bổ sung trường `toAccountId`, các constructor nạp chồng tương ứng cho cập nhật giao dịch chuyển khoản.
+  - `backend/src/main/java/com/finman/service/TransactionService.java`:
+    + Triển khai logic xử lý nguyên tử `@Transactional` cho `TRANSFER`: kiểm tra `fromAccountId != toAccountId`, `toAccountId != null`, kiểm tra quyền sở hữu và trạng thái `isArchived` của cả hai tài khoản.
+    + Xây dựng cơ chế cập nhật (`updateTransaction`) và xóa (`deleteTransaction`) với hoàn tác số dư đối xứng (`applyTransferImpact` và `revertTransferImpact`), xử lý đúng đắn tài khoản thẻ tín dụng (`CREDIT_CARD`) và tài khoản thông thường (`CASH`/`BANK`).
+    + Tối ưu tái sử dụng instance account khi ID không đổi trên update để tránh query dư thừa và đảm bảo tính nhất quán.
+    + Cập nhật truy vấn Specification lọc giao dịch theo `accountId` hỗ trợ cả vai trò ví nguồn hoặc ví đích (`cb.or(account == id, toAccount == id)`).
+  - `backend/src/test/java/com/finman/service/TransactionServiceTest.java`: Thêm 8 unit test bao phủ toàn bộ luồng tạo, cập nhật, xóa giao dịch `TRANSFER`, kiểm tra ngoại lệ cùng tài khoản, thiếu `toAccountId`, tài khoản archived, và chuyển khoản vào thẻ tín dụng.
+  - `backend/src/test/java/com/finman/controller/TransactionControllerTest.java`: Thêm 3 integration test MockMvc cho `POST /api/v1/transactions` chuyển khoản thành công, chặn cùng tài khoản, và xóa hoàn tác số dư.
+  - `plans/CODE_PLAN.md`: Cập nhật trạng thái Task 10.2 `[COMPLETED]`.
+- **Nội dung công việc**: Xây dựng toàn diện business logic và transaction processing cho luồng chuyển tiền nội bộ `TRANSFER` ở tầng Backend Service, bảo toàn 100% Net Worth và giữ vững tương thích ngược với luồng `INCOME`/`EXPENSE`.
+- **Kết quả kiểm thử**: PASS — 187/187 tests backend chạy thành công 100% (`BUILD SUCCESS`), frontend build `tsc -b && vite build` PASS không có lỗi.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.6: Backend Account Lifecycle & Purpose Pocket Management
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/repository/AccountRepository.java`: Bổ sung `findByUserIdAndIsArchived(userId, isArchived)`.
+  - `backend/src/main/java/com/finman/service/AccountService.java`: Bổ sung phương thức `getAccountsSummary(userId, includeArchived)` và `archiveAccount(userId, accountId, archive)` hỗ trợ đóng và khôi phục khoản tiền mục đích.
+  - `backend/src/main/java/com/finman/controller/AccountController.java`: Bổ sung param `includeArchived` trong `GET /api/v1/accounts` và endpoint `PATCH /api/v1/accounts/{id}/archive?archived=true/false`.
+  - `backend/src/test/java/com/finman/service/AccountServiceTest.java`: Thêm test cases cho archive, unarchive và truy vấn tài khoản với `includeArchived`.
+  - `plans/CODE_PLAN.md`: Cập nhật trạng thái Task 10.6 `[COMPLETED]`.
+- **Nội dung công việc**: Xây dựng đầy đủ vòng đời lưu trữ và khôi phục tài khoản mục đích, phân quyền sở hữu tài khoản và tương thích hoàn toàn với hệ thống ledger.
+- **Kết quả kiểm thử**: PASS — 189/189 tests backend chạy thành công 100% (`BUILD SUCCESS`).
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.7: Frontend Purpose-based Accounts Redesign (`AccountsPage.tsx` & Modal)
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/types/index.ts`: Bổ sung thuộc tính `note?: string; isArchived?: boolean;` trong `Account`, `AccountCreatePayload`, `AccountUpdatePayload`.
+  - `frontend/src/services/accountService.ts`: Bổ sung param `includeArchived` và phương thức `archiveAccount(id, archived)`.
+  - `frontend/src/pages/accounts/AccountsPage.tsx`:
+    + Tái thiết kế toàn diện từ 3 cột ngân hàng cứng nhắc sang **Lưới các Khoản tiền Mục đích (Purpose Accounts Canvas)**: thẻ hiển thị icon mục đích sinh động (🍼 Nuôi con, 👵 Phụng dưỡng bố mẹ, ☕ Đầu tư quán cà phê, 🚨 Dự phòng khẩn cấp, 🏠 Mua nhà/xe, 🛒 Chi tiêu sinh hoạt), số dư khả dụng, ghi chú kế hoạch `note`.
+    + Bổ sung thanh chuyển Tab: "Khoản tiền đang dùng" vs "Đã lưu trữ / Đóng mục đích", hỗ trợ nút **Khôi phục** khoản tiền đã lưu trữ.
+    + Cải tiến modal thêm mới: Gợi ý các chip mục đích nhanh (Quick Presets) tự động điền form, bổ sung ô nhập ghi chú mục đích chi tiêu và số tiền ban đầu.
+  - `plans/PRD.md`: Chuẩn hóa định nghĩa "Account trong FinMan là Khoản tiền cho mục đích sử dụng".
+  - `plans/CODE_PLAN.md`: Cập nhật trạng thái Task 10.7 `[COMPLETED]`.
+- **Nội dung công việc**: Chuyển đổi toàn diện giao diện và trải nghiệm quản lý tài khoản sang mô hình phân bổ các khoản tiền theo mục đích sử dụng thực tế của người dùng.
+- **Kết quả kiểm thử**: PASS — `npm run build` thành công 100%, 0 lỗi TypeScript, giao diện tải dữ liệu mượt mà.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.3: Cô Lập Thống Kê & Báo Cáo Không Bị Ảnh Hưởng Bởi TRANSFER
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/repository/TransactionRepository.java`: Cập nhật `findTransactionsForExport` hỗ trợ `LEFT JOIN FETCH t.toAccount` và `c` cho phép `category_id = NULL`; điều kiện lọc tài khoản bao gồm cả `a.id = :accountId OR ta.id = :accountId`; bổ sung `countByUserIdAndAccountIdAndDateBetween` để đếm chính xác giao dịch theo ví mục đích; cô lập `aggregateDailyCashflow` chỉ gom `t.type IN (INCOME, EXPENSE)`.
+  - `backend/src/main/java/com/finman/service/StatisticsService.java`: Áp dụng `countByUserIdAndAccountIdAndDateBetween` khi xem thống kê theo tài khoản.
+  - `backend/src/main/java/com/finman/service/ExportService.java`: Tạo style riêng `transferTypeStyle` và `transferAmountStyle` màu xanh navy `#1E40AF`, hiển thị loại "Chuyển khoản", danh mục "Chuyển khoản nội bộ", tài khoản nguồn & đích `Ví A ➔ Ví B`.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Nhận diện an toàn giao dịch TRANSFER trong context phân tích tài chính AI (`⇄ `, `Ví A ➔ Ví B`, danh mục "Chuyển khoản nội bộ").
+  - `backend/src/test/java/com/finman/service/ExportServiceTest.java`: Bổ sung unit test `TC_EXP_04: testExportTransactions_WithTransfer_Success`.
+- **Nội dung công việc**: Đảm bảo các chỉ số tài chính ròng, biểu đồ dòng tiền ngày, ngân sách và AI insights không bị tăng khống bởi các giao dịch điều chuyển giữa các ví mục đích, đồng thời phản ánh rõ ràng trong báo cáo Excel.
+- **Kết quả kiểm thử**: PASS — 190/190 backend test cases đạt 100%.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.4: Frontend Transfer Tab & UI Modal Cập Nhật
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/types/index.ts`: Cập nhật interface `Transaction` (`toAccount?: Account`, `category?: Category`).
+  - `frontend/src/services/transactionService.ts`: Cập nhật `TransactionCreatePayload` và `TransactionUpdatePayload` hỗ trợ `toAccountId?: number`, `categoryId?: number`.
+  - `frontend/src/App.tsx`: Cập nhật logic submit form thêm/sửa giao dịch gửi đúng `toAccountId` và `categoryId`, tìm kiếm giao dịch an toàn không văng lỗi khi `category` null.
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Thêm tab "Chuyển khoản" với Canvas điều chuyển trực quan, bộ chọn Khoản tiền nguồn và Khoản tiền đích, dự toán số dư sau chuyển, cảnh báo không được chọn trùng ví và ghi chú mục đích chuyển.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Cập nhật thẻ hiển thị giao dịch: icon `swap_horiz` màu xanh dương dịu mắt, hiển thị lộ trình `Ví Nguồn ➔ Ví Đích`, số tiền dạng `⇄ X ₫`, loại trừ khỏi tính toán nhanh tổng thu/chi.
+  - `frontend/src/pages/statistics/StatisticsPage.tsx`: Hiển thị chi tiết giao dịch chuyển khoản trong modal dòng tiền ngày an toàn kiểu dữ liệu.
+- **Nội dung công việc**: Tích hợp luồng người dùng điều chuyển khoản tiền trên Web hoàn chỉnh, trực quan, bảo toàn trải nghiệm người dùng theo triết lý Khoản tiền mục đích.
+- **Kết quả kiểm thử**: PASS — `npm run build` thành công 100%, 0 lỗi TypeScript.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.5: Mở Rộng AccountType Bổ Sung Loại "Đầu Tư" (INVESTMENT) và "Khác" (OTHER)
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `backend/src/main/java/com/finman/entity/enums/AccountType.java`: Bổ sung 2 giá trị enum `INVESTMENT` (Đầu tư) và `OTHER` (Khác).
+  - `backend/src/main/java/com/finman/service/AccountService.java`: Cập nhật thông điệp xác thực số dư ban đầu cho các tài khoản tài sản non-credit card.
+  - `backend/src/main/java/com/finman/service/AiService.java`: Bổ sung phân tích từ khóa cục bộ ("dau tu", "invest", "chung khoan", "co phieu", "crypto", "vang") nhận diện tài khoản loại `INVESTMENT`.
+  - `backend/src/test/java/com/finman/service/AccountServiceTest.java`: Thêm 2 unit test bao phủ tạo tài khoản `INVESTMENT` và `OTHER`, xác thực tính toán chính xác Net Worth khi có đầy đủ 5 loại tài khoản.
+  - `frontend/src/types/index.ts`: Mở rộng type `AccountType = 'CASH' | 'BANK' | 'CREDIT_CARD' | 'INVESTMENT' | 'OTHER'`.
+  - `frontend/src/pages/accounts/AccountsPage.tsx`: Bổ sung preset và icon/badge cho `INVESTMENT` (icon: `trending_up`) và `OTHER` (icon: `category`), mở rộng bộ chọn hình thức giữ tiền trong Add Account Modal thành 5 tùy chọn dạng grid responsive.
+  - `frontend/src/pages/dashboard/DashboardPage.tsx`: Bổ sung icon và nhãn hiển thị cho `INVESTMENT` và `OTHER` trong bộ lọc tài khoản.
+  - `frontend/src/components/modals/AddTransactionModal.tsx`: Bổ sung emoji đại diện `📈` (INVESTMENT) và `💼` (OTHER) trong bộ chọn tài khoản giao dịch.
+  - `plans/PRD.md`, `plans/ARCHITECTURE.md`, `plans/CODE_PLAN.md`: Cập nhật đồng bộ tài liệu đặc tả, chuyển `INVESTMENT` và `OTHER` từ Proposed Scope sang Current Scope hoạt động.
+- **Kết quả kiểm thử**: PASS — 192/192 Backend Tests đạt PASS 100%, `npm run build` frontend đạt 0 lỗi.
+- **Trạng thái**: Completed.
+
+### [2026-10-05] Task 10.6: Tách Component Modal Tạo Khoản Tiền Mục Đích Mới (AddAccountModal)
+- **Người thực hiện**: Agent
+- **Các file tạo mới / chỉnh sửa**:
+  - `frontend/src/components/modals/AddAccountModal.tsx`: Tạo mới component modal độc lập đóng gói toàn bộ state form nhập liệu, danh sách preset mục đích, xác thực tên/số tiền/hạn mức, và gọi service tạo tài khoản kèm fallback an toàn.
+  - `frontend/src/pages/accounts/AccountsPage.tsx`: Loại bỏ hơn 280 dòng JSX và hàng loạt state con cục bộ, tái cấu trúc gọn gàng bằng cách import và sử dụng `<AddAccountModal />`.
+- **Kết quả kiểm thử**: PASS — `npm run build` thành công 100%, 0 lỗi TypeScript, hot reload hoạt động trơn tru.
+- **Trạng thái**: Completed.
+
 ---
 
 # 5. Bảng Theo Dõi Lỗi Phát Sinh (Defect & Issue Tracker)
@@ -1058,4 +1303,10 @@ Mỗi khi bắt đầu một Task mới, thực hiện nghiêm ngặt 5 bước:
 | **BUG-02** | Task 3.2 / 3.3 | Không lưu được tài khoản khi thêm mới do thiếu báo lỗi nhập tên / payload thừa; ô nhập tiền thiếu định dạng dấu chấm (`.`) phân tách hàng nghìn | Medium | `Closed` | Bổ sung `@JsonIgnoreProperties` ở DTO backend; thêm banner `modalError` cảnh báo trực tiếp trong modal; tạo bộ tiện ích `formatCurrencyInput` & `parseCurrencyInput` cho toàn bộ các ô nhập tiền tệ (`AccountsPage`, `AddTransactionModal`, `BudgetPage`). |
 | **BUG-03** | Task 7.2 / 7.3 | Lỗi biên dịch TypeScript `TS2552: Cannot find name 'setNewCatBgColor'` tại `SettingsPage.tsx` và ổ cứng `C:` cạn bộ nhớ tạm thời làm gián đoạn build/test | High | `Closed` | Loại bỏ lời gọi `setNewCatBgColor` dư thừa trong bộ chọn màu modal danh mục; dọn dẹp thư mục Temp và chuyển hướng thư mục tạm thời của Maven/Java sang ổ `D:` (`-Djava.io.tmpdir=d:\FinMan\backend\target\tmp`); kiểm thử build frontend và toàn bộ 144 backend tests đạt PASS 100%. |
 | **BUG-04** | Task 8.2 | Trục ngày dưới biểu đồ dòng tiền xuất hiện 2 ô tô nền đỏ đồng thời gây nhầm lẫn | Low | `Closed` | Gỡ bỏ khối tô màu nền đỏ (`#fee2e2`) và font chữ đỏ của ngày Đỉnh chi (`isPeak`) trên trục hoành; chỉ duy trì duy nhất 1 ô tô đỏ (`#ffdad6`) cho ngày đang được người dùng chọn (`isSelected`). |
+| **BUG-05** | Task 9.1 | Dữ liệu bóc tách giao dịch từ AI không prefill sang AddTransactionModal khi click "Chỉnh sửa" | Medium | `Closed` | Truyền state `initialData` từ Dashboard sang modal và cập nhật effect thiết lập form fields tại `AddTransactionModal.tsx`. |
+| **BUG-06** | Task 9.3 | Nút "Quên mật khẩu?" tại màn hình đăng nhập không có hành vi phản hồi | Medium | `Closed` | Xây dựng API `forgot-password`, `AuthContext.forgotPassword` và hoàn thiện `ForgotPasswordModal.tsx`. |
+| **BUG-07** | Task 9.5 | `String.format` gây lỗi `UnknownFormatConversionException: Conversion = ')'` do template chứa ký tự `%` trong văn bản | Low | `Closed` | Chuyển sang dùng `replace("%s", context)` an toàn tuyệt đối cho prompt template. |
+| **BUG-08** | Task 9.6 | Định dạng tiền tệ phân tách hàng nghìn dùng `Locale.US` trong Java sinh ra dấu phẩy thay vì dấu chấm chuẩn Việt Nam (`1,200,000 ₫` thay vì `1.200.000 ₫`) | Low | `Closed` | Xây dựng hàm `formatMoney(Long amount)` chuẩn hóa dấu chấm phân tách hàng nghìn độc lập với locale hệ điều hành: `String.format(Locale.US, "%,d", amount).replace(',', '.') + " ₫"`. |
+
+
 

@@ -16,6 +16,8 @@ import com.finman.repository.AccountRepository;
 import com.finman.repository.CategoryRepository;
 import com.finman.repository.TransactionRepository;
 import com.finman.repository.UserRepository;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -58,36 +60,87 @@ public class TransactionService {
             throw new BusinessValidationException("Số tiền giao dịch phải lớn hơn 0");
         }
 
-        Account account = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại hoặc bạn không có quyền truy cập"));
+        if (request.getType() == TransactionType.TRANSFER) {
+            if (request.getToAccountId() == null) {
+                throw new BusinessValidationException("Tài khoản nhận tiền không được để trống");
+            }
+            if (request.getAccountId().equals(request.getToAccountId())) {
+                throw new BusinessValidationException("Tài khoản nhận tiền phải khác tài khoản chuyển");
+            }
 
-        if (Boolean.TRUE.equals(account.getIsArchived())) {
-            throw new BusinessValidationException("Không thể ghi nhận giao dịch cho tài khoản đã lưu trữ");
+            Account fromAccount = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tài khoản nguồn không tồn tại hoặc bạn không có quyền truy cập"));
+            if (Boolean.TRUE.equals(fromAccount.getIsArchived())) {
+                throw new BusinessValidationException("Không thể ghi nhận giao dịch cho tài khoản đã lưu trữ");
+            }
+
+            Account toAccount = accountRepository.findByIdAndUserId(request.getToAccountId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tài khoản nhận tiền không tồn tại hoặc bạn không có quyền truy cập"));
+            if (Boolean.TRUE.equals(toAccount.getIsArchived())) {
+                throw new BusinessValidationException("Không thể chuyển tiền đến tài khoản đã lưu trữ");
+            }
+
+            Category category = null;
+            if (request.getCategoryId() != null) {
+                category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId).orElse(null);
+            }
+
+            // Cập nhật số dư nguyên tử: trừ tiền tài khoản nguồn và cộng tiền tài khoản đích
+            applyTransferImpact(fromAccount, toAccount, request.getAmount());
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            Transaction transaction = new Transaction(
+                    user,
+                    fromAccount,
+                    toAccount,
+                    category,
+                    TransactionType.TRANSFER,
+                    request.getAmount(),
+                    request.getTransactionDate(),
+                    request.getNote() != null ? request.getNote().trim() : null
+            );
+
+            Transaction saved = transactionRepository.save(transaction);
+            return TransactionResponse.from(saved);
+        } else {
+            // INCOME hoặc EXPENSE
+            if (request.getCategoryId() == null) {
+                throw new BusinessValidationException("Danh mục không được để trống");
+            }
+
+            Account account = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại hoặc bạn không có quyền truy cập"));
+
+            if (Boolean.TRUE.equals(account.getIsArchived())) {
+                throw new BusinessValidationException("Không thể ghi nhận giao dịch cho tài khoản đã lưu trữ");
+            }
+
+            Category category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại hoặc bạn không có quyền truy cập"));
+
+            if (!request.getType().name().equals(category.getType().name())) {
+                throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
+            }
+
+            // Cập nhật số dư tài khoản tương ứng
+            applyBalanceImpact(account, request.getType(), request.getAmount());
+            accountRepository.save(account);
+
+            Transaction transaction = new Transaction(
+                    user,
+                    account,
+                    null,
+                    category,
+                    request.getType(),
+                    request.getAmount(),
+                    request.getTransactionDate(),
+                    request.getNote() != null ? request.getNote().trim() : null
+            );
+
+            Transaction saved = transactionRepository.save(transaction);
+            return TransactionResponse.from(saved);
         }
-
-        Category category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại hoặc bạn không có quyền truy cập"));
-
-        if (!request.getType().name().equals(category.getType().name())) {
-            throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
-        }
-
-        // Cập nhật số dư tài khoản tương ứng
-        applyBalanceImpact(account, request.getType(), request.getAmount());
-        accountRepository.save(account);
-
-        Transaction transaction = new Transaction(
-                user,
-                account,
-                category,
-                request.getType(),
-                request.getAmount(),
-                request.getTransactionDate(),
-                request.getNote() != null ? request.getNote().trim() : null
-        );
-
-        Transaction saved = transactionRepository.save(transaction);
-        return TransactionResponse.from(saved);
     }
 
     @Transactional
@@ -99,44 +152,108 @@ public class TransactionService {
             throw new BusinessValidationException("Số tiền giao dịch phải lớn hơn 0");
         }
 
-        Account currentAccount = transaction.getAccount();
         // 1. Hoàn tác tác động số dư của giao dịch cũ
-        revertBalanceImpact(currentAccount, transaction.getType(), transaction.getAmount());
+        if (transaction.getType() == TransactionType.TRANSFER) {
+            Account oldFrom = transaction.getAccount();
+            Account oldTo = transaction.getToAccount();
+            if (oldFrom != null && oldTo != null) {
+                revertTransferImpact(oldFrom, oldTo, transaction.getAmount());
+                accountRepository.save(oldFrom);
+                accountRepository.save(oldTo);
+            }
+        } else {
+            Account oldAccount = transaction.getAccount();
+            if (oldAccount != null) {
+                revertBalanceImpact(oldAccount, transaction.getType(), transaction.getAmount());
+                accountRepository.save(oldAccount);
+            }
+        }
 
-        // 2. Xác thực tài khoản mới (nếu đổi)
-        Account targetAccount = currentAccount;
-        if (!currentAccount.getId().equals(request.getAccountId())) {
-            targetAccount = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Tài khoản đích không tồn tại hoặc bạn không có quyền truy cập"));
+        // 2. Xử lý theo loại giao dịch mới
+        if (request.getType() == TransactionType.TRANSFER) {
+            if (request.getToAccountId() == null) {
+                throw new BusinessValidationException("Tài khoản nhận tiền không được để trống");
+            }
+            if (request.getAccountId().equals(request.getToAccountId())) {
+                throw new BusinessValidationException("Tài khoản nhận tiền phải khác tài khoản chuyển");
+            }
+
+            Account oldFrom = transaction.getAccount();
+            Account oldTo = transaction.getToAccount();
+
+            Account fromAccount = (oldFrom != null && oldFrom.getId().equals(request.getAccountId()))
+                    ? oldFrom
+                    : accountRepository.findByIdAndUserId(request.getAccountId(), userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Tài khoản nguồn không tồn tại hoặc bạn không có quyền truy cập"));
+            if (Boolean.TRUE.equals(fromAccount.getIsArchived())) {
+                throw new BusinessValidationException("Không thể chuyển giao dịch sang tài khoản đã lưu trữ");
+            }
+
+            Account toAccount = (oldTo != null && oldTo.getId().equals(request.getToAccountId()))
+                    ? oldTo
+                    : accountRepository.findByIdAndUserId(request.getToAccountId(), userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Tài khoản nhận tiền không tồn tại hoặc bạn không có quyền truy cập"));
+            if (Boolean.TRUE.equals(toAccount.getIsArchived())) {
+                throw new BusinessValidationException("Không thể chuyển tiền đến tài khoản đã lưu trữ");
+            }
+
+            Category category = null;
+            if (request.getCategoryId() != null) {
+                category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId).orElse(null);
+            }
+
+            // Áp dụng số dư mới cho luồng TRANSFER
+            applyTransferImpact(fromAccount, toAccount, request.getAmount());
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            transaction.setAccount(fromAccount);
+            transaction.setToAccount(toAccount);
+            transaction.setCategory(category);
+            transaction.setType(TransactionType.TRANSFER);
+            transaction.setAmount(request.getAmount());
+            transaction.setTransactionDate(request.getTransactionDate());
+            transaction.setNote(request.getNote() != null ? request.getNote().trim() : null);
+
+            Transaction updated = transactionRepository.save(transaction);
+            return TransactionResponse.from(updated);
+        } else {
+            if (request.getCategoryId() == null) {
+                throw new BusinessValidationException("Danh mục không được để trống");
+            }
+
+            Account currentAccount = transaction.getAccount();
+            Account targetAccount = (currentAccount != null && currentAccount.getId().equals(request.getAccountId()))
+                    ? currentAccount
+                    : accountRepository.findByIdAndUserId(request.getAccountId(), userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Tài khoản đích không tồn tại hoặc bạn không có quyền truy cập"));
 
             if (Boolean.TRUE.equals(targetAccount.getIsArchived())) {
                 throw new BusinessValidationException("Không thể chuyển giao dịch sang tài khoản đã lưu trữ");
             }
-            // Lưu lại số dư ví cũ đã hoàn tác
-            accountRepository.save(currentAccount);
+
+            Category category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại hoặc bạn không có quyền truy cập"));
+
+            if (!request.getType().name().equals(category.getType().name())) {
+                throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
+            }
+
+            // Áp dụng tác động số dư mới cho tài khoản
+            applyBalanceImpact(targetAccount, request.getType(), request.getAmount());
+            accountRepository.save(targetAccount);
+
+            transaction.setAccount(targetAccount);
+            transaction.setToAccount(null);
+            transaction.setCategory(category);
+            transaction.setType(request.getType());
+            transaction.setAmount(request.getAmount());
+            transaction.setTransactionDate(request.getTransactionDate());
+            transaction.setNote(request.getNote() != null ? request.getNote().trim() : null);
+
+            Transaction updated = transactionRepository.save(transaction);
+            return TransactionResponse.from(updated);
         }
-
-        Category category = categoryRepository.findAccessibleCategory(request.getCategoryId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại hoặc bạn không có quyền truy cập"));
-
-        if (!request.getType().name().equals(category.getType().name())) {
-            throw new BusinessValidationException("Loại giao dịch (" + request.getType() + ") không khớp với loại danh mục (" + category.getType() + ")");
-        }
-
-        // 3. Áp dụng tác động số dư mới cho tài khoản đích
-        applyBalanceImpact(targetAccount, request.getType(), request.getAmount());
-        accountRepository.save(targetAccount);
-
-        // 4. Cập nhật các trường dữ liệu
-        transaction.setAccount(targetAccount);
-        transaction.setCategory(category);
-        transaction.setType(request.getType());
-        transaction.setAmount(request.getAmount());
-        transaction.setTransactionDate(request.getTransactionDate());
-        transaction.setNote(request.getNote() != null ? request.getNote().trim() : null);
-
-        Transaction updated = transactionRepository.save(transaction);
-        return TransactionResponse.from(updated);
     }
 
     @Transactional
@@ -144,10 +261,21 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findByIdAndUserId(transactionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Giao dịch không tồn tại hoặc bạn không có quyền truy cập"));
 
-        Account account = transaction.getAccount();
-        // Hoàn tác số dư của giao dịch khi bị xóa
-        revertBalanceImpact(account, transaction.getType(), transaction.getAmount());
-        accountRepository.save(account);
+        if (transaction.getType() == TransactionType.TRANSFER) {
+            Account fromAccount = transaction.getAccount();
+            Account toAccount = transaction.getToAccount();
+            if (fromAccount != null && toAccount != null) {
+                revertTransferImpact(fromAccount, toAccount, transaction.getAmount());
+                accountRepository.save(fromAccount);
+                accountRepository.save(toAccount);
+            }
+        } else {
+            Account account = transaction.getAccount();
+            if (account != null) {
+                revertBalanceImpact(account, transaction.getType(), transaction.getAmount());
+                accountRepository.save(account);
+            }
+        }
 
         transactionRepository.delete(transaction);
     }
@@ -187,9 +315,12 @@ public class TransactionService {
                 predicates.add(cb.lessThanOrEqualTo(root.get("transactionDate"), range.endDate));
             }
 
-            // 3. Ví / Tài khoản
+            // 3. Ví / Tài khoản (nguồn hoặc đích đối với chuyển khoản)
             if (accountId != null) {
-                predicates.add(cb.equal(root.get("account").get("id"), accountId));
+                predicates.add(cb.or(
+                        cb.equal(root.get("account").get("id"), accountId),
+                        cb.equal(root.get("toAccount").get("id"), accountId)
+                ));
             }
 
             // 4. Danh mục
@@ -206,7 +337,8 @@ public class TransactionService {
             if (search != null && !search.isBlank()) {
                 String pattern = "%" + search.trim().toLowerCase() + "%";
                 Predicate noteLike = cb.like(cb.lower(root.get("note")), pattern);
-                Predicate catLike = cb.like(cb.lower(root.get("category").get("name")), pattern);
+                Join<Transaction, Category> catJoin = root.join("category", JoinType.LEFT);
+                Predicate catLike = cb.like(cb.lower(catJoin.get("name")), pattern);
                 predicates.add(cb.or(noteLike, catLike));
             }
 
@@ -260,19 +392,20 @@ public class TransactionService {
      * Áp dụng thay đổi số dư theo từng loại tài khoản.
      */
     private void applyBalanceImpact(Account account, TransactionType type, Long amount) {
+        long current = account.getCurrentBalance() != null ? account.getCurrentBalance() : 0L;
         if (account.getType() == AccountType.CREDIT_CARD) {
             // Với thẻ tín dụng, currentBalance đại diện cho dư nợ
             if (type == TransactionType.EXPENSE) {
-                account.setCurrentBalance(account.getCurrentBalance() + amount);
+                account.setCurrentBalance(current + amount);
             } else if (type == TransactionType.INCOME) {
-                account.setCurrentBalance(account.getCurrentBalance() - amount);
+                account.setCurrentBalance(current - amount);
             }
         } else {
             // Với ví tiền mặt và ngân hàng, currentBalance là tài sản khả dụng
             if (type == TransactionType.INCOME) {
-                account.setCurrentBalance(account.getCurrentBalance() + amount);
+                account.setCurrentBalance(current + amount);
             } else if (type == TransactionType.EXPENSE) {
-                account.setCurrentBalance(account.getCurrentBalance() - amount);
+                account.setCurrentBalance(current - amount);
             }
         }
     }
@@ -281,19 +414,40 @@ public class TransactionService {
      * Hoàn tác số dư giao dịch cũ theo từng loại tài khoản.
      */
     private void revertBalanceImpact(Account account, TransactionType type, Long amount) {
+        long current = account.getCurrentBalance() != null ? account.getCurrentBalance() : 0L;
         if (account.getType() == AccountType.CREDIT_CARD) {
             if (type == TransactionType.EXPENSE) {
-                account.setCurrentBalance(account.getCurrentBalance() - amount);
+                account.setCurrentBalance(current - amount);
             } else if (type == TransactionType.INCOME) {
-                account.setCurrentBalance(account.getCurrentBalance() + amount);
+                account.setCurrentBalance(current + amount);
             }
         } else {
             if (type == TransactionType.INCOME) {
-                account.setCurrentBalance(account.getCurrentBalance() - amount);
+                account.setCurrentBalance(current - amount);
             } else if (type == TransactionType.EXPENSE) {
-                account.setCurrentBalance(account.getCurrentBalance() + amount);
+                account.setCurrentBalance(current + amount);
             }
         }
+    }
+
+    /**
+     * Áp dụng thay đổi số dư khi chuyển khoản nội bộ:
+     * - Tài khoản nguồn (fromAccount): tiền rời đi (EXPENSE).
+     * - Tài khoản đích (toAccount): tiền chuyển đến (INCOME).
+     */
+    private void applyTransferImpact(Account fromAccount, Account toAccount, Long amount) {
+        applyBalanceImpact(fromAccount, TransactionType.EXPENSE, amount);
+        applyBalanceImpact(toAccount, TransactionType.INCOME, amount);
+    }
+
+    /**
+     * Hoàn tác số dư chuyển khoản nội bộ:
+     * - Tài khoản nguồn (fromAccount): cộng lại tiền đã chuyển (hoàn tác EXPENSE).
+     * - Tài khoản đích (toAccount): trừ lại tiền đã nhận (hoàn tác INCOME).
+     */
+    private void revertTransferImpact(Account fromAccount, Account toAccount, Long amount) {
+        revertBalanceImpact(fromAccount, TransactionType.EXPENSE, amount);
+        revertBalanceImpact(toAccount, TransactionType.INCOME, amount);
     }
 
     /**

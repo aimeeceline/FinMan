@@ -70,28 +70,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <div className="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen antialiased select-none">
-      {/* Top Header */}
-      <header className="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="h-16 px-gutter flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center gap-space-sm">
-            <button
-              aria-label="Quay lại"
-              className="w-11 h-11 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container-high/60 active:scale-95 transition-all cursor-pointer"
-              onClick={() => onNavigate?.('login')}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[22px]">arrow_back</span>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-amber-600 flex items-center justify-center text-slate-900 font-extrabold text-sm shadow-md">
-              FM
-            </div>
-            <span className="font-label-lg text-label-lg text-on-surface tracking-tight font-bold">
-              FinMan Security
-            </span>
-          </div>
-        </div>
-      </header>
-
+      
       {/* Main Content */}
       <main className="flex flex-col relative w-full pt-20 pb-safe bg-surface px-4 sm:px-6 max-w-[500px] mx-auto min-h-screen justify-center">
         <div className="flex flex-col w-full pb-12">

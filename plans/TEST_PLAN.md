@@ -47,11 +47,12 @@ Hệ thống FinMan áp dụng mô hình **Kim Tự Tháp Kiểm Thử (Testing 
 
 | Mã Test Case | Tên kịch bản | Dữ liệu đầu vào (Input) | Kết quả mong đợi (Expected Output) | Loại Test |
 |---|---|---|---|---|
-| **TC_ACC_01** | Tạo ví Tiền mặt / Ngân hàng | Name: `"Vietcombank"`, Type: `BANK`, Initial Balance: `5.000.000` | Mã HTTP 201, số dư khả dụng (`current_balance`) bằng `5.000.000đ` | Integration |
+| **TC_ACC_01** | Tạo tài khoản với tên tùy chỉnh | Name: `"Nuôi con"`, Type: `BANK`, Initial Balance: `10.000.000đ` | Mã HTTP 201, số dư khả dụng (`current_balance`) bằng `10.000.000đ`, type là `BANK` | Integration |
 | **TC_ACC_02** | Tạo Thẻ tín dụng | Name: `"Techcombank Visa"`, Type: `CREDIT_CARD`, Limit: `20.000.000`, Initial Debt: `0` | Mã HTTP 201, lưu đúng hạn mức và số dư nợ ban đầu | Integration |
 | **TC_ACC_03** | Tính toán Tài sản ròng (Net Worth) | 1 ví tiền mặt `2.000.000đ`, 1 thẻ tín dụng nợ `500.000đ` | API trả về: Total Assets = `2.000.000đ`, Total Liabilities = `500.000đ`, Net Worth = `1.500.000đ` | Unit |
-| **TC_ACC_04** | Xóa tài khoản đã phát sinh giao dịch | Gửi `DELETE /api/v1/accounts/{id}` với ví đã có giao dịch | Chuyển `isArchived = true` (Soft delete), ví không còn xuất hiện trong danh sách hoạt động nhưng lịch sử giao dịch vẫn nguyên vẹn | Integration |
+| **TC_ACC_04** | Lưu trữ tài khoản đã phát sinh giao dịch | Gửi yêu cầu lưu trữ với tài khoản đã có lịch sử giao dịch | Chuyển `isArchived = true`, tài khoản không xuất hiện trong dropdown chọn ví khi thêm mới giao dịch nhưng lịch sử giao dịch và báo cáo quá khứ vẫn nguyên vẹn | Integration |
 | **TC_ACC_05** | Kiểm tra phân quyền truy cập ví (Multi-tenant) | User B cố tình gửi ID ví của User A để sửa hoặc xóa | Mã HTTP 403 Forbidden hoặc 404 Not Found, không cho phép can thiệp | Integration |
+| **TC_ACC_06** | Tạo nhiều tài khoản mục đích khác nhau | User tạo: "Tiết kiệm" (`BANK`), "Cá nhân" (`CASH`), "Du lịch" (`BANK`) | Các tài khoản hoạt động độc lập, không cần module "Fund" riêng, số dư được quản lý riêng biệt | Unit/Integ |
 
 ---
 
@@ -81,6 +82,10 @@ Hệ thống FinMan áp dụng mô hình **Kim Tự Tháp Kiểm Thử (Testing 
 | **TC_TXN_07** | Chặn số tiền không hợp lệ (Validation) | Số tiền âm (`-50.000đ`), số tiền bằng `0đ`, hoặc số tiền vượt 10 tỷ | Mã HTTP 400, từ chối lưu giao dịch | Unit |
 | **TC_TXN_08** | Tính toàn vẹn Database Transaction (Rollback) | Cố tình tạo lỗi runtime trong lúc cập nhật số dư | Toàn bộ thao tác bị Rollback, số dư ví và bảng transaction giữ nguyên trạng thái cũ | Integration |
 | **TC_TXN_09** | Lọc giao dịch theo tháng & ngày | Lọc tháng `2026-09` | Trả về đúng danh sách giao dịch tháng 9, nhóm theo từng ngày kèm tổng Thu - Chi | Integration |
+| **TC_TXN_10** | Thêm giao dịch Chuyển khoản (TRANSFER) | Ví A có `5.000.000đ`, Ví B có `0đ`. Chuyển `2.000.000đ` từ A sang B | Ví A còn `3.000.000đ`, Ví B tăng thành `2.000.000đ`, tổng tài sản vẫn là `5.000.000đ` | Integration |
+| **TC_TXN_11** | Chuyển khoản không làm biến động Net Worth và Thu/Chi | Tạo Transfer `10.000.000đ` giữa 2 tài khoản | Thống kê Thu nhập = `0đ`, Chi tiêu = `0đ`, Net Worth không thay đổi | Unit/Integ |
+| **TC_TXN_12** | Kịch bản Teacher's Flow hoàn chỉnh | Nhận lương `50tr` -> TPBank; Chuyển `30tr` -> Cá nhân, `10tr` -> Nuôi con, `10tr` -> Tiết kiệm | TPBank = `0đ`, Cá nhân = `30tr`, Nuôi con = `10tr`, Tiết kiệm = `10tr`. Tổng tài sản = `50tr`. Tổng Income = `50tr`, Tổng Expense = `0đ` | Integration |
+| **TC_TXN_13** | Chi tiêu từ tài khoản có tên tùy chỉnh & Ngân sách độc lập | Tài khoản "Nuôi con" có `10tr`, Ngân sách "Trẻ em" hạn mức `3tr`. Chi `500k` mua sữa | Số dư "Nuôi con" còn `9.500.000đ`, Ngân sách "Trẻ em" ghi nhận đã chi `500.000đ / 3.000.000đ`. Budget không làm thay đổi trực tiếp số dư tài khoản | Integration |
 
 ---
 
@@ -106,6 +111,8 @@ Hệ thống FinMan áp dụng mô hình **Kim Tự Tháp Kiểm Thử (Testing 
 | **TC_AI_04** | Câu nhập không hợp lệ hoặc không có số tiền | `"Xin chào FinMan hôm nay trời đẹp quá"` | API trả về mã lỗi thân thiện: `"Không thể nhận diện giao dịch. Vui lòng nhập rõ số tiền và nội dung."` | Integration |
 | **TC_AI_05** | Tạo nhận xét tài chính hàng tháng | Gọi `/api/v1/ai/insights` tháng `2026-09` | Trả về đoạn văn bản nhận xét mạch lạc, đưa ra 2 lời khuyên tiết kiệm cụ thể | Integration |
 | **TC_AI_06** | Xử lý khi mất kết nối Gemini hoặc hết hạn mức | Mock Gemini API trả về HTTP 429 hoặc Timeout | API bắt lỗi an toàn, trả về JSON mã lỗi `AI_SERVICE_UNAVAILABLE`, không gây crash server | Unit/Integ |
+| **TC_AI_07** | Nhập nhanh giao dịch chuyển khoản nội bộ | `"Chuyển 10 triệu từ TPBank sang Nuôi con"` | Trả về JSON: `type: TRANSFER`, `amount: 10000000`, `accountName: "TPBank"`, `toAccountName: "Nuôi con"` | Integration |
+| **TC_AI_08** | Nhận diện tài khoản có tên tùy chỉnh | `"Mua sữa bột 500k từ tài khoản Nuôi con"` | Trả về JSON: `type: EXPENSE`, `amount: 500000`, `accountName: "Nuôi con"`, `categoryName: "Trẻ em"` | Integration |
 
 ---
 

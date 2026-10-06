@@ -102,7 +102,7 @@ public class AiController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody AiChatRequest request) {
         validateUser(userPrincipal);
-        AiChatResponse response = aiService.processUserChat(userPrincipal.getId(), request.getMessage());
+        AiChatResponse response = aiService.processUserChat(userPrincipal.getId(), request.getMessage(), request.getConversationHistory());
         return ResponseEntity.ok(ApiResponse.success(response, "Xử lý yêu cầu thành công"));
     }
 
@@ -115,7 +115,7 @@ public class AiController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody AiChatRequest request) {
         validateUser(userPrincipal);
-        AiChatResponse response = aiService.executeDataQuery(userPrincipal.getId(), request.getMessage());
+        AiChatResponse response = aiService.executeDataQuery(userPrincipal.getId(), request.getMessage(), request.getConversationHistory());
         return ResponseEntity.ok(ApiResponse.success(response, "Truy vấn dữ liệu tài chính thành công"));
     }
 

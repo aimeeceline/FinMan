@@ -108,4 +108,51 @@ class RepositoryIntegrationTest {
         assertEquals(1, userBudgets.size());
         assertEquals(3000000L, userBudgets.get(0).getAmount());
     }
+
+    @Test
+    @DisplayName("Task 10.1: Should persist Account with note and Transaction with toAccount and null category for TRANSFER")
+    void testTask10_1_SchemaMigrationAndTransferAttributes() {
+        // 1. Create User
+        User user = new User("transfer_user@finman.com", "hash_pw", "Transfer Tester");
+        User savedUser = userRepository.save(user);
+
+        // 2. Create Source and Destination Accounts with note attribute
+        Account sourceAccount = new Account(savedUser, "TPBank Chính", AccountType.BANK, 10_000_000L, "Tài khoản chi tiêu chính");
+        Account savedSource = accountRepository.save(sourceAccount);
+        assertNotNull(savedSource.getId());
+        assertEquals("Tài khoản chi tiêu chính", savedSource.getNote());
+
+        Account targetAccount = new Account(savedUser, "Nuôi con", AccountType.BANK, 5_000_000L, "Quỹ chăm sóc con cái");
+        Account savedTarget = accountRepository.save(targetAccount);
+        assertNotNull(savedTarget.getId());
+        assertEquals("Quỹ chăm sóc con cái", savedTarget.getNote());
+
+        // 3. Create TRANSFER transaction with toAccount specified and category = null
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Transaction transferTxn = new Transaction(
+                savedUser,
+                savedSource,
+                savedTarget,
+                null, // category is null for TRANSFER
+                TransactionType.TRANSFER,
+                2_000_000L,
+                date,
+                "Chuyển tiền nuôi con tháng 10"
+        );
+        Transaction savedTxn = transactionRepository.save(transferTxn);
+        assertNotNull(savedTxn.getId());
+
+        // 4. Retrieve and verify transaction attributes
+        Optional<Transaction> fetched = transactionRepository.findByIdAndUserId(savedTxn.getId(), savedUser.getId());
+        assertTrue(fetched.isPresent());
+        Transaction actual = fetched.get();
+        assertEquals(TransactionType.TRANSFER, actual.getType());
+        assertEquals(2_000_000L, actual.getAmount());
+        assertNotNull(actual.getAccount());
+        assertEquals(savedSource.getId(), actual.getAccount().getId());
+        assertNotNull(actual.getToAccount());
+        assertEquals(savedTarget.getId(), actual.getToAccount().getId());
+        assertTrue(actual.getCategory() == null, "Category must be null for TRANSFER");
+        assertEquals("Chuyển tiền nuôi con tháng 10", actual.getNote());
+    }
 }

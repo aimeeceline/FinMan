@@ -26,6 +26,9 @@ public class AccountCreateRequest {
     @Size(max = 50, message = "Số tài khoản tối đa 50 ký tự")
     private String accountNumber;
 
+    @Size(max = 255, message = "Ghi chú tài khoản tối đa 255 ký tự")
+    private String note;
+
     public AccountCreateRequest() {
     }
 
@@ -42,6 +45,11 @@ public class AccountCreateRequest {
         this.initialBalance = initialBalance != null ? initialBalance : 0L;
         this.creditLimit = creditLimit != null ? creditLimit : 0L;
         this.accountNumber = accountNumber;
+    }
+
+    public AccountCreateRequest(String name, AccountType type, Long initialBalance, Long creditLimit, String accountNumber, String note) {
+        this(name, type, initialBalance, creditLimit, accountNumber);
+        this.note = note;
     }
 
     public String getAccountNumber() {
@@ -82,5 +90,13 @@ public class AccountCreateRequest {
 
     public void setCreditLimit(Long creditLimit) {
         this.creditLimit = creditLimit;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }

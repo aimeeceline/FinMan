@@ -189,4 +189,91 @@ class AccountServiceTest {
         assertNotNull(response);
         assertEquals("Tên mới", account.getName());
     }
+
+    @Test
+    @DisplayName("Lưu trữ và khôi phục tài khoản mục đích thành công")
+    void testArchiveAndUnarchiveAccount_Success() {
+        Account account = new Account(testUser, "Quán cà phê", AccountType.BANK, 50_000_000L);
+        account.setId(40L);
+        account.setIsArchived(false);
+
+        when(accountRepository.findByIdAndUserId(40L, 1L)).thenReturn(Optional.of(account));
+        when(accountRepository.save(any(Account.class))).thenReturn(account);
+
+        AccountResponse archivedResponse = accountService.archiveAccount(1L, 40L, true);
+        assertTrue(archivedResponse.getIsArchived());
+
+        AccountResponse unarchivedResponse = accountService.archiveAccount(1L, 40L, false);
+        assertFalse(unarchivedResponse.getIsArchived());
+    }
+
+    @Test
+    @DisplayName("Lấy danh sách tài khoản hỗ trợ includeArchived")
+    void testGetAccountsSummary_IncludeArchived() {
+        Account activeAcc = new Account(testUser, "Nuôi con", AccountType.BANK, 10_000_000L);
+        activeAcc.setIsArchived(false);
+
+        Account archivedAcc = new Account(testUser, "Quán cà phê cũ", AccountType.BANK, 2_000_000L);
+        archivedAcc.setIsArchived(true);
+
+        when(accountRepository.findByUserId(1L)).thenReturn(List.of(activeAcc, archivedAcc));
+
+        AccountSummaryResponse summary = accountService.getAccountsSummary(1L, true);
+        assertNotNull(summary);
+        assertEquals(2, summary.getAccounts().size());
+        assertEquals(10_000_000L, summary.getTotalAssets()); // archived does not count into active net worth
+    }
+
+    @Test
+    @DisplayName("Tạo tài khoản Đầu tư (INVESTMENT) và Khác (OTHER) thành công")
+    void testCreateAccount_InvestmentAndOther_Success() {
+        AccountCreateRequest investReq = new AccountCreateRequest("Tài khoản VPS Chứng Khoán", AccountType.INVESTMENT, 15_000_000L, 0L);
+        Account savedInvest = new Account(testUser, "Tài khoản VPS Chứng Khoán", AccountType.INVESTMENT, 15_000_000L);
+        savedInvest.setId(50L);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Tài khoản VPS Chứng Khoán")).thenReturn(false);
+        when(accountRepository.save(any(Account.class))).thenReturn(savedInvest);
+
+        AccountResponse investRes = accountService.createAccount(1L, investReq);
+        assertNotNull(investRes);
+        assertEquals(AccountType.INVESTMENT, investRes.getType());
+        assertEquals(15_000_000L, investRes.getCurrentBalance());
+
+        AccountCreateRequest otherReq = new AccountCreateRequest("Sổ tay tiết kiệm vàng", AccountType.OTHER, 5_000_000L, 0L);
+        Account savedOther = new Account(testUser, "Sổ tay tiết kiệm vàng", AccountType.OTHER, 5_000_000L);
+        savedOther.setId(51L);
+
+        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Sổ tay tiết kiệm vàng")).thenReturn(false);
+        when(accountRepository.save(any(Account.class))).thenReturn(savedOther);
+
+        AccountResponse otherRes = accountService.createAccount(1L, otherReq);
+        assertNotNull(otherRes);
+        assertEquals(AccountType.OTHER, otherRes.getType());
+        assertEquals(5_000_000L, otherRes.getCurrentBalance());
+    }
+
+    @Test
+    @DisplayName("Tính toán Tài sản ròng với đầy đủ các loại tài khoản: CASH, BANK, INVESTMENT, OTHER, CREDIT_CARD")
+    void testGetAccountsSummary_WithInvestmentAndOther_CalculatesNetWorthCorrectly() {
+        Account cash = new Account(testUser, "Tiền mặt", AccountType.CASH, 2_000_000L);
+        Account bank = new Account(testUser, "VPBank", AccountType.BANK, 5_000_000L);
+        Account invest = new Account(testUser, "Cổ phiếu Techcom Securities", AccountType.INVESTMENT, 20_000_000L);
+        Account other = new Account(testUser, "Quỹ khác", AccountType.OTHER, 3_000_000L);
+        Account credit = new Account(testUser, "HSBC Visa", AccountType.CREDIT_CARD, 0L);
+        credit.setCurrentBalance(4_000_000L); // Dư nợ 4M
+
+        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(List.of(cash, bank, invest, other, credit));
+
+        AccountSummaryResponse summary = accountService.getAccountsSummary(1L);
+
+        assertNotNull(summary);
+        assertEquals(5, summary.getAccounts().size());
+        // totalAssets = 2M + 5M + 20M + 3M = 30M
+        assertEquals(30_000_000L, summary.getTotalAssets());
+        // totalLiabilities = 4M
+        assertEquals(4_000_000L, summary.getTotalLiabilities());
+        // netWorth = 30M - 4M = 26M
+        assertEquals(26_000_000L, summary.getNetWorth());
+    }
 }

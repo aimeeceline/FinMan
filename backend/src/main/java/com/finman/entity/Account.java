@@ -71,6 +71,10 @@ public class Account {
     @Column(name = "account_number", length = 50)
     private String accountNumber;
 
+    @Size(max = 255, message = "Ghi chú tài khoản tối đa 255 ký tự")
+    @Column(name = "note", length = 255)
+    private String note;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -90,6 +94,11 @@ public class Account {
         this.isArchived = false;
     }
 
+    public Account(User user, String name, AccountType type, Long initialBalance, String note) {
+        this(user, name, type, initialBalance);
+        this.note = note;
+    }
+
     public Account(Long id, User user, String name, AccountType type, Long initialBalance, Long currentBalance, Long creditLimit, Boolean isArchived) {
         this.id = id;
         this.user = user;
@@ -99,6 +108,11 @@ public class Account {
         this.currentBalance = currentBalance != null ? currentBalance : 0L;
         this.creditLimit = creditLimit != null ? creditLimit : 0L;
         this.isArchived = isArchived != null ? isArchived : false;
+    }
+
+    public Account(Long id, User user, String name, AccountType type, Long initialBalance, Long currentBalance, Long creditLimit, Boolean isArchived, String note) {
+        this(id, user, name, type, initialBalance, currentBalance, creditLimit, isArchived);
+        this.note = note;
     }
 
     @PrePersist
@@ -197,6 +211,14 @@ public class Account {
         this.accountNumber = accountNumber;
     }
 
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -236,6 +258,7 @@ public class Account {
                 ", currentBalance=" + currentBalance +
                 ", creditLimit=" + creditLimit +
                 ", isArchived=" + isArchived +
+                ", note='" + note + '\'' +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 '}';

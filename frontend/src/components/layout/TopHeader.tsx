@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ScreenZoomControl } from './ScreenZoomControl';
 
 interface TopHeaderProps {
   onExportExcel?: () => void;
@@ -40,6 +41,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Action Icons & Profile */}
       <div className="flex items-center gap-space-md">
         <div className="flex items-center gap-space-xs">
+          {/* Dynamic Screen Auto-Zoom Stepper */}
+          <ScreenZoomControl />
+
           {/* Excel Export Quick Button */}
           <button
             onClick={onExportExcel}

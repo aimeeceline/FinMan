@@ -29,16 +29,25 @@ public class AccountService {
     }
 
     public AccountSummaryResponse getAccountsSummary(Long userId) {
-        List<Account> accounts = accountRepository.findByUserIdAndIsArchivedFalse(userId);
+        return getAccountsSummary(userId, false);
+    }
+
+    public AccountSummaryResponse getAccountsSummary(Long userId, Boolean includeArchived) {
+        List<Account> accounts = Boolean.TRUE.equals(includeArchived)
+                ? accountRepository.findByUserId(userId)
+                : accountRepository.findByUserIdAndIsArchivedFalse(userId);
 
         long totalAssets = 0L;
         long totalLiabilities = 0L;
 
         for (Account acc : accounts) {
-            if (acc.getType() == AccountType.CREDIT_CARD) {
-                totalLiabilities += acc.getCurrentBalance();
-            } else {
-                totalAssets += acc.getCurrentBalance();
+            // Archived accounts do not contribute to active net worth/liabilities unless viewing all
+            if (!acc.getIsArchived()) {
+                if (acc.getType() == AccountType.CREDIT_CARD) {
+                    totalLiabilities += acc.getCurrentBalance();
+                } else {
+                    totalAssets += acc.getCurrentBalance();
+                }
             }
         }
 
@@ -68,12 +77,15 @@ public class AccountService {
 
         Long initialBalance = request.getInitialBalance() != null ? request.getInitialBalance() : 0L;
         if (request.getType() != AccountType.CREDIT_CARD && initialBalance < 0) {
-            throw new BusinessValidationException("Số dư ban đầu của ví tiền mặt / tài khoản ngân hàng không được âm");
+            throw new BusinessValidationException("Số dư ban đầu của tài khoản không được âm");
         }
 
         Account account = new Account(user, name, request.getType(), initialBalance);
         if (request.getAccountNumber() != null && !request.getAccountNumber().isBlank()) {
             account.setAccountNumber(request.getAccountNumber().trim());
+        }
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            account.setNote(request.getNote().trim());
         }
         if (request.getType() == AccountType.CREDIT_CARD && request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());
@@ -99,6 +111,10 @@ public class AccountService {
             account.setAccountNumber(request.getAccountNumber().trim());
         }
 
+        if (request.getNote() != null) {
+            account.setNote(request.getNote().trim());
+        }
+
         if (request.getCreditLimit() != null) {
             account.setCreditLimit(request.getCreditLimit());
         }
@@ -112,12 +128,17 @@ public class AccountService {
     }
 
     @Transactional
-    public void deleteAccount(Long userId, Long accountId) {
+    public AccountResponse archiveAccount(Long userId, Long accountId, boolean archive) {
         Account account = accountRepository.findByIdAndUserId(accountId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại hoặc bạn không có quyền truy cập"));
 
-        // Soft delete / archive to preserve ledger consistency
-        account.setIsArchived(true);
-        accountRepository.save(account);
+        account.setIsArchived(archive);
+        Account updated = accountRepository.save(account);
+        return AccountResponse.from(updated);
+    }
+
+    @Transactional
+    public void deleteAccount(Long userId, Long accountId) {
+        archiveAccount(userId, accountId, true);
     }
 }

@@ -313,4 +313,76 @@ class TransactionControllerTest {
         mockMvc.perform(get("/api/v1/transactions"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("Task 10.2: POST /api/v1/transactions tạo giao dịch TRANSFER thành công")
+    void testCreateTransferTransaction_Success() throws Exception {
+        Long initialFromBalance = accountA2.getCurrentBalance(); // 5M
+        Long initialToBalance = accountA1.getCurrentBalance();   // 3M
+
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                accountA2.getId(), accountA1.getId(), null, TransactionType.TRANSFER, 2_000_000L, LocalDate.now(), "Chuyển tiền tiết kiệm");
+
+        mockMvc.perform(post("/api/v1/transactions")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.type").value("TRANSFER"))
+                .andExpect(jsonPath("$.data.amount").value(2_000_000L))
+                .andExpect(jsonPath("$.data.account.id").value(accountA2.getId()))
+                .andExpect(jsonPath("$.data.toAccount.id").value(accountA1.getId()))
+                .andExpect(jsonPath("$.data.category").doesNotExist());
+
+        Account refreshedFrom = accountRepository.findById(accountA2.getId()).orElseThrow();
+        Account refreshedTo = accountRepository.findById(accountA1.getId()).orElseThrow();
+
+        // 5M - 2M = 3M
+        assertEquals(initialFromBalance - 2_000_000L, refreshedFrom.getCurrentBalance());
+        // 3M + 2M = 5M
+        assertEquals(initialToBalance + 2_000_000L, refreshedTo.getCurrentBalance());
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Chặn tạo TRANSFER khi cùng tài khoản nguồn và đích")
+    void testCreateTransferTransaction_SameAccount_BadRequest() throws Exception {
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                accountA1.getId(), accountA1.getId(), null, TransactionType.TRANSFER, 1_000_000L, LocalDate.now(), "Tự chuyển cho mình");
+
+        mockMvc.perform(post("/api/v1/transactions")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Tài khoản nhận tiền phải khác tài khoản chuyển"));
+    }
+
+    @Test
+    @DisplayName("Task 10.2: Xóa giao dịch TRANSFER qua API hoàn tác số dư cả hai ví")
+    void testDeleteTransferTransaction_Success() throws Exception {
+        TransactionCreateRequest request = new TransactionCreateRequest(
+                accountA2.getId(), accountA1.getId(), null, TransactionType.TRANSFER, 1_000_000L, LocalDate.now(), "Chuyển tạm");
+
+        var createResult = mockMvc.perform(post("/api/v1/transactions")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var jsonNode = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        Long transferId = jsonNode.get("data").get("id").asLong();
+
+        // Xóa giao dịch chuyển khoản
+        mockMvc.perform(delete("/api/v1/transactions/" + transferId)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk());
+
+        // Số dư cả hai tài khoản được phục hồi về ban đầu
+        Account refreshedFrom = accountRepository.findById(accountA2.getId()).orElseThrow();
+        Account refreshedTo = accountRepository.findById(accountA1.getId()).orElseThrow();
+
+        assertEquals(5_000_000L, refreshedFrom.getCurrentBalance());
+        assertEquals(3_000_000L, refreshedTo.getCurrentBalance());
+    }
 }

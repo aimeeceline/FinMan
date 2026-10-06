@@ -7,8 +7,8 @@ interface DashboardPageProps {
   accounts?: Account[];
   categories?: Category[];
   onOpenAddModal: (initialData?: Partial<Transaction>) => void;
-  onNavigateToAccounts: () => void;
-  onNavigateToReports: () => void;
+  onNavigateToAccounts?: () => void;
+  onNavigateToReports?: () => void;
   onDeleteTransaction?: (id: number) => void;
   onEditTransaction?: (tx: Transaction) => void;
   onApplyAiTransaction?: (tx: Omit<Transaction, 'id'>) => void;
@@ -79,25 +79,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   accounts,
   categories = [],
   onOpenAddModal,
-  onNavigateToAccounts,
-  onNavigateToReports,
   onDeleteTransaction,
   onEditTransaction,
   onApplyAiTransaction,
 }) => {
-  // Sync hide balance state with localStorage
-  const [showBalance, setShowBalance] = useState<boolean>(() => {
-    return localStorage.getItem('finman_hide_balance') !== 'true';
-  });
-
-  const toggleBalance = () => {
-    setShowBalance((prev) => {
-      const next = !prev;
-      localStorage.setItem('finman_hide_balance', String(!next));
-      return next;
-    });
-  };
-
   // Filter States (Dropdown based)
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -209,54 +194,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     customEndDate,
   ]);
 
-  // Financial Calculations for the active filtered period
-  const periodIncome = useMemo(() => {
-    return filteredTransactions
-      .filter((t) => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [filteredTransactions]);
 
-  const periodExpense = useMemo(() => {
-    return filteredTransactions
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [filteredTransactions]);
-
-  const periodSurplus = periodIncome - periodExpense;
-
-  const periodSavingsRate = useMemo(() => {
-    if (periodIncome <= 0) return 0;
-    return Math.max(0, Math.round((periodSurplus / periodIncome) * 100));
-  }, [periodIncome, periodSurplus]);
-
-  // Dynamic Period Label
-  const periodLabel = useMemo(() => {
-    if (timeRangeFilter === '1_MONTH') return '1 tháng';
-    if (timeRangeFilter === '3_MONTHS') return '3 tháng';
-    if (timeRangeFilter === '6_MONTHS') return '6 tháng';
-    if (timeRangeFilter === 'CUSTOM') {
-      if (customStartDate && customEndDate) {
-        return `${formatVNDate(customStartDate)} – ${formatVNDate(customEndDate)}`;
-      }
-      if (customStartDate) return `Từ ${formatVNDate(customStartDate)}`;
-      if (customEndDate) return `Đến ${formatVNDate(customEndDate)}`;
-      return 'Tự chọn';
-    }
-    return 'Toàn bộ';
-  }, [timeRangeFilter, customStartDate, customEndDate]);
-
-  // Overall Total Balance from Accounts
-  const netBalance = useMemo(() => {
-    if (displayAccounts.length > 0) {
-      return displayAccounts.reduce((sum, acc) => {
-        if (acc.type === 'CREDIT_CARD') {
-          return sum - acc.currentBalance;
-        }
-        return sum + acc.currentBalance;
-      }, 0);
-    }
-    return periodIncome - periodExpense;
-  }, [displayAccounts, periodIncome, periodExpense]);
 
   // Determine whether any filter is actively applied
   const isFiltered = useMemo(() => {
@@ -813,6 +751,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       date: itemToEdit.transactionDate || getTodayLocalDate(),
       time: new Date().toTimeString().slice(0, 5),
       note: itemToEdit.note,
+      isAiParsed: true,
     });
   };
 
@@ -886,145 +825,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }, 2000);
   };
 
+  // Cancel & dismiss parsed AI transaction
+  const handleCancelAi = () => {
+    setAiParsed(null);
+    setAiParsedItems(null);
+    setAiText('');
+    setAiStatusMessage(null);
+  };
+
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
-      {/* 1. TOP LEVEL KPI METRICS STRIP */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter-desktop mb-space-xl">
-        {/* Card 1: Net Available Balance */}
-        <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-space-xs">
-              <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-                Tổng số dư khả dụng
-              </span>
-              <button
-                onClick={toggleBalance}
-                className="p-1 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                title={showBalance ? 'Ẩn số dư' : 'Hiện số dư'}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {showBalance ? 'visibility' : 'visibility_off'}
-                </span>
-              </button>
-            </div>
-            <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
-          </div>
-
-          <div className="mt-space-sm mb-space-md">
-            <div className="flex items-baseline gap-space-2xs">
-              <span className="font-currency-display text-currency-display text-on-surface font-extrabold tracking-tight">
-                {showBalance ? netBalance.toLocaleString('vi-VN') : '••••••••'}
-              </span>
-              <span className="font-title-md text-title-md text-on-surface-variant font-bold">
-                ₫
-              </span>
-            </div>
-            <p className="font-body-sm text-body-sm text-secondary font-medium flex items-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-[15px]">verified_user</span>{' '}
-              {displayAccounts.length} tài khoản đã đồng bộ Napas
-            </p>
-          </div>
-
-          <div className="pt-space-xs border-t border-surface-container-high/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Tài sản ròng</span>
-            <button
-              onClick={onNavigateToAccounts}
-              className="text-tertiary font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
-            >
-              Chi tiết ví <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 2: Total Income */}
-        <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-              Tổng Thu nhập ({periodLabel})
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-secondary-fixed/40 flex items-center justify-center text-secondary">
-              <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
-            </div>
-          </div>
-          <div className="mt-space-sm mb-space-md">
-            <div className="flex items-baseline gap-space-2xs text-secondary">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                +{periodIncome.toLocaleString('vi-VN')}
-              </span>
-              <span className="font-title-md text-title-md font-bold">₫</span>
-            </div>
-            <p className="font-body-sm text-body-sm text-secondary font-medium flex items-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-[15px]">trending_up</span> Khoản thu ghi nhận
-            </p>
-          </div>
-          <div className="pt-space-xs border-t border-surface-container-high/60 text-xs text-on-surface-variant">
-            Lương thưởng và các nguồn thu nhập
-          </div>
-        </div>
-
-        {/* Card 3: Total Expenses */}
-        <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-              Tổng Chi tiêu ({periodLabel})
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-error-container/60 flex items-center justify-center text-primary-container">
-              <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
-            </div>
-          </div>
-          <div className="mt-space-sm mb-space-md">
-            <div className="flex items-baseline gap-space-2xs text-primary-container">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                -{periodExpense.toLocaleString('vi-VN')}
-              </span>
-              <span className="font-title-md text-title-md font-bold">₫</span>
-            </div>
-            <p className="font-body-sm text-body-sm text-on-surface-variant font-medium flex items-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-[15px] text-amber-500">info</span> Chi tiêu thực tế
-            </p>
-          </div>
-          <div className="pt-space-xs border-t border-surface-container-high/60 text-xs text-on-surface-variant">
-            Sinh hoạt, mua sắm và ăn uống
-          </div>
-        </div>
-
-        {/* Card 4: Savings Rate / Net Cash Flow */}
-        <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between border border-outline-variant/15 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-              Tỷ lệ tích lũy
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-tertiary-fixed/60 flex items-center justify-center text-tertiary">
-              <span className="material-symbols-outlined text-[20px]">savings</span>
-            </div>
-          </div>
-          <div className="mt-space-sm mb-space-md">
-            <div className="flex items-baseline gap-space-2xs text-tertiary">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                {periodSavingsRate}%
-              </span>
-            </div>
-            <p className="font-body-sm text-body-sm text-secondary font-medium flex items-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-[15px]">verified</span>{' '}
-              Dòng tiền ròng: {periodSurplus >= 0 ? '+' : ''}
-              {periodSurplus.toLocaleString('vi-VN')} ₫
-            </p>
-          </div>
-          <div className="pt-space-xs border-t border-surface-container-high/60 flex items-center justify-between text-xs text-on-surface-variant">
-            <span>Báo cáo tài chính</span>
-            <button
-              onClick={onNavigateToReports}
-              className="text-tertiary font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
-            >
-              Xem báo cáo <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. SMART AI NATURAL LANGUAGE PARSING CARD (PRD 32.1) */}
-      <div className="bg-gradient-to-br from-surface-container-lowest via-surface-container-low to-surface-container-highest/40 p-space-lg rounded-xl shadow-sm mb-space-xl relative overflow-hidden border border-outline-variant/20">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-md mb-space-md">
+    <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop pt-3 sm:pt-4 pb-space-lg select-none">
+      {/* 1. SMART AI NATURAL LANGUAGE PARSING CARD (PRD 32.1) */}
+      <div className="bg-gradient-to-br from-surface-container-lowest via-surface-container-low to-surface-container-highest/40 p-3.5 sm:p-4 rounded-xl shadow-xs mb-3 sm:mb-3.5 relative overflow-hidden border border-outline-variant/20">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-2.5">
           <div className="flex items-center gap-space-sm">
             <div className="w-9 h-9 rounded-xl bg-tertiary flex items-center justify-center text-on-tertiary shadow-sm">
               <span className="material-symbols-outlined text-[22px]">smart_toy</span>
@@ -1055,6 +868,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               if (e.key === 'Enter') handleAiParse();
             }}
           />
+          {aiText && (
+            <button
+              type="button"
+              onClick={handleCancelAi}
+              className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer shrink-0"
+              title="Xóa trắng nội dung"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          )}
           <button
             onClick={toggleVoiceInput}
             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer ${
@@ -1193,6 +1016,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             <div className="flex items-center gap-space-xs shrink-0 self-end md:self-auto">
               <button
+                onClick={handleCancelAi}
+                className="px-space-sm py-1.5 rounded-lg border border-outline-variant/35 bg-surface-container-lowest/80 hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                type="button"
+                title="Hủy bỏ kết quả bóc tách này"
+              >
+                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">close</span>
+                <span>Hủy</span>
+              </button>
+              <button
                 onClick={() => handleEditAiParsed(aiParsed)}
                 className="px-space-sm py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-container text-on-surface font-label-md text-label-md transition-colors cursor-pointer flex items-center gap-1"
                 type="button"
@@ -1225,12 +1057,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
       </div>
 
-      {/* 3. MAIN TRANSACTION LEDGER WORKSPACE */}
-      <div className="w-full flex flex-col gap-space-lg">
+      {/* 2. MAIN TRANSACTION LEDGER WORKSPACE */}
+      <div className="w-full flex flex-col gap-3">
         {/* Main Transaction Card */}
-          <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm border border-outline-variant/15">
+          <div className="bg-surface-container-lowest p-3.5 sm:p-4 md:p-5 rounded-xl shadow-xs border border-outline-variant/15">
             {/* Filter Toolbar with Dropdowns */}
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-sm pb-space-md border-b border-surface-container-high/60">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2 sm:gap-3 pb-2.5 sm:pb-3 border-b border-surface-container-high/60">
               {/* Dropdown Filters Group */}
               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                 {/* 1. Custom Styled Dropdown Phân loại (Thu, Chi) */}
@@ -1966,6 +1798,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             iconName = 'credit_card';
                             iconBg = 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-400';
                             typeLabel = 'Thẻ tín dụng';
+                          } else if (acc.type === 'INVESTMENT') {
+                            iconName = 'trending_up';
+                            iconBg = 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400';
+                            typeLabel = 'Đầu tư';
+                          } else if (acc.type === 'OTHER') {
+                            iconName = 'category';
+                            iconBg = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                            typeLabel = 'Khác';
                           }
 
                           return (
@@ -2058,68 +1898,76 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
             ) : (
-              /* Chronological Grouped Transaction Ledger */
-              groupedTransactions.map((group) => {
-                const netDay = group.dayIncome - group.dayExpense;
-                return (
-                  <div key={group.date} className="mt-space-lg first:mt-space-md">
-                    {/* Day Summary Banner */}
-                    <div className="p-space-md rounded-xl bg-surface-container-low flex flex-col md:flex-row items-start md:items-center justify-between gap-space-xs border border-outline-variant/20">
-                      <div className="flex items-center gap-space-sm">
-                        <div className="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface">
-                          <span className="material-symbols-outlined text-[18px]">
+              /* Scrollable Transaction Ledger Container */
+              <div className="max-h-[560px] overflow-y-auto custom-scroll pr-1.5 mt-2">
+                {groupedTransactions.map((group) => {
+                  const netDay = group.dayIncome - group.dayExpense;
+                  return (
+                    <div key={group.date} className="relative mb-4 last:mb-1">
+                      {/* Day Summary Banner (Compact & Sticky Per Day Group inside Scroll Container) */}
+                      <div className="sticky top-0 z-10 py-1.5 px-3 sm:px-4 rounded-xl backdrop-blur-md bg-surface-container-low/95 dark:bg-surface-container/95 border border-outline-variant/25 shadow-xs flex flex-wrap items-center justify-between gap-2 transition-all">
+                      {/* Left: Compact Date Info */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-md bg-surface-container-highest flex items-center justify-center text-on-surface shrink-0">
+                          <span className="material-symbols-outlined text-[15px]">
                             calendar_today
                           </span>
                         </div>
-                        <div>
-                          <div className="font-headline-sm text-headline-sm text-on-surface font-bold">
+                        <div className="flex items-baseline gap-2 min-w-0 flex-wrap">
+                          <span className="font-bold text-xs sm:text-sm text-on-surface truncate">
                             {group.formattedDate}
-                          </div>
-                          <div className="font-body-sm text-body-sm text-on-surface-variant">
-                            {group.dayOfWeek} • {group.items.length} giao dịch ghi nhận
-                          </div>
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant font-medium">
+                            {group.dayOfWeek}
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded-md bg-surface-container text-on-surface-variant font-medium text-[10px] shrink-0">
+                            {group.items.length} giao dịch
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-space-md self-end md:self-auto font-label-md text-label-md">
-                        <div className="text-right">
-                          <div className="text-on-surface-variant font-body-sm text-body-sm">
-                            Thu nhập
-                          </div>
-                          <div className="text-secondary font-bold font-currency-row text-currency-row">
+                      {/* Right: Compact Totals (Thu nhập, Chi tiêu, Dòng tiền ròng) */}
+                      <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto font-label-sm text-label-sm">
+                        {/* Thu nhập */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-on-surface-variant text-[11px] hidden md:inline">Thu:</span>
+                          <span className="text-secondary font-bold font-currency-row text-xs sm:text-sm">
                             +{group.dayIncome.toLocaleString('vi-VN')} ₫
-                          </div>
+                          </span>
                         </div>
-                        <div className="h-6 w-px bg-surface-container-highest"></div>
-                        <div className="text-right">
-                          <div className="text-on-surface-variant font-body-sm text-body-sm">
-                            Chi tiêu
-                          </div>
-                          <div className="text-primary-container font-bold font-currency-row text-currency-row">
+
+                        <div className="h-3.5 w-px bg-outline-variant/30"></div>
+
+                        {/* Chi tiêu */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-on-surface-variant text-[11px] hidden md:inline">Chi:</span>
+                          <span className="text-primary-container font-bold font-currency-row text-xs sm:text-sm">
                             -{group.dayExpense.toLocaleString('vi-VN')} ₫
-                          </div>
+                          </span>
                         </div>
-                        <div className="h-6 w-px bg-surface-container-highest"></div>
-                        <div className="text-right">
-                          <div className="text-on-surface-variant font-body-sm text-body-sm">
-                            Dòng tiền ròng
-                          </div>
-                          <div
-                            className={`font-bold font-currency-row text-currency-row ${
+
+                        <div className="h-3.5 w-px bg-outline-variant/30"></div>
+
+                        {/* Dòng tiền ròng */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-on-surface-variant text-[11px] hidden md:inline">Ròng:</span>
+                          <span
+                            className={`font-bold font-currency-row text-xs sm:text-sm ${
                               netDay >= 0 ? 'text-secondary' : 'text-primary-container'
                             }`}
                           >
                             {netDay >= 0 ? '+' : ''}
                             {netDay.toLocaleString('vi-VN')} ₫
-                          </div>
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Transactions Ledger List for This Day */}
-                    <div className="flex flex-col gap-1.5 mt-1.5 mx-3 sm:mx-6 md:mx-8">
+                    <div className="flex flex-col gap-1.5 mt-1.5 mx-1 sm:mx-2 md:mx-3">
                       {group.items.map((tx) => {
                         const isIncome = tx.type === 'INCOME';
+                        const isTransfer = tx.type === 'TRANSFER';
                         return (
                           <div
                             key={tx.id}
@@ -2130,26 +1978,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               <div
                                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center shrink-0"
                                 style={{
-                                  backgroundColor: isIncome ? '#85f8c4' : '#ffdad6',
-                                  color: isIncome ? '#006c4a' : '#dc2626',
+                                  backgroundColor: isIncome ? '#85f8c4' : (isTransfer ? '#dbeafe' : '#ffdad6'),
+                                  color: isIncome ? '#006c4a' : (isTransfer ? '#1d4ed8' : '#dc2626'),
                                 }}
                               >
                                 <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
-                                  {tx.category.icon || (isIncome ? 'account_balance' : 'payments')}
+                                  {isTransfer
+                                    ? 'swap_horiz'
+                                    : (tx.category?.icon || (isIncome ? 'account_balance' : 'payments'))}
                                 </span>
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-xs sm:text-sm text-on-surface font-semibold truncate">
-                                    {tx.note || tx.category.name}
+                                    {tx.note || (isTransfer ? 'Chuyển khoản nội bộ' : (tx.category?.name || 'Giao dịch'))}
                                   </span>
-                                  <span className="px-1.5 py-0.2 rounded bg-surface-container text-on-surface text-[10px] font-medium">
-                                    {tx.category.name}
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[10px] font-medium ${
+                                      isTransfer
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-surface-container text-on-surface'
+                                    }`}
+                                  >
+                                    {isTransfer ? 'Chuyển khoản' : (tx.category?.name || 'Khác')}
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-on-surface-variant flex items-center gap-1 mt-0.5">
                                   <span className="font-medium text-on-surface">
-                                    {tx.account.name}
+                                    {isTransfer
+                                      ? `${tx.account.name} ➔ ${tx.toAccount?.name || 'Ví đích'}`
+                                      : tx.account.name}
                                   </span>
                                   {tx.time && (
                                     <>
@@ -2157,7 +2015,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       <span>{tx.time}</span>
                                     </>
                                   )}
-                                  {tx.note && (
+                                  {tx.note && !isTransfer && (
                                     <>
                                       <span>•</span>
                                       <span className="truncate max-w-[200px] text-on-surface-variant italic">
@@ -2174,20 +2032,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               <div className="text-right">
                                 <div
                                   className={`text-xs sm:text-sm font-bold ${
-                                    isIncome ? 'text-secondary' : 'text-primary-container'
+                                    isIncome
+                                      ? 'text-secondary'
+                                      : isTransfer
+                                      ? 'text-blue-600'
+                                      : 'text-primary-container'
                                   }`}
                                 >
-                                  {isIncome ? '+' : '-'}
+                                  {isIncome ? '+' : (isTransfer ? '⇄ ' : '-')}
                                   {tx.amount.toLocaleString('vi-VN')} ₫
                                 </div>
                                 <span
                                   className={`text-[10px] px-1.5 py-0.2 rounded font-medium inline-block mt-0.5 ${
                                     isIncome
                                       ? 'bg-secondary-fixed/40 text-on-secondary-fixed'
+                                      : isTransfer
+                                      ? 'bg-blue-100 text-blue-700'
                                       : 'text-on-surface-variant bg-surface-container'
                                   }`}
                                 >
-                                  {isIncome ? 'Hoàn tất' : 'Chi tiêu'}
+                                  {isIncome ? 'Hoàn tất' : (isTransfer ? 'Điều chuyển' : 'Chi tiêu')}
                                 </span>
                               </div>
 
@@ -2211,7 +2075,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {onDeleteTransaction && (
                                   <button
                                     onClick={() => {
-                                      if (confirm(`Bạn có chắc muốn xóa giao dịch "${tx.note || tx.category.name}"?`)) {
+                                      if (confirm(`Bạn có chắc muốn xóa giao dịch "${tx.note || tx.category?.name || 'Chuyển khoản'}"?`)) {
                                         onDeleteTransaction(tx.id);
                                       }
                                     }}
@@ -2228,10 +2092,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                         );
                       })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
 
             {/* Pagination Controls (100 giao dịch/trang) */}

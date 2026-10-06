@@ -15,6 +15,7 @@ public class AccountResponse {
     private Long creditLimit;
     private Boolean isArchived;
     private String accountNumber;
+    private String note;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -49,6 +50,7 @@ public class AccountResponse {
                 account.getUpdatedAt()
         );
         response.setAccountNumber(account.getAccountNumber());
+        response.setNote(account.getNote());
         return response;
     }
 
@@ -130,5 +132,13 @@ public class AccountResponse {
 
     public void setAccountNumber(String accountNumber) {
         this.accountNumber = accountNumber;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }
