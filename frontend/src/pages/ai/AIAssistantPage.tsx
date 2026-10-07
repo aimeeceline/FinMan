@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { aiService, type AiQuickAddResult, type AiQuickAddItem, type AiInsightsResult, type AiStatusResult } from '../../services/aiService';
 import { transactionService } from '../../services/transactionService';
@@ -71,18 +71,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [aiStatus, setAiStatus] = useState<AiStatusResult | null>(null);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialMountRef = useRef<boolean>(true);
 
-  const handleCopyMessage = (messageId: string, text: string) => {
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopiedMessageId(messageId);
-        setTimeout(() => setCopiedMessageId(null), 2000);
-      }).catch(console.error);
-    }
-  };
 
   // Phát hiện chỉ số tài chính chính (Chi tiêu, Thu nhập, Số dư) để hiển thị Hero Stat Widget
   const detectStatHighlight = (text: string) => {
@@ -292,9 +284,47 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     aiService.getStatus().then(setAiStatus).catch(console.error);
   }, [propAccounts, propCategories]);
 
-  // Auto-scroll to bottom of messages
+  // Giữ vị trí luôn ở cuối đoạn chat ngay lập tức khi mở/quay lại trang (không chạy hiệu ứng cuộn từ đầu đến cuối)
+  useLayoutEffect(() => {
+    const scrollToBottomInstant = () => {
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }
+    };
+
+    scrollToBottomInstant();
+    const frameId = requestAnimationFrame(scrollToBottomInstant);
+    const timer = setTimeout(scrollToBottomInstant, 100);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Cuộn xuống cuối khi có tin nhắn mới hoặc AI đang gõ
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }
+      return;
+    }
+
+    // Khi người dùng gửi tin nhắn hoặc AI phản hồi mới dùng smooth scroll
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages, isTyping]);
 
   // Handle User Send Command
@@ -812,14 +842,17 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
               : 'bg-amber-100 text-amber-900 border-amber-300'
               }`}
           >
-            <span className="material-symbols-outlined text-[18px]">
-              {aiStatus?.geminiConnected ? 'neurology' : 'cloud_off'}
-            </span>
-            <span>
-              {aiStatus?.geminiConnected
-                ? `Gemini ${aiStatus.model.replace('gemini-', '')} (Online)`
-                : 'Local Fallback (Offline)'}
-            </span>
+            {!aiStatus?.geminiConnected && (
+  <span className="material-symbols-outlined text-[18px]">
+    cloud_off
+  </span>
+)}
+
+<span>
+  {aiStatus?.geminiConnected
+    ? `Gemini ${aiStatus.model.replace('gemini-', '')} (Online)`
+    : 'Local Fallback (Offline)'}
+</span>
           </div>
 
           <button
@@ -868,7 +901,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden">
 
           {/* Messages Stream Area */}
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scroll p-4 md:p-5 space-y-4">
+          <div
+            ref={chatScrollContainerRef}
+            className="flex-1 min-h-0 overflow-y-auto custom-scroll p-4 md:p-5 space-y-4"
+          >
             {messages.map((m) => {
               const statHighlight = m.sender === 'ai' && !m.isError ? detectStatHighlight(m.text) : null;
 
@@ -878,17 +914,19 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                   className={`flex items-start gap-3.5 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   {/* Avatar Icon */}
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                      m.sender === 'user'
-                        ? 'bg-primary text-white shadow-primary/20'
-                        : 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-primary text-white shadow-blue-500/20 ring-2 ring-blue-100 dark:ring-blue-900/50'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {m.sender === 'user' ? 'person' : 'smart_toy'}
-                    </span>
-                  </div>
+                  {m.sender === 'user' ? (
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm bg-primary text-white shadow-primary/20">
+                      <span className="material-symbols-outlined text-[20px]">person</span>
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden ring-2 ring-blue-100 dark:ring-blue-900/50 shadow-blue-500/20 bg-surface-container-low">
+                      <img
+                        src="/avtAI.png"
+                        alt="FinMan AI"
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    </div>
+                  )}
 
                   {/* Message Bubble & Cards */}
                   <div
@@ -910,31 +948,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                     ) : (
                       /* AI Assistant Response Box */
                       <div className="w-full bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-2xl rounded-tl-sm p-4 md:p-5 shadow-xs hover:shadow-sm transition-all duration-200">
-                        {/* Top Bar: Brand, Badge & Copy Button */}
-                        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-outline-variant/15 text-xs text-on-surface-variant">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-on-surface flex items-center gap-1.5 font-label-md">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                              FinMan AI
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                              Trợ lý tài chính
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleCopyMessage(m.id, m.text)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all cursor-pointer font-medium"
-                            title="Sao chép câu trả lời"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">
-                              {copiedMessageId === m.id ? 'check' : 'content_copy'}
-                            </span>
-                            <span>{copiedMessageId === m.id ? 'Đã chép' : 'Sao chép'}</span>
-                          </button>
-                        </div>
-
+                        
                         {/* Hero Stat Highlight Card (Nếu có con số trọng tâm) */}
                         {statHighlight && (
                           <div
@@ -970,14 +984,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
                           {renderAiFormattedContent(m.text)}
                         </div>
 
-                        {/* Footer: Verified Source & Time */}
-                        <div className="flex items-center justify-between pt-2.5 mt-3 border-t border-outline-variant/10 text-[11px] text-on-surface-variant/70">
-                          <span className="flex items-center gap-1 text-[11px]">
-                            <span className="material-symbols-outlined text-[13px] text-primary">verified_user</span>
-                            Dữ liệu xác thực từ tài khoản ví
-                          </span>
-                          <span>{m.time}</span>
-                        </div>
+                        
                       </div>
                     )}
 
@@ -1710,8 +1717,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
             {/* AI Typing Indicator */}
             {isTyping && (
               <div className="flex items-center gap-3 text-xs text-on-surface-variant animate-pulse">
-                <div className="w-8 h-8 rounded-xl bg-tertiary flex items-center justify-center text-on-tertiary shadow-sm">
-                  <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900/40 relative">
+                  <img src="/avtAI.png" alt="FinMan AI" className="w-full h-full object-cover rounded-xl" />
                 </div>
                 <span>Gemini AI đang phân tích và bóc tách dữ liệu tài chính...</span>
               </div>

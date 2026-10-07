@@ -53,13 +53,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToRegister }) =>
         {/* Left Hero Prestige Presentation (5 cols) */}
         <div className="lg:col-span-5 flex flex-col justify-center relative py-6 pr-0 lg:pr-6">
           <div className="relative flex flex-col items-start z-10">
-            {/* Coin Crest Emblem */}
+            {/* Brand Logo Emblem */}
             <div className="relative mb-6 self-start">
-              <div className="absolute inset-0 rounded-full bg-amber-400/20 blur-xl transform scale-110"></div>
-              <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 shadow-xl flex items-center justify-center">
-                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-amber-300 font-extrabold text-3xl shadow-inner border border-amber-300/40">
-                  FM
-                </div>
+              <div className="absolute inset-0 rounded-2xl bg-amber-400/20 blur-xl transform scale-110"></div>
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl p-2.5 bg-surface-container-lowest shadow-xl flex items-center justify-center border border-outline-variant/30">
+                <img src="/logo.png" alt="FinMan Logo" className="w-full h-full object-contain" />
               </div>
             </div>
 

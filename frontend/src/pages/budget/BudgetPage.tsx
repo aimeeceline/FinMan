@@ -82,6 +82,12 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
   const [formCategoryId, setFormCategoryId] = useState<number>(0);
   const [isFormCategoryDropdownOpen, setIsFormCategoryDropdownOpen] = useState<boolean>(false);
   const formCategoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [isFormMonthPickerOpen, setIsFormMonthPickerOpen] = useState<boolean>(false);
+  const [formPickerYear, setFormPickerYear] = useState<number>(() => {
+    const [y] = currentMonthStr.split('-').map(Number);
+    return y || new Date().getFullYear();
+  });
+  const formMonthPickerRef = useRef<HTMLDivElement>(null);
   const [formAmount, setFormAmount] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -128,6 +134,32 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isFormCategoryDropdownOpen]);
+
+  // Close form month picker popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        formMonthPickerRef.current &&
+        !formMonthPickerRef.current.contains(e.target as Node)
+      ) {
+        setIsFormMonthPickerOpen(false);
+      }
+    };
+    if (isFormMonthPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFormMonthPickerOpen]);
+
+  // Sync formPickerYear when formMonth changes
+  useEffect(() => {
+    if (formMonth) {
+      const [y] = formMonth.split('-').map(Number);
+      if (y) setFormPickerYear(y);
+    }
+  }, [formMonth]);
 
   // Selected category in modal
   const selectedFormCategory = useMemo(() => {
@@ -327,6 +359,9 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
     setEditingBudget(null);
     setFormCategoryId(categories[0]?.id || 0);
     setFormMonth(selectedMonth);
+    const [y] = selectedMonth.split('-').map(Number);
+    if (y) setFormPickerYear(y);
+    setIsFormMonthPickerOpen(false);
     setFormAmount('');
     setFormError(null);
     setIsFormCategoryDropdownOpen(false);
@@ -338,6 +373,9 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
     setEditingBudget(b);
     setFormCategoryId(b.category.id);
     setFormMonth(b.month);
+    const [y] = b.month.split('-').map(Number);
+    if (y) setFormPickerYear(y);
+    setIsFormMonthPickerOpen(false);
     setFormAmount(formatCurrencyInput(b.amount ?? b.allocatedAmount));
     setFormError(null);
     setIsFormCategoryDropdownOpen(false);
@@ -424,10 +462,11 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
     }
   };
 
-  // Format month label (e.g., '2026-09' -> 'Th 9/2026')
+  // Format month label (e.g., '2026-10' -> 'Tháng 10/2026')
   const formatMonthLabel = (monthStr: string) => {
+    if (!monthStr) return '';
     const [y, m] = monthStr.split('-');
-    return `Tháng  ${parseInt(m, 10)}/${y}`;
+    return `Tháng ${parseInt(m, 10)}/${y}`;
   };
 
   return (
@@ -1128,16 +1167,143 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Chu kỳ tháng áp dụng
-                </label>
-                <input
-                  type="month"
-                  value={formMonth}
-                  onChange={(e) => setFormMonth(e.target.value)}
-                  className="w-full bg-surface-container-low rounded-xl px-3 py-2 text-sm border border-outline-variant/40 text-on-surface font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-                />
+              <div className="relative" ref={formMonthPickerRef}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-on-surface-variant">
+                    Chu kỳ tháng áp dụng
+                  </label>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {formatMonthLabel(formMonth)}
+                  </span>
+                </div>
+
+                {/* Custom Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFormCategoryDropdownOpen(false);
+                    setIsFormMonthPickerOpen((prev) => !prev);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${
+                    isFormMonthPickerOpen
+                      ? 'border-2 border-primary bg-surface-container-low ring-2 ring-primary/15'
+                      : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/40 hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[19px]">calendar_month</span>
+                    </div>
+                    <span className="font-bold text-sm text-on-surface tracking-tight">
+                      {formatMonthLabel(formMonth)}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${
+                      isFormMonthPickerOpen ? 'rotate-180 text-primary' : ''
+                    }`}
+                  >
+                    expand_more
+                  </span>
+                </button>
+
+                {/* Custom Month Picker Dropdown Popover */}
+                {isFormMonthPickerOpen && (
+                  <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white dark:bg-surface-container-lowest rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.22)] border border-slate-200/90 dark:border-outline-variant/30 p-4 animate-in fade-in zoom-in-95 select-none">
+                    {/* Header: Year Navigator */}
+                    <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-surface-container-high/60">
+                      <button
+                        type="button"
+                        onClick={() => setFormPickerYear((prev) => prev - 1)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                        title="Năm trước"
+                      >
+                        <span className="material-symbols-outlined text-lg">chevron_left</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Năm</span>
+                        <select
+                          value={formPickerYear}
+                          onChange={(e) => setFormPickerYear(Number(e.target.value))}
+                          className="bg-slate-100 dark:bg-surface-container-low px-2.5 py-1 rounded-lg border border-outline-variant/40 font-bold text-primary cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 text-xs"
+                        >
+                          {Array.from({ length: 21 }, (_, i) => 2020 + i).map((y) => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormPickerYear((prev) => prev + 1)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                        title="Năm sau"
+                      >
+                        <span className="material-symbols-outlined text-lg">chevron_right</span>
+                      </button>
+                    </div>
+
+                    {/* 12 Months Grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                        const mStr = `${formPickerYear}-${String(m).padStart(2, '0')}`;
+                        const isSelected = formMonth === mStr;
+                        const now = new Date();
+                        const isCurrentMonth = now.getFullYear() === formPickerYear && now.getMonth() + 1 === m;
+
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => {
+                              setFormMonth(mStr);
+                              setIsFormMonthPickerOpen(false);
+                            }}
+                            className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${
+                              isSelected
+                                ? 'bg-primary text-white shadow-sm font-bold scale-[1.02]'
+                                : 'bg-slate-50 dark:bg-surface-container-low hover:bg-slate-100 dark:hover:bg-surface-container text-slate-800 dark:text-on-surface border border-slate-200/50 dark:border-transparent'
+                            }`}
+                          >
+                            Tháng {m}
+                            {isCurrentMonth && !isSelected && (
+                              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer Quick Action */}
+                    <div className="mt-3.5 pt-2.5 border-t border-surface-container-high/60 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const now = new Date();
+                          const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                          setFormPickerYear(now.getFullYear());
+                          setFormMonth(cur);
+                          setIsFormMonthPickerOpen(false);
+                        }}
+                        className="text-xs font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">today</span>
+                        Tháng hiện tại
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsFormMonthPickerOpen(false)}
+                        className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-surface-container font-medium"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

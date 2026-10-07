@@ -38,15 +38,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* 1. Brand Header (Fixed Top) */}
       <div className="h-18 lg:h-20 px-space-lg flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-space-sm cursor-pointer" onClick={() => onNavigate('giao-dich')}>
-          <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center overflow-hidden shadow-sm ring-1 ring-outline-variant/30">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 via-amber-400 to-amber-200 flex items-center justify-center text-white font-extrabold text-sm shadow-inner">
-              FM
-            </div>
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onNavigate('giao-dich')}>
+          <div className="w-11 h-11 rounded-xl bg-surface-container/70 flex items-center justify-center overflow-hidden shadow-xs ring-1 ring-outline-variant/30 group-hover:scale-105 group-hover:shadow-sm transition-all duration-200">
+            <img src="/logo.png" alt="FinMan Logo" className="w-full h-full object-contain p-0.5" />
           </div>
-          <div className="flex flex-col">
-            <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface font-extrabold">
-              FinMan
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center leading-none">
+              <span className="text-[22px] tracking-tight text-on-surface font-extrabold group-hover:text-primary transition-colors duration-200">
+                Fin<span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Man</span>
+              </span>
+            </div>
+            <span className="text-[10px] font-semibold tracking-wider text-on-surface-variant/70 uppercase leading-none mt-1">
+              Quản lý tài chính
             </span>
           </div>
         </div>

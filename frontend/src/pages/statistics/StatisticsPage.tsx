@@ -769,7 +769,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
               <button
                 onClick={toggleBalance}
                 className="p-1 text-blue-200 hover:text-white transition-colors cursor-pointer"
-                title={showBalance ? 'Ẩn số dư' : 'Hiện số dư'}
+                title={showBalance ? 'Ẩn tất cả số tiền' : 'Hiện tất cả số tiền'}
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {showBalance ? 'visibility' : 'visibility_off'}
@@ -819,7 +819,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
           <div className="mt-space-sm mb-space-md relative z-10">
             <div className="flex items-baseline gap-space-2xs text-white">
               <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                +{allTimeIncome.toLocaleString('vi-VN')}
+                {showBalance ? `+${allTimeIncome.toLocaleString('vi-VN')}` : '••••••••'}
               </span>
               <span className="font-title-md text-title-md text-emerald-200 font-bold">₫</span>
             </div>
@@ -846,7 +846,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
           <div className="mt-space-sm mb-space-md relative z-10">
             <div className="flex items-baseline gap-space-2xs text-white">
               <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
-                -{allTimeExpense.toLocaleString('vi-VN')}
+                {showBalance ? `-${allTimeExpense.toLocaleString('vi-VN')}` : '••••••••'}
               </span>
               <span className="font-title-md text-title-md text-rose-200 font-bold">₫</span>
             </div>
@@ -878,8 +878,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
             </div>
             <p className="font-body-sm text-body-sm text-purple-100 font-medium flex items-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-[15px]">verified</span>{' '}
-              Dòng tiền ròng: {allTimeSurplus >= 0 ? '+' : ''}
-              {allTimeSurplus.toLocaleString('vi-VN')} ₫
+              Dòng tiền ròng: {showBalance ? `${allTimeSurplus >= 0 ? '+' : ''}${allTimeSurplus.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
             </p>
           </div>
           <div className="pt-space-xs border-t border-white/20 flex items-center justify-between text-xs text-purple-100 relative z-10">
@@ -1088,12 +1087,12 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                     {/* Micro Cashflows on calendar cell */}
                     {flow && flow.income > 0 && (
                       <span className="text-secondary font-bold text-[9px] leading-tight mt-0.5">
-                        +{flow.income >= 1_000_000 ? `${(flow.income / 1_000_000).toFixed(1)}M` : `${Math.round(flow.income / 1000)}k`}
+                        {showBalance ? `+${flow.income >= 1_000_000 ? `${(flow.income / 1_000_000).toFixed(1)}M` : `${Math.round(flow.income / 1000)}k`}` : '+•••'}
                       </span>
                     )}
                     {flow && flow.expense > 0 && (
                       <span className="text-primary font-bold text-[9px] leading-tight mt-0.5">
-                        -{flow.expense >= 1_000_000 ? `${(flow.expense / 1_000_000).toFixed(1)}M` : `${Math.round(flow.expense / 1000)}k`}
+                        {showBalance ? `-${flow.expense >= 1_000_000 ? `${(flow.expense / 1_000_000).toFixed(1)}M` : `${Math.round(flow.expense / 1000)}k`}` : '-•••'}
                       </span>
                     )}
                   </div>
@@ -1191,7 +1190,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                       </div>
                       <div className="text-right shrink-0">
                         <span className="font-currency-row text-currency-row text-primary block">
-                          -{item.amount.toLocaleString('vi-VN')}₫
+                          {showBalance ? `-${item.amount.toLocaleString('vi-VN')}₫` : '••••••••'}
                         </span>
                         <span className="font-label-sm text-label-sm text-on-surface-variant block">
                           {item.percent}% chi tiêu
@@ -1485,10 +1484,10 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                         {trendPoints[hoveredPoint].label} ({trendPoints[hoveredPoint].displayDate})
                       </text>
                       <text x="10" y="33" fill="#34d399" fontFamily="Inter" fontSize="11" fontWeight="700">
-                        +Thu: {incomePoints[hoveredPoint].income.toLocaleString('vi-VN')}₫
+                        +Thu: {showBalance ? `${incomePoints[hoveredPoint].income.toLocaleString('vi-VN')}₫` : '••••••••'}
                       </text>
                       <text x="10" y="49" fill="#f87171" fontFamily="Inter" fontSize="11" fontWeight="700">
-                        -Chi: {expensePoints[hoveredPoint].expense.toLocaleString('vi-VN')}₫
+                        -Chi: {showBalance ? `${expensePoints[hoveredPoint].expense.toLocaleString('vi-VN')}₫` : '••••••••'}
                       </text>
                     </g>
                   </g>
@@ -1519,7 +1518,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   {trendViewMode === 'WEEK' ? 'Tổng thu 7 ngày' : trendViewMode === 'MONTH' ? 'Tổng thu tháng' : 'Tổng thu cả năm'}
                 </span>
                 <span className="font-title-md text-title-md text-secondary font-bold">
-                  +{totalPeriodIncome.toLocaleString('vi-VN')}₫
+                  {showBalance ? `+${totalPeriodIncome.toLocaleString('vi-VN')}₫` : '••••••••'}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -1527,7 +1526,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   {trendViewMode === 'WEEK' ? 'Tổng chi 7 ngày' : trendViewMode === 'MONTH' ? 'Tổng chi tháng' : 'Tổng chi cả năm'}
                 </span>
                 <span className="font-title-md text-title-md text-primary font-bold">
-                  -{totalPeriodExpense.toLocaleString('vi-VN')}₫
+                  {showBalance ? `-${totalPeriodExpense.toLocaleString('vi-VN')}₫` : '••••••••'}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -1538,7 +1537,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   className={`font-title-md text-title-md font-bold ${netPeriodCashflow >= 0 ? 'text-secondary' : 'text-primary'
                     }`}
                 >
-                  {netPeriodCashflow >= 0 ? '+' : ''}{netPeriodCashflow.toLocaleString('vi-VN')}₫
+                  {showBalance ? `${netPeriodCashflow >= 0 ? '+' : ''}${netPeriodCashflow.toLocaleString('vi-VN')}₫` : '••••••••'}
                 </span>
               </div>
             </div>
@@ -1608,7 +1607,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                     className={`font-headline-sm text-headline-sm font-bold leading-none ${breakdownType === 'EXPENSE' ? 'text-primary' : 'text-secondary'
                       }`}
                   >
-                    {totalBreakdownAmount.toLocaleString('vi-VN')}₫
+                    {showBalance ? `${totalBreakdownAmount.toLocaleString('vi-VN')}₫` : '••••••••'}
                   </span>
                 </div>
               </div>
@@ -1657,7 +1656,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                             });
                           }}
                         >
-                          <title>{`${segment.name}: ${segment.amount.toLocaleString('vi-VN')}₫ (${segment.percent}%) - Bấm để xem danh sách giao dịch`}</title>
+                          <title>{`${segment.name}: ${showBalance ? `${segment.amount.toLocaleString('vi-VN')}₫` : '••••••••'} (${segment.percent}%) - Bấm để xem danh sách giao dịch`}</title>
                         </path>
                       );
                     })}
@@ -1675,7 +1674,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface-variant text-[11px] truncate max-w-[110px]">
                       {hoveredCategoryName && activeCategory
-                        ? `${activeCategory.amount.toLocaleString('vi-VN')}₫`
+                        ? (showBalance ? `${activeCategory.amount.toLocaleString('vi-VN')}₫` : '••••••••')
                         : 'Tập trung'}
                     </span>
                   </div>
@@ -1718,7 +1717,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                             className={`font-currency-row text-currency-row font-bold ${breakdownType === 'EXPENSE' ? 'text-on-surface' : 'text-secondary'
                               }`}
                           >
-                            {breakdownType === 'INCOME' ? '+' : ''}{c.amount.toLocaleString('vi-VN')}₫
+                            {showBalance ? `${breakdownType === 'INCOME' ? '+' : ''}${c.amount.toLocaleString('vi-VN')}₫` : '••••••••'}
                           </span>
                           <span
                             className={`px-space-xs py-0.5 rounded font-label-sm text-label-sm font-bold ${idx === 0
@@ -1795,7 +1794,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   Tổng thu trong ngày
                 </span>
                 <span className="font-currency-row text-sm font-bold text-secondary mt-1">
-                  +{selectedDayFlow.income.toLocaleString('vi-VN')} ₫
+                  {showBalance ? `+${selectedDayFlow.income.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-error-container/40 border border-primary/20 flex flex-col">
@@ -1804,7 +1803,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   Tổng chi trong ngày
                 </span>
                 <span className="font-currency-row text-sm font-bold text-primary mt-1">
-                  -{selectedDayFlow.expense.toLocaleString('vi-VN')} ₫
+                  {showBalance ? `-${selectedDayFlow.expense.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
                 </span>
               </div>
             </div>
@@ -1864,8 +1863,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                         className={`font-currency-row text-sm font-bold shrink-0 ${isIncome ? 'text-secondary' : isTransfer ? 'text-blue-600' : 'text-primary'
                           }`}
                       >
-                        {isIncome ? '+' : (isTransfer ? '⇄ ' : '-')}
-                        {t.amount.toLocaleString('vi-VN')} ₫
+                        {showBalance ? `${isIncome ? '+' : (isTransfer ? '⇄ ' : '-')}${t.amount.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
                       </div>
                     </div>
                   );
@@ -1944,7 +1942,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                   Tổng {breakdownType === 'EXPENSE' ? 'chi' : 'thu'} danh mục
                 </span>
                 <span className="font-currency-row text-sm font-bold mt-1">
-                  {breakdownType === 'EXPENSE' ? '-' : '+'}{selectedCategoryTotal.toLocaleString('vi-VN')} ₫
+                  {showBalance ? `${breakdownType === 'EXPENSE' ? '-' : '+'}${selectedCategoryTotal.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex flex-col text-on-surface">
@@ -2004,7 +2002,7 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                         className={`font-currency-row text-sm font-bold shrink-0 ${isIncome ? 'text-secondary' : 'text-primary'
                           }`}
                       >
-                        {isIncome ? '+' : '-'}{t.amount.toLocaleString('vi-VN')} ₫
+                        {showBalance ? `${isIncome ? '+' : '-'}${t.amount.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
                       </div>
                     </div>
                   );
