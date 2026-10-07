@@ -125,7 +125,7 @@ class AuthServiceTest {
         ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
         verify(accountRepository).save(accountCaptor.capture());
         Account capturedAccount = accountCaptor.getValue();
-        assertEquals("Tiền mặt", capturedAccount.getName());
+        assertEquals("Ví tiền mặt", capturedAccount.getName());
         assertEquals(AccountType.CASH, capturedAccount.getType());
         assertEquals(0L, capturedAccount.getInitialBalance());
         assertEquals(0L, capturedAccount.getCurrentBalance());
@@ -339,7 +339,7 @@ class AuthServiceTest {
         // Verify cash wallet was created
         ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
         verify(accountRepository).save(accountCaptor.capture());
-        assertEquals("Tiền mặt", accountCaptor.getValue().getName());
+        assertEquals("Ví tiền mặt", accountCaptor.getValue().getName());
         assertEquals(AccountType.CASH, accountCaptor.getValue().getType());
         assertEquals(0L, accountCaptor.getValue().getCurrentBalance());
     }

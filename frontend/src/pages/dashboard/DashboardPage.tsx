@@ -1838,7 +1838,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
                         </div>
                         <span className="font-bold text-xs text-slate-800 dark:text-on-surface uppercase tracking-wider">
-                          Nguồn tiền & Tài khoản
+                          Tài khoản
                         </span>
                       </div>
 
@@ -2118,14 +2118,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       <span>{tx.time}</span>
                                     </>
                                   )}
-                                  {tx.note && !isTransfer && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="truncate max-w-[200px] text-on-surface-variant italic">
-                                        {tx.note}
-                                      </span>
-                                    </>
-                                  )}
+                                  
                                 </div>
                               </div>
                             </div>

@@ -385,6 +385,13 @@ const MainApp: React.FC = () => {
         categories={categories}
         transactions={transactions}
         onCategoryCreated={(newCat) => setCategories((prev) => [...prev, newCat])}
+        onAccountCreated={(newAcc) => {
+          setAccounts((prev) => {
+            const exists = prev.some((a) => a.id === newAcc.id);
+            return exists ? prev : [...prev, newAcc];
+          });
+          loadData();
+        }}
       />
     </div>
   );

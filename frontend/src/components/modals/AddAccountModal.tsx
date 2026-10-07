@@ -86,8 +86,13 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setPaymentAccountId(targetPaymentId);
     } else {
       setModalType(defaultType);
-      setModalName('');
-      setModalNote('');
+      if (defaultType === 'CASH' && (!existingAccounts || existingAccounts.length === 0)) {
+        setModalName('Ví tiền mặt');
+        setModalNote('Ví tiền mặt chi tiêu hàng ngày');
+      } else {
+        setModalName('');
+        setModalNote('');
+      }
       setModalBalance('');
       setModalCreditLimit('');
       setModalAccountNumber('');
@@ -359,7 +364,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
     >
       <div className="w-full max-w-xl mx-space-md bg-surface-container-lowest rounded-xl shadow-2xl p-space-xl flex flex-col gap-space-lg relative animate-in zoom-in-95 duration-200 border border-outline-variant/20 max-h-[90vh] overflow-y-auto custom-scroll">
@@ -976,22 +981,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               placeholder="Ví dụ: 9968"
               value={modalAccountNumber}
               onChange={(e) => setModalAccountNumber(e.target.value)}
-              className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
-            />
-          </div>
-
-          {/* Ghi chú mục đích sử dụng */}
-          <div className="flex flex-col gap-space-2xs">
-            <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="accNote">
-              Ghi chú mục đích tài khoản (Tùy chọn)
-            </label>
-            <input
-              id="accNote"
-              type="text"
-              maxLength={255}
-              placeholder="Ví dụ: Mua sắm vật dụng trong gia đình, Nuôi con..."
-              value={modalNote}
-              onChange={(e) => setModalNote(e.target.value)}
               className="w-full bg-surface-container-low text-on-surface px-space-md py-space-sm rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-outline-variant/30"
             />
           </div>

@@ -5,6 +5,7 @@ import { categoryService } from '../../services/categoryService';
 import { budgetService } from '../../services/budgetService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 import { AddCategoryModal } from './AddCategoryModal';
+import { AddAccountModal } from './AddAccountModal';
 import { getCategoryTheme } from '../../utils/categoryTheme';
 
 export interface AddTransactionModalProps {
@@ -20,6 +21,7 @@ export interface AddTransactionModalProps {
   transactions?: Transaction[];
   budgets?: Budget[];
   onCategoryCreated?: (newCategory: Category) => void;
+  onAccountCreated?: (newAccount: Account) => void;
 }
 
 // Preset Quick Amount Chips
@@ -68,10 +70,41 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   transactions: _transactions = [],
   budgets: externalBudgets,
   onCategoryCreated,
+  onAccountCreated,
 }) => {
   const initialTransaction = initialTransactionProp || initialData;
   const [categoriesList, setCategoriesList] = useState<Category[]>(categories || []);
   const [accountsList, setAccountsList] = useState<Account[]>(accounts.filter((a) => !a.isArchived));
+
+  // Đồng bộ accountsList khi prop accounts thay đổi hoặc modal mở ra
+  useEffect(() => {
+    setAccountsList(accounts.filter((a) => !a.isArchived));
+  }, [accounts, isOpen]);
+
+  // Quick account creation modal state
+  const [showAddAccountModal, setShowAddAccountModal] = useState<boolean>(false);
+  const [accountTargetField, setAccountTargetField] = useState<'from' | 'to'>('from');
+
+  const handleAccountCreated = (newAccount: Account) => {
+    setAccountsList((prev) => {
+      const exists = prev.some((a) => a.id === newAccount.id);
+      return exists ? prev : [...prev, newAccount];
+    });
+
+    if (accountTargetField === 'to') {
+      setSelectedToAccount(newAccount);
+    } else {
+      setSelectedAccount(newAccount);
+    }
+
+    if (formError) setFormError(null);
+    setShowAddAccountModal(false);
+
+    if (onAccountCreated) {
+      onAccountCreated(newAccount);
+    }
+  };
+
   const [type, setType] = useState<TransactionType>('EXPENSE');
   const [amount, setAmount] = useState<number>(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -871,12 +904,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         {/* Scrollable Modal Body */}
         <form onSubmit={handleSubmit} className="overflow-y-auto custom-scroll px-7 py-5 space-y-5 flex-1">
           {hasNoAccounts && (
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5 shadow-sm">
-              <span className="material-symbols-outlined text-amber-600 text-lg">warning</span>
-              <span>
-                Bạn chưa có tài khoản/khoản tiền mục đích nào. Vui lòng vào trang{' '}
-                <strong>Tài khoản & Mục đích</strong> để tạo khoản tiền trước khi ghi nhận giao dịch.
-              </span>
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-600 text-lg shrink-0">warning</span>
+                <span>
+                  Bạn chưa có tài khoản nào. Bạn có thể nhấn nút bên cạnh để tạo tài khoản mới ngay lập tức.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountTargetField('from');
+                  setShowAddAccountModal(true);
+                }}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-sm shrink-0 cursor-pointer transition-all whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[15px]">add</span>
+                Thêm tài khoản ngay
+              </button>
             </div>
           )}
 
@@ -1071,13 +1116,26 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 </div>
 
                 {accountsList.length < 2 && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start gap-2.5">
-                    <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">
-                      warning
-                    </span>
-                    <div className="leading-relaxed">
-                      <strong>Cần ít nhất 2 tài khoản:</strong> Bạn cần có ít nhất 2 tài khoản đang hoạt động để thực hiện chuyển tiền qua lại. Vui lòng vào trang <strong>Tài khoản</strong> để tạo thêm tài khoản mới.
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">
+                        warning
+                      </span>
+                      <div className="leading-relaxed">
+                        <strong>Cần ít nhất 2 tài khoản:</strong> Bạn cần ít nhất 2 tài khoản để thực hiện chuyển tiền qua lại.
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccountTargetField('to');
+                        setShowAddAccountModal(true);
+                      }}
+                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shrink-0 cursor-pointer shadow-xs whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add</span>
+                      Tạo thêm tài khoản
+                    </button>
                   </div>
                 )}
 
@@ -1087,20 +1145,41 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        Khoản tiền nguồn (Trích chuyển đi)
+                        Khoản tiền nguồn
                       </span>
-                      {selectedAccount && (
-                        <span className="text-xs font-semibold text-slate-500 font-currency-row">
-                          {selectedAccount.type === 'CREDIT_CARD'
-                            ? `Khả dụng thẻ: ${formatVND(Math.max(0, (selectedAccount.creditLimit || 0) - (selectedAccount.currentBalance || 0)))}`
-                            : `Khả dụng: ${formatVND(selectedAccount.currentBalance)}`}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {selectedAccount && (
+                          <span className="text-xs font-semibold text-slate-500 font-currency-row">
+                            {selectedAccount.type === 'CREDIT_CARD'
+                              ? `Khả dụng thẻ: ${formatVND(Math.max(0, (selectedAccount.creditLimit || 0) - (selectedAccount.currentBalance || 0)))}`
+                              : `Khả dụng: ${formatVND(selectedAccount.currentBalance)}`}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountTargetField('from');
+                            setShowAddAccountModal(true);
+                          }}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg flex items-center gap-0.5 cursor-pointer transition-all border border-blue-200/60"
+                          title="Thêm tài khoản nguồn mới"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">add</span>
+                          Thêm
+                        </button>
+                      </div>
                     </div>
                     <select
                       id="transferFromAccountSelect"
                       value={selectedAccount?.id || ''}
-                      onChange={(e) => handleFromAccountChange(Number(e.target.value))}
+                      onChange={(e) => {
+                        if (e.target.value === '__ADD_NEW__') {
+                          setAccountTargetField('from');
+                          setShowAddAccountModal(true);
+                          return;
+                        }
+                        handleFromAccountChange(Number(e.target.value));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       {accountsList.length === 0 && <option value="">-- Chưa có tài khoản --</option>}
@@ -1116,6 +1195,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                           </option>
                         );
                       })}
+                      <option value="__ADD_NEW__">➕ Thêm tài khoản mới...</option>
                     </select>
 
                     {selectedAccount && (
@@ -1158,18 +1238,39 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Khoản tiền đích (Mục đích nhận tiền)
+                        Khoản tiền đích
                       </span>
-                      {selectedToAccount && (
-                        <span className="text-xs font-semibold text-slate-500 font-currency-row">
-                          Hiện có: {formatVND(selectedToAccount.currentBalance)}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {selectedToAccount && (
+                          <span className="text-xs font-semibold text-slate-500 font-currency-row">
+                            Hiện có: {formatVND(selectedToAccount.currentBalance)}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountTargetField('to');
+                            setShowAddAccountModal(true);
+                          }}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg flex items-center gap-0.5 cursor-pointer transition-all border border-blue-200/60"
+                          title="Thêm tài khoản đích mới"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">add</span>
+                          Thêm
+                        </button>
+                      </div>
                     </div>
                     <select
                       id="transferToAccountSelect"
                       value={selectedToAccount?.id || ''}
-                      onChange={(e) => handleToAccountChange(Number(e.target.value))}
+                      onChange={(e) => {
+                        if (e.target.value === '__ADD_NEW__') {
+                          setAccountTargetField('to');
+                          setShowAddAccountModal(true);
+                          return;
+                        }
+                        handleToAccountChange(Number(e.target.value));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       {!selectedToAccount && <option value="">-- Chọn tài khoản nhận tiền --</option>}
@@ -1184,6 +1285,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                           {a.note ? ` - [${a.note}]` : ''}
                         </option>
                       ))}
+                      <option value="__ADD_NEW__">➕ Thêm tài khoản mới...</option>
                     </select>
 
                     {selectedToAccount && (
@@ -1196,15 +1298,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     )}
                   </div>
 
-                  {/* NOTICE BOX */}
-                  <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl text-blue-900 text-xs flex items-start gap-2">
-                    <span className="material-symbols-outlined text-blue-600 text-[18px] shrink-0 mt-0.5">
-                      info
-                    </span>
-                    <span className="leading-relaxed">
-                      Chuyển tiền giữa các tài khoản mục đích sử dụng (ví dụ: Nuôi con, Phụng dưỡng bố mẹ, Đầu tư...) được hệ thống <strong>FinMan cô lập hoàn toàn</strong> khỏi thu nhập và chi tiêu sinh hoạt, đảm bảo độ chính xác tuyệt đối cho báo cáo tài chính.
-                    </span>
-                  </div>
+                  
                 </div>
               </div>
             ) : (
@@ -1400,23 +1494,45 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               {/* Payment Account Selector (Only shown if NOT transfer) */}
               {type !== 'TRANSFER' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-slate-500">
-                      account_balance_wallet
-                    </span>
-                    Tài khoản thanh toán
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-slate-500">
+                        account_balance_wallet
+                      </span>
+                      Tài khoản thanh toán
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccountTargetField('from');
+                        setShowAddAccountModal(true);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100/80 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all border border-blue-200/60"
+                      title="Tạo tài khoản thanh toán mới"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add_circle</span>
+                      Thêm tài khoản
+                    </button>
+                  </div>
                   <div className="relative">
                     <select
                       id="normalAccountSelect"
                       value={selectedAccount?.id || ''}
                       onChange={(e) => {
+                        if (e.target.value === '__ADD_NEW__') {
+                          setAccountTargetField('from');
+                          setShowAddAccountModal(true);
+                          return;
+                        }
                         const acc = accountsList.find((a) => a.id === Number(e.target.value));
                         if (acc) setSelectedAccount(acc);
                         if (formError) setFormError(null);
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all appearance-none cursor-pointer"
                     >
+                      {accountsList.length === 0 && (
+                        <option value="">-- Chưa có tài khoản nào --</option>
+                      )}
                       {accountsList.map((a) => {
                         const isCard = a.type === 'CREDIT_CARD';
                         const avail = isCard && a.creditLimit
@@ -1429,6 +1545,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                           </option>
                         );
                       })}
+                      <option value="__ADD_NEW__">➕ Thêm tài khoản mới...</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1441,6 +1558,20 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       </svg>
                     </div>
                   </div>
+
+                  {accountsList.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccountTargetField('from');
+                        setShowAddAccountModal(true);
+                      }}
+                      className="mt-2 w-full py-2.5 px-3 border border-dashed border-blue-400 bg-blue-50/70 hover:bg-blue-100/70 rounded-xl text-xs font-semibold text-blue-700 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                      Tạo tài khoản / Ví tiền mặt ngay
+                    </button>
+                  )}
 
                   {/* THÔNG TIN THẺ TÍN DỤNG & CẢNH BÁO HẠN MỨC */}
                   {selectedAccount?.type === 'CREDIT_CARD' && creditLimitValidation && (
@@ -1823,6 +1954,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               onCategoryCreated(created);
             }
           }}
+        />
+
+        {/* Quick Add Account Modal */}
+        <AddAccountModal
+          isOpen={showAddAccountModal}
+          onClose={() => setShowAddAccountModal(false)}
+          defaultType={accountsList.length === 0 ? 'CASH' : 'BANK'}
+          existingAccounts={accountsList}
+          onSuccess={handleAccountCreated}
         />
       </section>
     </div>

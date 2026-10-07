@@ -73,10 +73,10 @@ public class AuthService {
         );
         User savedUser = userRepository.save(user);
 
-        // Tự động khởi tạo ví "Tiền mặt" ban đầu với số dư 0đ
+        // Tự động khởi tạo ví "Ví tiền mặt" ban đầu với số dư 0đ
         Account defaultCashAccount = new Account(
                 savedUser,
-                "Tiền mặt",
+                "Ví tiền mặt",
                 AccountType.CASH,
                 0L
         );
@@ -185,10 +185,10 @@ public class AuthService {
             }
             user = userRepository.save(user);
 
-            // Tự động khởi tạo ví Tiền mặt (0đ) cho tài khoản Google mới
+            // Tự động khởi tạo ví Ví tiền mặt (0đ) cho tài khoản Google mới
             Account defaultCashAccount = new Account(
                     user,
-                    "Tiền mặt",
+                    "Ví tiền mặt",
                     AccountType.CASH,
                     0L
             );

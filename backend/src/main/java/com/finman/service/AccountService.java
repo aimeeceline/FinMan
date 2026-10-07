@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,14 +29,29 @@ public class AccountService {
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public AccountSummaryResponse getAccountsSummary(Long userId) {
         return getAccountsSummary(userId, false);
     }
 
+    @Transactional
     public AccountSummaryResponse getAccountsSummary(Long userId, Boolean includeArchived) {
         List<Account> accounts = Boolean.TRUE.equals(includeArchived)
                 ? accountRepository.findByUserId(userId)
                 : accountRepository.findByUserIdAndIsArchivedFalse(userId);
+
+        // Mặc định luôn có Ví tiền mặt: Nếu người dùng chưa có bất kỳ tài khoản nào, tự động tạo "Ví tiền mặt"
+        if (accounts.isEmpty() && !Boolean.TRUE.equals(includeArchived)) {
+            List<Account> allUserAccounts = accountRepository.findByUserId(userId);
+            if (allUserAccounts.isEmpty()) {
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    Account defaultCash = new Account(userOpt.get(), "Ví tiền mặt", AccountType.CASH, 0L);
+                    Account saved = accountRepository.save(defaultCash);
+                    accounts = List.of(saved);
+                }
+            }
+        }
 
         long totalAssets = 0L;
         long totalLiabilities = 0L;

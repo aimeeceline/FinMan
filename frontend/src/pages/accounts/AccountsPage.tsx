@@ -577,8 +577,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           min-w-0
           cursor-pointer
           active:scale-[0.99]
-        `}
-        title="Bấm để xem chi tiết, sửa tài khoản và lịch sử giao dịch"
+        `}    
       >
         {/* TOP ROW: AVATAR + TITLE/SUBTITLE + SỬA & 3 DOTS MENU */}
         <div className="flex items-start justify-between gap-1.5">
@@ -904,7 +903,6 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                 }
                 hover:shadow-md transition-all flex flex-col justify-between gap-space-xs cursor-pointer active:scale-[0.99]
               `}
-              title="Bấm để xem chi tiết và lịch sử giao dịch"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
