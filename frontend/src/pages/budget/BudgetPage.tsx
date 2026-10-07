@@ -1400,7 +1400,6 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
         title="Xác nhận hủy hạn mức ngân sách"
         message="Bạn có chắc chắn muốn hủy theo dõi hạn mức ngân sách cho danh mục này trong tháng hiện tại?"
         itemTitle={budgetToDelete ? `Ngân sách ${budgetToDelete.category.name}` : undefined}
-        subMessage="Lịch sử các giao dịch đã thực hiện trong danh mục này vẫn được lưu giữ an toàn và không bị xóa."
         confirmText="Hủy ngân sách"
         cancelText="Giữ lại"
         type="danger"
