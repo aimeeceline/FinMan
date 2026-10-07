@@ -54,7 +54,7 @@ class AccountServiceTest {
         AccountCreateRequest request = new AccountCreateRequest("Vietcombank", AccountType.BANK, 5_000_000L, 0L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Vietcombank")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Vietcombank")).thenReturn(false);
 
         Account savedAccount = new Account(testUser, "Vietcombank", AccountType.BANK, 5_000_000L);
         savedAccount.setId(10L);
@@ -78,7 +78,7 @@ class AccountServiceTest {
                 20_000_000L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Techcombank Visa")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Techcombank Visa")).thenReturn(false);
 
         Account savedAccount = new Account(testUser, "Techcombank Visa", AccountType.CREDIT_CARD, 0L);
         savedAccount.setId(11L);
@@ -99,7 +99,7 @@ class AccountServiceTest {
         AccountCreateRequest request = new AccountCreateRequest("Tiền mặt", AccountType.CASH, 100_000L, 0L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Tiền mặt")).thenReturn(true);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Tiền mặt")).thenReturn(true);
 
         BusinessValidationException ex = assertThrows(BusinessValidationException.class,
                 () -> accountService.createAccount(1L, request));
@@ -114,7 +114,7 @@ class AccountServiceTest {
         AccountCreateRequest request = new AccountCreateRequest("Tiền mặt", AccountType.CASH, -500_000L, 0L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Tiền mặt")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Tiền mặt")).thenReturn(false);
 
         BusinessValidationException ex = assertThrows(BusinessValidationException.class,
                 () -> accountService.createAccount(1L, request));
@@ -137,7 +137,7 @@ class AccountServiceTest {
         credit.setId(3L);
         credit.setCurrentBalance(1_500_000L); // Dư nợ 1.5M
 
-        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(List.of(cash, bank, credit));
+        when(accountRepository.findByUserIdAndIsArchivedFalseAndDeletedAtIsNull(1L)).thenReturn(List.of(cash, bank, credit));
 
         AccountSummaryResponse summary = accountService.getAccountsSummary(1L);
 
@@ -180,7 +180,7 @@ class AccountServiceTest {
         account.setId(30L);
 
         when(accountRepository.findByIdAndUserId(30L, 1L)).thenReturn(Optional.of(account));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Tên mới")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Tên mới")).thenReturn(false);
         when(accountRepository.save(any(Account.class))).thenReturn(account);
 
         AccountUpdateRequest request = new AccountUpdateRequest("Tên mới", 0L, false);
@@ -216,7 +216,7 @@ class AccountServiceTest {
         Account archivedAcc = new Account(testUser, "Quán cà phê cũ", AccountType.BANK, 2_000_000L);
         archivedAcc.setIsArchived(true);
 
-        when(accountRepository.findByUserId(1L)).thenReturn(List.of(activeAcc, archivedAcc));
+        when(accountRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(List.of(activeAcc, archivedAcc));
 
         AccountSummaryResponse summary = accountService.getAccountsSummary(1L, true);
         assertNotNull(summary);
@@ -232,7 +232,7 @@ class AccountServiceTest {
         savedInvest.setId(50L);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Tài khoản VPS Chứng Khoán")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Tài khoản VPS Chứng Khoán")).thenReturn(false);
         when(accountRepository.save(any(Account.class))).thenReturn(savedInvest);
 
         AccountResponse investRes = accountService.createAccount(1L, investReq);
@@ -244,7 +244,7 @@ class AccountServiceTest {
         Account savedOther = new Account(testUser, "Sổ tay tiết kiệm vàng", AccountType.OTHER, 5_000_000L);
         savedOther.setId(51L);
 
-        when(accountRepository.existsByUserIdAndNameIgnoreCase(1L, "Sổ tay tiết kiệm vàng")).thenReturn(false);
+        when(accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Sổ tay tiết kiệm vàng")).thenReturn(false);
         when(accountRepository.save(any(Account.class))).thenReturn(savedOther);
 
         AccountResponse otherRes = accountService.createAccount(1L, otherReq);
@@ -263,7 +263,7 @@ class AccountServiceTest {
         Account credit = new Account(testUser, "HSBC Visa", AccountType.CREDIT_CARD, 0L);
         credit.setCurrentBalance(4_000_000L); // Dư nợ 4M
 
-        when(accountRepository.findByUserIdAndIsArchivedFalse(1L)).thenReturn(List.of(cash, bank, invest, other, credit));
+        when(accountRepository.findByUserIdAndIsArchivedFalseAndDeletedAtIsNull(1L)).thenReturn(List.of(cash, bank, invest, other, credit));
 
         AccountSummaryResponse summary = accountService.getAccountsSummary(1L);
 

@@ -12,17 +12,23 @@ public class CategoryResponse {
     private CategoryType type;
     private String icon;
     private Boolean isDefault;
+    private Boolean isDeleted;
     private Instant createdAt;
 
     public CategoryResponse() {
     }
 
     public CategoryResponse(Long id, String name, CategoryType type, String icon, Boolean isDefault, Instant createdAt) {
+        this(id, name, type, icon, isDefault, false, createdAt);
+    }
+
+    public CategoryResponse(Long id, String name, CategoryType type, String icon, Boolean isDefault, Boolean isDeleted, Instant createdAt) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.icon = icon;
         this.isDefault = isDefault;
+        this.isDeleted = isDeleted != null ? isDeleted : false;
         this.createdAt = createdAt;
     }
 
@@ -36,6 +42,7 @@ public class CategoryResponse {
                 category.getType(),
                 category.getIcon(),
                 category.getIsDefault(),
+                category.getDeletedAt() != null,
                 category.getCreatedAt()
         );
     }
@@ -78,6 +85,14 @@ public class CategoryResponse {
 
     public void setIsDefault(Boolean isDefault) {
         this.isDefault = isDefault;
+    }
+
+    public Boolean getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Boolean isDeleted) {
+        this.isDeleted = isDeleted;
     }
 
     public Instant getCreatedAt() {

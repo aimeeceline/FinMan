@@ -21,6 +21,8 @@ import jakarta.validation.constraints.Positive;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(
         name = "budgets",
@@ -32,6 +34,7 @@ import java.util.Objects;
                 @Index(name = "idx_budgets_user_category", columnList = "user_id, category_id")
         }
 )
+@SQLRestriction("deleted_at IS NULL")
 public class Budget {
 
     @Id
@@ -63,6 +66,9 @@ public class Budget {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     public Budget() {
     }
@@ -148,6 +154,14 @@ public class Budget {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     @Override

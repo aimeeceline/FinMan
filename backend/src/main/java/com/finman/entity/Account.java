@@ -93,6 +93,12 @@ public class Account {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(name = "is_purged_from_bin", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isPurgedFromBin = false;
+
     public Account() {
     }
 
@@ -143,6 +149,9 @@ public class Account {
         }
         if (this.isArchived == null) {
             this.isArchived = false;
+        }
+        if (this.isPurgedFromBin == null) {
+            this.isPurgedFromBin = false;
         }
     }
 
@@ -277,6 +286,22 @@ public class Account {
 
     public void setIsAutoPayment(Boolean autoPayment) {
         isAutoPayment = autoPayment;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public Boolean getIsPurgedFromBin() {
+        return isPurgedFromBin;
+    }
+
+    public void setIsPurgedFromBin(Boolean isPurgedFromBin) {
+        this.isPurgedFromBin = isPurgedFromBin;
     }
 
     @Override

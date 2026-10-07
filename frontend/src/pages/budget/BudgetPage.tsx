@@ -5,6 +5,7 @@ import type { BudgetSummary } from '../../services/budgetService';
 import type { Budget, Category, Transaction } from '../../types';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 
 export interface BudgetPageProps {
   transactions?: Transaction[];
@@ -91,6 +92,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
   const [formAmount, setFormAmount] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
+  const [isDeletingBudget, setIsDeletingBudget] = useState<boolean>(false);
 
   // State: Toast Notification
   const [toast, setToast] = useState<{ title: string; desc: string } | null>(null);
@@ -447,18 +450,25 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
     }
   };
 
-  // Delete Budget
-  const handleDeleteBudget = async (b: Budget) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn hủy hạn mức ngân sách cho danh mục "${b.category.name}"?`)) {
-      return;
-    }
+  // Delete Budget Trigger
+  const handleDeleteBudget = (b: Budget) => {
+    setBudgetToDelete(b);
+  };
+
+  // Confirm Delete Budget
+  const handleConfirmDeleteBudget = async () => {
+    if (!budgetToDelete) return;
+    setIsDeletingBudget(true);
     try {
-      await budgetService.deleteBudget(b.id);
-      showToast('Xóa ngân sách thành công', `Đã hủy hạn mức của danh mục ${b.category.name}.`);
+      await budgetService.deleteBudget(budgetToDelete.id);
+      showToast('Xóa ngân sách thành công', `Đã hủy hạn mức của danh mục ${budgetToDelete.category.name}.`);
       await loadBudgetData();
+      setBudgetToDelete(null);
     } catch (err: any) {
       console.error('Error deleting budget:', err);
       showToast('Lỗi thao tác', 'Không thể xóa ngân sách này.');
+    } finally {
+      setIsDeletingBudget(false);
     }
   };
 
@@ -940,6 +950,11 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                             <span className="font-title-md text-title-md font-bold text-on-surface">
                               {b.category.name}
                             </span>
+                            {b.category?.isDeleted && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                Thuộc danh mục {b.category.name} đã bị xóa
+                              </span>
+                            )}
                             <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm ${badgeClass}`}>
                               {badgeLabel}
                             </span>
@@ -1375,6 +1390,21 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* 6. Confirm Modal for Deleting Budget */}
+      <ConfirmModal
+        isOpen={Boolean(budgetToDelete)}
+        onClose={() => setBudgetToDelete(null)}
+        onConfirm={handleConfirmDeleteBudget}
+        isLoading={isDeletingBudget}
+        title="Xác nhận hủy hạn mức ngân sách"
+        message="Bạn có chắc chắn muốn hủy theo dõi hạn mức ngân sách cho danh mục này trong tháng hiện tại?"
+        itemTitle={budgetToDelete ? `Ngân sách ${budgetToDelete.category.name}` : undefined}
+        subMessage="Lịch sử các giao dịch đã thực hiện trong danh mục này vẫn được lưu giữ an toàn và không bị xóa."
+        confirmText="Hủy ngân sách"
+        cancelText="Giữ lại"
+        type="danger"
+      />
     </div>
   );
 };

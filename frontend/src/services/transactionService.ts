@@ -83,6 +83,7 @@ export const transactionService = {
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
+        isDeleted: Boolean(item.account?.isDeleted ?? item.account?.deleted),
       },
       toAccount: item.toAccount ? {
         id: item.toAccount.id,
@@ -90,6 +91,7 @@ export const transactionService = {
         type: item.toAccount.type,
         accountNumber: item.toAccount.accountNumber,
         currentBalance: item.toAccount.currentBalance ?? 0,
+        isDeleted: Boolean(item.toAccount?.isDeleted ?? item.toAccount?.deleted),
       } : undefined,
       category: item.category ? {
         id: item.category.id,
@@ -97,6 +99,7 @@ export const transactionService = {
         type: item.category.type,
         icon: item.category.icon || 'payments',
         color: item.category.color,
+        isDeleted: Boolean(item.category?.isDeleted ?? item.category?.deleted),
       } : undefined,
     }));
   },
@@ -134,6 +137,7 @@ export const transactionService = {
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
+        isDeleted: Boolean(item.account?.isDeleted ?? item.account?.deleted),
       },
       toAccount: item.toAccount ? {
         id: item.toAccount.id,
@@ -141,6 +145,7 @@ export const transactionService = {
         type: item.toAccount.type,
         accountNumber: item.toAccount.accountNumber,
         currentBalance: item.toAccount.currentBalance ?? 0,
+        isDeleted: Boolean(item.toAccount?.isDeleted ?? item.toAccount?.deleted),
       } : undefined,
       category: item.category ? {
         id: item.category.id,
@@ -148,6 +153,7 @@ export const transactionService = {
         type: item.category.type,
         icon: item.category.icon || 'payments',
         color: item.category.color,
+        isDeleted: Boolean(item.category?.isDeleted ?? item.category?.deleted),
       } : undefined,
     };
   },
@@ -172,6 +178,7 @@ export const transactionService = {
         type: item.account?.type,
         accountNumber: item.account?.accountNumber,
         currentBalance: item.account?.currentBalance ?? 0,
+        isDeleted: Boolean(item.account?.isDeleted ?? item.account?.deleted),
       },
       toAccount: item.toAccount ? {
         id: item.toAccount.id,
@@ -179,6 +186,7 @@ export const transactionService = {
         type: item.toAccount.type,
         accountNumber: item.toAccount.accountNumber,
         currentBalance: item.toAccount.currentBalance ?? 0,
+        isDeleted: Boolean(item.toAccount?.isDeleted ?? item.toAccount?.deleted),
       } : undefined,
       category: item.category ? {
         id: item.category.id,
@@ -186,6 +194,7 @@ export const transactionService = {
         type: item.category.type,
         icon: item.category.icon || 'payments',
         color: item.category.color,
+        isDeleted: Boolean(item.category?.isDeleted ?? item.category?.deleted),
       } : undefined,
     };
   },

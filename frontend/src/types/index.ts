@@ -25,6 +25,7 @@ export interface Account {
   isAutoPayment?: boolean;
   napasLinked?: boolean;
   isArchived?: boolean;
+  isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -70,6 +71,8 @@ export interface Category {
   icon: string;
   color?: string;
   bgColor?: string;
+  isDefault?: boolean;
+  isDeleted?: boolean;
 }
 
 export interface Transaction {
@@ -107,3 +110,23 @@ export interface FinancialStats {
   savingsRate: number;
   previousMonthNetWorthDelta: number;
 }
+
+export type RecycleBinType = 'ALL' | 'TRANSACTION' | 'CATEGORY' | 'BUDGET' | 'ACCOUNT';
+
+export interface RecycleBinItem {
+  id: number;
+  type: 'TRANSACTION' | 'CATEGORY' | 'BUDGET' | 'ACCOUNT';
+  title: string;
+  subtitle: string;
+  amount?: number;
+  icon?: string;
+  deletedAt: string;
+  daysRemaining: number;
+  extraInfo?: string;
+}
+
+export interface RecycleBinActionPayload {
+  items?: { id: number; type: string }[];
+  emptyAll?: boolean;
+}
+

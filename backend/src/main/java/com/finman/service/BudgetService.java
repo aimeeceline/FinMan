@@ -88,7 +88,7 @@ public class BudgetService {
         YearMonth yearMonth = parseMonth(monthStr);
         String normalizedMonth = yearMonth.toString();
 
-        List<Budget> budgets = budgetRepository.findByUserIdAndMonth(userId, normalizedMonth);
+        List<Budget> budgets = budgetRepository.findByUserIdAndMonthAndDeletedAtIsNull(userId, normalizedMonth);
         List<BudgetResponse> responses = new ArrayList<>(budgets.size());
 
         for (Budget budget : budgets) {
@@ -153,7 +153,8 @@ public class BudgetService {
         Budget budget = budgetRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ngân sách không tồn tại hoặc bạn không có quyền truy cập"));
 
-        budgetRepository.delete(budget);
+        budget.setDeletedAt(java.time.Instant.now());
+        budgetRepository.save(budget);
     }
 
     public Long calculateSpentAmount(Long userId, Long categoryId, YearMonth yearMonth) {

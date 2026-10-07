@@ -8,7 +8,9 @@ import com.finman.entity.User;
 import com.finman.entity.enums.CategoryType;
 import com.finman.exception.BusinessValidationException;
 import com.finman.exception.ResourceNotFoundException;
+import com.finman.repository.BudgetRepository;
 import com.finman.repository.CategoryRepository;
+import com.finman.repository.TransactionRepository;
 import com.finman.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +35,12 @@ class CategoryServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private BudgetRepository budgetRepository;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -76,7 +84,7 @@ class CategoryServiceTest {
         CategoryCreateRequest request = new CategoryCreateRequest("Nuôi thú cưng", CategoryType.EXPENSE, "🐶");
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(categoryRepository.existsByUserIdAndNameIgnoreCase(1L, "Nuôi thú cưng")).thenReturn(false);
+        when(categoryRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Nuôi thú cưng")).thenReturn(false);
         when(categoryRepository.existsByIsDefaultTrueAndNameIgnoreCase("Nuôi thú cưng")).thenReturn(false);
 
         Category saved = new Category(testUser, "Nuôi thú cưng", CategoryType.EXPENSE, "🐶", false);
@@ -134,20 +142,24 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("Xóa danh mục cá nhân thành công")
+    @DisplayName("Xóa danh mục cá nhân thành công - soft delete vào thùng rác và xóa ngân sách nếu chưa có giao dịch")
     void testDeleteCategory_CustomCategory_Success() {
         when(categoryRepository.findById(100L)).thenReturn(Optional.of(customCategory));
+        when(transactionRepository.countAllByCategoryId(100L)).thenReturn(0L);
 
         categoryService.deleteCategory(1L, 100L);
 
-        verify(categoryRepository).delete(customCategory);
+        verify(budgetRepository).hardDeleteByCategoryId(100L);
+        assertNotNull(customCategory.getDeletedAt());
+        assertFalse(customCategory.getIsPurgedFromBin());
+        verify(categoryRepository).save(customCategory);
     }
 
     @Test
     @DisplayName("Cập nhật danh mục cá nhân thành công")
     void testUpdateCategory_Success() {
         when(categoryRepository.findById(100L)).thenReturn(Optional.of(customCategory));
-        when(categoryRepository.existsByUserIdAndNameIgnoreCase(1L, "Chăm sóc mèo")).thenReturn(false);
+        when(categoryRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(1L, "Chăm sóc mèo")).thenReturn(false);
         when(categoryRepository.existsByIsDefaultTrueAndNameIgnoreCase("Chăm sóc mèo")).thenReturn(false);
         when(categoryRepository.save(any(Category.class))).thenReturn(customCategory);
 

@@ -364,7 +364,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               (a.name.toLowerCase().includes(initialTransaction.account.name.toLowerCase()) ||
                 initialTransaction.account.name.toLowerCase().includes(a.name.toLowerCase())))
         );
-        if (matchedAcc) setSelectedAccount(matchedAcc);
+        if (matchedAcc) {
+          setSelectedAccount(matchedAcc);
+        } else {
+          setSelectedAccount(initialTransaction.account as Account);
+        }
       } else if (matchedToAcc) {
         // Nếu chỉ truyền toAccount (như khi bấm Thanh toán thẻ tín dụng):
         // Ưu tiên tài khoản thanh toán đã được người dùng cấu hình cho thẻ tín dụng này
@@ -389,7 +393,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   initialTransaction.category.name.toLowerCase().includes(c.name.toLowerCase())))) &&
             c.type === targetType
         );
-        if (matchedCat) setSelectedCategory(matchedCat);
+        if (matchedCat) {
+          setSelectedCategory(matchedCat);
+        } else {
+          setSelectedCategory(initialTransaction.category as Category);
+        }
       }
     } else {
       setType('EXPENSE');

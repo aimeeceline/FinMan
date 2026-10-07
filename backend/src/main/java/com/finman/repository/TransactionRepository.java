@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -38,6 +39,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     long countByAccountId(Long accountId);
 
     long countByCategoryId(Long categoryId);
+
+    @Modifying
+    @Query("UPDATE Transaction t SET t.category = NULL WHERE t.category.id = :categoryId AND t.user.id = :userId")
+    void setCategoryToNullForUser(@Param("categoryId") Long categoryId, @Param("userId") Long userId);
 
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
             "WHERE t.user.id = :userId AND t.type = :type " +
@@ -166,5 +171,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             Long userId, TransactionType type, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         return findTopTransactionsByType(userId, type, startDate, endDate, null, pageable);
     }
+
+    @Query(value = "SELECT COUNT(*) FROM transactions WHERE category_id = :categoryId", nativeQuery = true)
+    long countAllByCategoryId(@Param("categoryId") Long categoryId);
+
+    @Query(value = "SELECT COUNT(*) FROM transactions WHERE account_id = :accountId OR to_account_id = :accountId", nativeQuery = true)
+    long countAllByAccountId(@Param("accountId") Long accountId);
+
+    @Query(value = "SELECT * FROM transactions WHERE user_id = :userId AND deleted_at IS NOT NULL ORDER BY deleted_at DESC", nativeQuery = true)
+    List<Transaction> findRecycleBinTransactions(@Param("userId") Long userId);
+
+    @Query(value = "SELECT * FROM transactions WHERE id = :id AND user_id = :userId AND deleted_at IS NOT NULL", nativeQuery = true)
+    Optional<Transaction> findDeletedByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "UPDATE transactions SET deleted_at = NULL WHERE id = :id AND user_id = :userId", nativeQuery = true)
+    void restoreTransaction(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "DELETE FROM transactions WHERE id = :id AND user_id = :userId", nativeQuery = true)
+    void hardDeleteTransaction(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "DELETE FROM transactions WHERE deleted_at <= :threshold", nativeQuery = true)
+    void purgeExpiredTransactions(@Param("threshold") java.time.Instant threshold);
 }
 

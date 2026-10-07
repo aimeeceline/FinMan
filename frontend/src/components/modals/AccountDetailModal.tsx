@@ -4,6 +4,7 @@ import { accountService } from '../../services/accountService';
 import { transactionService } from '../../services/transactionService';
 import { formatCurrencyInput, parseCurrencyInput } from '../../utils/formatters';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+import { ConfirmModal } from './ConfirmModal';
 
 export interface AccountDetailModalProps {
   isOpen: boolean;
@@ -49,6 +50,27 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccessMessage, setEditSuccessMessage] = useState<string | null>(null);
+
+  // Delete Account State
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const handleDeleteAccount = async () => {
+    if (!currentAccount) return;
+    setIsDeleting(true);
+    try {
+      await accountService.deleteAccount(currentAccount.id);
+      setIsConfirmDeleteOpen(false);
+      window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
+      onRefresh?.();
+      onClose();
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      alert('Không thể xóa tài khoản. Vui lòng thử lại.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Transactions & Filter State (Default: DAY)
   const [periodType, setPeriodType] = useState<PeriodType>('DAY');
@@ -545,7 +567,16 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsConfirmDeleteOpen(true)}
+              className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error flex items-center justify-center transition-colors cursor-pointer"
+              title="Xóa tài khoản"
+            >
+              <span className="material-symbols-outlined text-[19px]">delete</span>
+            </button>
+
             <button
               type="button"
               onClick={onClose}
@@ -1233,6 +1264,16 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                                       ? 'Chuyển khoản'
                                       : (tx.category?.name || 'Khác')}
                                   </span>
+                                  {tx.category?.isDeleted && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                      Thuộc danh mục {tx.category.name} đã bị xóa
+                                    </span>
+                                  )}
+                                  {tx.account?.isDeleted && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      Thuộc tài khoản {tx.account.name} đã bị xóa
+                                    </span>
+                                  )}
                                 </div>
 
                                 <div className="text-[11px] text-on-surface-variant flex items-center gap-1 mt-0.5">
@@ -1294,6 +1335,26 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
           </button>
         </footer>
       </div>
+
+      {/* CONFIRM DELETE ACCOUNT MODAL */}
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={handleDeleteAccount}
+        title="Xóa tài khoản"
+        message={
+          currentAccount ? (
+            <span>
+              Bạn có chắc chắn muốn xóa tài khoản <strong>"{currentAccount.name}"</strong>? Tài khoản sẽ được chuyển vào <strong>Thùng rác</strong> và có thể khôi phục trong vòng 15 ngày.
+            </span>
+          ) : ''
+        }
+        itemTitle={currentAccount ? `${currentAccount.name} • ${currentAccount.currentBalance?.toLocaleString('vi-VN')} ₫` : undefined}
+        confirmText={isDeleting ? 'Đang xóa...' : 'Xóa tài khoản'}
+        cancelText="Hủy bỏ"
+        type="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

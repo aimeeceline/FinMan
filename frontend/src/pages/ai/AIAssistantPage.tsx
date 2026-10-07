@@ -6,6 +6,7 @@ import { accountService } from '../../services/accountService';
 import { categoryService } from '../../services/categoryService';
 import type { Account, Category, Transaction } from '../../types';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 
 const CHAT_STORAGE_KEY_PREFIX = 'finman_ai_chat_history_';
 const MAX_STORED_MESSAGES = 100;
@@ -71,6 +72,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [aiStatus, setAiStatus] = useState<AiStatusResult | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitialMountRef = useRef<boolean>(true);
@@ -800,27 +802,31 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
     );
   };
 
-  // Clear Chat History
+  // Clear Chat History Trigger
   const handleClearChat = () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện với AI?')) {
-      try {
-        localStorage.removeItem(chatStorageKey);
-      } catch (err) {
-        console.warn('Could not clear chat history from localStorage:', err);
-      }
-      const resetMsg: ChatMessage = {
-        id: `welcome-${Date.now()}`,
-        sender: 'ai',
-        text: `Cuộc hội thoại đã được làm mới. Tôi sẵn sàng hỗ trợ bạn nhập giao dịch hoặc tư vấn quản lý tài chính!`,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages([resetMsg]);
-      try {
-        localStorage.setItem(chatStorageKey, JSON.stringify([resetMsg]));
-      } catch {
-        // ignore
-      }
+    setShowClearConfirm(true);
+  };
+
+  // Confirm Clear Chat History
+  const handleConfirmClearChat = () => {
+    try {
+      localStorage.removeItem(chatStorageKey);
+    } catch (err) {
+      console.warn('Could not clear chat history from localStorage:', err);
     }
+    const resetMsg: ChatMessage = {
+      id: `welcome-${Date.now()}`,
+      sender: 'ai',
+      text: `Cuộc hội thoại đã được làm mới. Tôi sẵn sàng hỗ trợ bạn nhập giao dịch hoặc tư vấn quản lý tài chính!`,
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages([resetMsg]);
+    try {
+      localStorage.setItem(chatStorageKey, JSON.stringify([resetMsg]));
+    } catch {
+      // ignore
+    }
+    setShowClearConfirm(false);
   };
 
   const quickPrompts = [
@@ -1836,6 +1842,19 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal Xác nhận làm mới / xóa lịch sử chat */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleConfirmClearChat}
+        title="Làm mới cuộc trò chuyện"
+        message="Bạn có chắc chắn muốn xóa toàn bộ lịch sử tin nhắn trò chuyện với FinMan AI?"
+        confirmText="Làm mới chat"
+        cancelText="Đóng"
+        type="warning"
+        icon="restart_alt"
+      />
     </div>
   );
 };

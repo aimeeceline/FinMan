@@ -8,7 +8,9 @@ import com.finman.entity.User;
 import com.finman.entity.enums.CategoryType;
 import com.finman.exception.BusinessValidationException;
 import com.finman.exception.ResourceNotFoundException;
+import com.finman.repository.BudgetRepository;
 import com.finman.repository.CategoryRepository;
+import com.finman.repository.TransactionRepository;
 import com.finman.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +23,17 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
+    private final BudgetRepository budgetRepository;
 
-    public CategoryService(CategoryRepository categoryRepository, UserRepository userRepository) {
+    public CategoryService(CategoryRepository categoryRepository,
+                           UserRepository userRepository,
+                           TransactionRepository transactionRepository,
+                           BudgetRepository budgetRepository) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
+        this.budgetRepository = budgetRepository;
     }
 
     public List<CategoryResponse> getCategories(Long userId, CategoryType type) {
@@ -52,7 +61,7 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
         String name = request.getName().trim();
-        if (categoryRepository.existsByUserIdAndNameIgnoreCase(userId, name) ||
+        if (categoryRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(userId, name) ||
                 categoryRepository.existsByIsDefaultTrueAndNameIgnoreCase(name)) {
             throw new BusinessValidationException("Tên danh mục '" + name + "' đã tồn tại");
         }
@@ -77,7 +86,7 @@ public class CategoryService {
 
         String newName = request.getName().trim();
         if (!category.getName().equalsIgnoreCase(newName) &&
-                (categoryRepository.existsByUserIdAndNameIgnoreCase(userId, newName) ||
+                (categoryRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(userId, newName) ||
                  categoryRepository.existsByIsDefaultTrueAndNameIgnoreCase(newName))) {
             throw new BusinessValidationException("Tên danh mục '" + newName + "' đã tồn tại");
         }
@@ -104,6 +113,14 @@ public class CategoryService {
             throw new ResourceNotFoundException("Danh mục không tồn tại hoặc bạn không có quyền truy cập");
         }
 
-        categoryRepository.delete(category);
+        // Quy tắc nghiệp vụ: Nếu có budget của danh mục đó nhưng chưa hề có giao dịch thì xóa luôn budget
+        long txCount = transactionRepository.countAllByCategoryId(categoryId);
+        if (txCount == 0) {
+            budgetRepository.hardDeleteByCategoryId(categoryId);
+        }
+
+        category.setDeletedAt(java.time.Instant.now());
+        category.setIsPurgedFromBin(false);
+        categoryRepository.save(category);
     }
 }

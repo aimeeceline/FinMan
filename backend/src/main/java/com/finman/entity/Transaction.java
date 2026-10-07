@@ -23,6 +23,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(
         name = "transactions",
@@ -34,6 +36,7 @@ import java.util.Objects;
                 @Index(name = "idx_transactions_user_type_date", columnList = "user_id, type, transaction_date DESC")
         }
 )
+@SQLRestriction("deleted_at IS NULL")
 public class Transaction {
 
     @Id
@@ -81,6 +84,9 @@ public class Transaction {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     public Transaction() {
     }
@@ -227,6 +233,14 @@ public class Transaction {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     @Override

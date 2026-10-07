@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 import { aiService } from '../../services/aiService';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 
 interface DashboardPageProps {
   transactions: Transaction[];
@@ -54,6 +55,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // Pagination State (100 giao dịch/trang)
   const PAGE_SIZE = 100;
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
 
   // Dynamic Date Range Helpers
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -2105,6 +2107,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   >
                                     {isTransfer ? 'Chuyển khoản' : (tx.category?.name || 'Khác')}
                                   </span>
+                                  {tx.category?.isDeleted && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                      Thuộc danh mục {tx.category.name} đã bị xóa
+                                    </span>
+                                  )}
+                                  {tx.account?.isDeleted && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      Thuộc tài khoản {tx.account.name} đã bị xóa
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[11px] text-on-surface-variant flex items-center gap-1 mt-0.5">
                                   <span className="font-medium text-on-surface">
@@ -2170,11 +2182,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 </button>
                                 {onDeleteTransaction && (
                                   <button
-                                    onClick={() => {
-                                      if (confirm(`Bạn có chắc muốn xóa giao dịch "${tx.note || tx.category?.name || 'Chuyển khoản'}"?`)) {
-                                        onDeleteTransaction(tx.id);
-                                      }
-                                    }}
+                                    onClick={() => setTxToDelete(tx)}
                                     className="p-1 rounded-md text-on-surface-variant hover:bg-error-container hover:text-on-error-container cursor-pointer"
                                     title="Xóa giao dịch"
                                   >
@@ -2262,6 +2270,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
           </div>
         </div>
+
+        {/* Modal Xác nhận xóa giao dịch */}
+        <ConfirmModal
+          isOpen={Boolean(txToDelete)}
+          onClose={() => setTxToDelete(null)}
+          onConfirm={() => {
+            if (txToDelete && onDeleteTransaction) {
+              onDeleteTransaction(txToDelete.id);
+              setTxToDelete(null);
+            }
+          }}
+          title="Xác nhận xóa giao dịch"
+          message="Bạn có chắc chắn muốn xóa giao dịch này? Số dư tài khoản liên quan sẽ được tự động cập nhật lại tương ứng."
+          itemTitle={
+            txToDelete
+              ? `${txToDelete.note || txToDelete.category?.name || 'Giao dịch'} • ${Number(txToDelete.amount).toLocaleString('vi-VN')} ₫ (${txToDelete.account?.name || 'Ví'})`
+              : undefined
+          }
+          confirmText="Xóa giao dịch"
+          cancelText="Hủy bỏ"
+          type="danger"
+        />
       </div>
     );
   };

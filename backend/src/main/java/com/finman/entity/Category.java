@@ -65,6 +65,12 @@ public class Category {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(name = "is_purged_from_bin", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isPurgedFromBin = false;
+
     public Category() {
     }
 
@@ -99,6 +105,9 @@ public class Category {
         this.updatedAt = now;
         if (this.isDefault == null) {
             this.isDefault = false;
+        }
+        if (this.isPurgedFromBin == null) {
+            this.isPurgedFromBin = false;
         }
     }
 
@@ -169,6 +178,22 @@ public class Category {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public Boolean getIsPurgedFromBin() {
+        return isPurgedFromBin;
+    }
+
+    public void setIsPurgedFromBin(Boolean isPurgedFromBin) {
+        this.isPurgedFromBin = isPurgedFromBin;
     }
 
     @Override

@@ -232,9 +232,10 @@ export const accountService = {
   },
 
   /**
-   * Lưu trữ (Soft delete) tài khoản
+   * Xóa tài khoản (chuyển vào Thùng rác hệ thống)
    */
-  async deleteAccount(id: number, accountData?: Partial<Account>): Promise<void> {
-    await this.archiveAccount(id, true, accountData);
+  async deleteAccount(id: number): Promise<void> {
+    await api.delete<ApiResponse<void>>(`/accounts/${id}`);
+    removeCachedArchivedAccount(id);
   },
 };

@@ -27,6 +27,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -325,7 +326,27 @@ public class TransactionService {
             }
         }
 
-        transactionRepository.delete(transaction);
+        transaction.setDeletedAt(Instant.now());
+        transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public void reapplyTransactionBalanceImpact(Transaction transaction) {
+        if (transaction.getType() == TransactionType.TRANSFER) {
+            Account fromAccount = transaction.getAccount();
+            Account toAccount = transaction.getToAccount();
+            if (fromAccount != null && toAccount != null) {
+                applyTransferImpact(fromAccount, toAccount, transaction.getAmount());
+                accountRepository.save(fromAccount);
+                accountRepository.save(toAccount);
+            }
+        } else {
+            Account account = transaction.getAccount();
+            if (account != null) {
+                applyBalanceImpact(account, transaction.getType(), transaction.getAmount());
+                accountRepository.save(account);
+            }
+        }
     }
 
     @Transactional(readOnly = true)

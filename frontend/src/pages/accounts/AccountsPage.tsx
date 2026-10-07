@@ -8,6 +8,7 @@ import { accountService } from '../../services/accountService';
 import { transactionService } from '../../services/transactionService';
 import { AddAccountModal } from '../../components/modals/AddAccountModal';
 import { AccountDetailModal } from '../../components/modals/AccountDetailModal';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 
 interface AccountsPageProps {
   accounts?: Account[];
@@ -59,6 +60,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [accountToArchive, setAccountToArchive] = useState<Account | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openMenuAccountId, setOpenMenuAccountId] = useState<number | null>(null);
 
@@ -535,6 +538,24 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!accountToDelete) return;
+    setIsDeleting(true);
+    try {
+      await accountService.deleteAccount(accountToDelete.id);
+      showToast(`Đã chuyển tài khoản "${accountToDelete.name}" vào Thùng rác.`);
+      setAccountToDelete(null);
+      window.dispatchEvent(new CustomEvent('finman_accounts_updated'));
+      await fetchAccounts();
+      onRefresh?.();
+    } catch (err: unknown) {
+      console.error('Error deleting account:', err);
+      showToast(`Không thể xóa tài khoản "${accountToDelete.name}".`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // ============================================================
   // ACCOUNT CARD COMPONENT (Formatted for 4 columns)
   // ============================================================
@@ -664,7 +685,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     }}
                     className="
                       w-full px-3 py-2 text-left
-                      hover:bg-error-container hover:text-error
+                      hover:bg-surface-container hover:text-on-surface
                       flex items-center gap-2
                       cursor-pointer transition-colors
                     "
@@ -673,6 +694,25 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                       archive
                     </span>
                     <span>Lưu trữ tài khoản</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuAccountId(null);
+                      setAccountToDelete(account);
+                    }}
+                    className="
+                      w-full px-3 py-2 text-left
+                      hover:bg-error-container hover:text-error
+                      flex items-center gap-2
+                      cursor-pointer transition-colors
+                    "
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-error">
+                      delete
+                    </span>
+                    <span className="text-error font-medium">Xóa tài khoản</span>
                   </button>
                 </div>
               )}
@@ -924,16 +964,32 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleUnarchiveAccount(account);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary-container hover:text-on-primary text-xs font-semibold text-on-surface transition-colors cursor-pointer shrink-0"
-                >
-                  Khôi phục
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnarchiveAccount(account);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary-container hover:text-on-primary text-xs font-semibold text-on-surface transition-colors cursor-pointer shrink-0"
+                  >
+                    Khôi phục
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAccountToDelete(account);
+                    }}
+                    className="w-7 h-7 rounded-lg hover:bg-error-container hover:text-error text-on-surface-variant flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                    title="Xóa tài khoản"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">
+                      delete
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div className="py-1">
@@ -1231,6 +1287,26 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL: CONFIRM DELETE ACCOUNT (RECYCLE BIN) */}
+      <ConfirmModal
+        isOpen={Boolean(accountToDelete)}
+        onClose={() => setAccountToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Xóa tài khoản"
+        message={
+          accountToDelete ? (
+            <span>
+              Bạn có chắc chắn muốn xóa tài khoản <strong>"{accountToDelete.name}"</strong>? Tài khoản sẽ được chuyển vào <strong>Thùng rác</strong> và có thể khôi phục trong vòng 15 ngày.
+            </span>
+          ) : ''
+        }
+        itemTitle={accountToDelete ? `${accountToDelete.name} • ${accountToDelete.currentBalance?.toLocaleString('vi-VN')} ₫` : undefined}
+        confirmText={isDeleting ? 'Đang xóa...' : 'Xóa tài khoản'}
+        cancelText="Hủy bỏ"
+        type="danger"
+        isLoading={isDeleting}
+      />
       {/* MODAL: ACCOUNT DETAIL & TRANSACTIONS & EDIT */}
       <AccountDetailModal
         key={

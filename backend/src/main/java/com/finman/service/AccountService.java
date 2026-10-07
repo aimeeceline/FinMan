@@ -37,8 +37,8 @@ public class AccountService {
     @Transactional
     public AccountSummaryResponse getAccountsSummary(Long userId, Boolean includeArchived) {
         List<Account> accounts = Boolean.TRUE.equals(includeArchived)
-                ? accountRepository.findByUserId(userId)
-                : accountRepository.findByUserIdAndIsArchivedFalse(userId);
+                ? accountRepository.findByUserIdAndDeletedAtIsNull(userId)
+                : accountRepository.findByUserIdAndIsArchivedFalseAndDeletedAtIsNull(userId);
 
         // Mặc định luôn có Ví tiền mặt: Nếu người dùng chưa có bất kỳ tài khoản nào, tự động tạo "Ví tiền mặt"
         if (accounts.isEmpty() && !Boolean.TRUE.equals(includeArchived)) {
@@ -96,7 +96,7 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
         String name = request.getName().trim();
-        if (accountRepository.existsByUserIdAndNameIgnoreCase(userId, name)) {
+        if (accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(userId, name)) {
             throw new BusinessValidationException("Tên tài khoản '" + name + "' đã tồn tại");
         }
 
@@ -140,7 +140,7 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại hoặc bạn không có quyền truy cập"));
 
         String newName = request.getName().trim();
-        if (!account.getName().equalsIgnoreCase(newName) && accountRepository.existsByUserIdAndNameIgnoreCase(userId, newName)) {
+        if (!account.getName().equalsIgnoreCase(newName) && accountRepository.existsByUserIdAndNameIgnoreCaseAndDeletedAtIsNull(userId, newName)) {
             throw new BusinessValidationException("Tên tài khoản '" + newName + "' đã tồn tại");
         }
 
@@ -194,6 +194,11 @@ public class AccountService {
 
     @Transactional
     public void deleteAccount(Long userId, Long accountId) {
-        archiveAccount(userId, accountId, true);
+        Account account = accountRepository.findByIdAndUserId(accountId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại hoặc bạn không có quyền truy cập"));
+        account.setDeletedAt(java.time.Instant.now());
+        account.setIsArchived(true);
+        account.setIsPurgedFromBin(false);
+        accountRepository.save(account);
     }
 }

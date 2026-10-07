@@ -58,19 +58,19 @@ public class TransactionResponse {
         AccountInfo accInfo = null;
         if (transaction.getAccount() != null) {
             Account acc = transaction.getAccount();
-            accInfo = new AccountInfo(acc.getId(), acc.getName(), acc.getType(), acc.getAccountNumber());
+            accInfo = new AccountInfo(acc.getId(), acc.getName(), acc.getType(), acc.getAccountNumber(), acc.getDeletedAt() != null);
         }
 
         AccountInfo toAccInfo = null;
         if (transaction.getToAccount() != null) {
             Account toAcc = transaction.getToAccount();
-            toAccInfo = new AccountInfo(toAcc.getId(), toAcc.getName(), toAcc.getType(), toAcc.getAccountNumber());
+            toAccInfo = new AccountInfo(toAcc.getId(), toAcc.getName(), toAcc.getType(), toAcc.getAccountNumber(), toAcc.getDeletedAt() != null);
         }
 
         CategoryInfo catInfo = null;
         if (transaction.getCategory() != null) {
             Category cat = transaction.getCategory();
-            catInfo = new CategoryInfo(cat.getId(), cat.getName(), cat.getType(), cat.getIcon(), null);
+            catInfo = new CategoryInfo(cat.getId(), cat.getName(), cat.getType(), cat.getIcon(), null, cat.getDeletedAt() != null);
         }
 
         return new TransactionResponse(
@@ -172,15 +172,21 @@ public class TransactionResponse {
         private String name;
         private AccountType type;
         private String accountNumber;
+        private Boolean isDeleted;
 
         public AccountInfo() {
         }
 
         public AccountInfo(Long id, String name, AccountType type, String accountNumber) {
+            this(id, name, type, accountNumber, false);
+        }
+
+        public AccountInfo(Long id, String name, AccountType type, String accountNumber, Boolean isDeleted) {
             this.id = id;
             this.name = name;
             this.type = type;
             this.accountNumber = accountNumber;
+            this.isDeleted = isDeleted != null ? isDeleted : false;
         }
 
         public Long getId() {
@@ -214,6 +220,14 @@ public class TransactionResponse {
         public void setAccountNumber(String accountNumber) {
             this.accountNumber = accountNumber;
         }
+
+        public Boolean getIsDeleted() {
+            return isDeleted;
+        }
+
+        public void setIsDeleted(Boolean deleted) {
+            isDeleted = deleted;
+        }
     }
 
     public static class CategoryInfo {
@@ -222,16 +236,22 @@ public class TransactionResponse {
         private com.finman.entity.enums.CategoryType type;
         private String icon;
         private String color;
+        private Boolean isDeleted;
 
         public CategoryInfo() {
         }
 
         public CategoryInfo(Long id, String name, com.finman.entity.enums.CategoryType type, String icon, String color) {
+            this(id, name, type, icon, color, false);
+        }
+
+        public CategoryInfo(Long id, String name, com.finman.entity.enums.CategoryType type, String icon, String color, Boolean isDeleted) {
             this.id = id;
             this.name = name;
             this.type = type;
             this.icon = icon;
             this.color = color;
+            this.isDeleted = isDeleted != null ? isDeleted : false;
         }
 
         public Long getId() {
@@ -272,6 +292,14 @@ public class TransactionResponse {
 
         public void setColor(String color) {
             this.color = color;
+        }
+
+        public Boolean getIsDeleted() {
+            return isDeleted;
+        }
+
+        public void setIsDeleted(Boolean deleted) {
+            isDeleted = deleted;
         }
     }
 }

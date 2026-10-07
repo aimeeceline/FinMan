@@ -39,6 +39,17 @@ export const categoryService = {
   },
 
   /**
+   * Cập nhật danh mục cá nhân (tên, biểu tượng icon)
+   */
+  async updateCategory(
+    id: number,
+    payload: { name: string; icon?: string }
+  ): Promise<Category> {
+    const res = await api.put<ApiResponse<Category>>(`/categories/${id}`, payload);
+    return res.data.data;
+  },
+
+  /**
    * Xóa danh mục cá nhân khỏi cơ sở dữ liệu
    */
   async deleteCategory(id: number): Promise<void> {
