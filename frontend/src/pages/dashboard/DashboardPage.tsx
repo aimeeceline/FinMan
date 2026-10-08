@@ -81,7 +81,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // AI Prompt State
   const [aiText, setAiText] = useState<string>('');
-  const [isListening, setIsListening] = useState<boolean>(false);
   const [aiParsed, setAiParsed] = useState<{
     amount: number;
     type: 'INCOME' | 'EXPENSE';
@@ -742,29 +741,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       note,
       transactionDate,
     });
-  };
-
-  // Voice Speech simulation toggle
-  const toggleVoiceInput = () => {
-    if (!isListening) {
-      setIsListening(true);
-      setAiText('Đang lắng nghe giọng nói...');
-      setTimeout(() => {
-        setAiText('Cà phê sáng cùng đồng nghiệp 65k tiền mặt');
-        setIsListening(false);
-        setAiParsed({
-          amount: 65000,
-          type: 'EXPENSE',
-          categoryName: 'Ăn uống',
-          categoryIcon: 'restaurant',
-          accountName: 'Tiền mặt ví',
-          note: 'Cà phê sáng cùng đồng nghiệp',
-          transactionDate: getTodayLocalDate(),
-        });
-      }, 1800);
-    } else {
-      setIsListening(false);
-    }
   };
 
   // Handle editing AI parsed item in the full transaction modal
