@@ -839,51 +839,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-gutter-desktop h-full max-h-full flex flex-col overflow-hidden py-3 select-none">
-      {/* 1. Header Page Title & Model Indicator */}
-      <div className="shrink-0 flex items-center justify-end gap-space-sm mb-3">
-        <div className="flex items-center gap-space-sm flex-wrap">
-          <div
-            className={`px-3.5 py-1.5 rounded-full font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm border ${aiStatus?.geminiConnected
-              ? 'bg-secondary-container text-on-secondary-container border-secondary/30'
-              : 'bg-amber-100 text-amber-900 border-amber-300'
-              }`}
-          >
-            {!aiStatus?.geminiConnected && (
-  <span className="material-symbols-outlined text-[18px]">
-    cloud_off
-  </span>
-)}
-
-<span>
-  {aiStatus?.geminiConnected
-    ? `Gemini ${aiStatus.model.replace('gemini-', '')} (Online)`
-    : 'Local Fallback (Offline)'}
-</span>
-          </div>
-
-          <button
-            onClick={handleFetchInsights}
-            disabled={isLoadingInsights}
-            className="px-4 py-2 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-tertiary font-label-md text-label-md font-bold border border-outline-variant/30 shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            title="Tạo báo cáo nhận xét chi tiêu tháng"
-            type="button"
-          >
-            <span className={`material-symbols-outlined text-[18px] ${isLoadingInsights ? 'animate-spin' : ''}`}>
-              analytics
-            </span>
-            <span>Nhận xét tháng này</span>
-          </button>
-
-          <button
-            onClick={handleClearChat}
-            className="p-2 rounded-xl text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all cursor-pointer"
-            title="Xóa lịch sử trò chuyện"
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
-          </button>
-        </div>
-      </div>
+      
 
       {/* Success Notification Banner */}
       {saveSuccessMessage && (
@@ -1791,6 +1747,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({
 
         {/* Right Column: AI Financial Snapshot & Helper Panel (4 cols) */}
         <div className="lg:col-span-4 h-full min-h-0 flex flex-col gap-3 overflow-y-auto custom-scroll pr-1 pb-1">
+          {/* 1. Header Page Title & Model Indicator */}
+      <div className="shrink-0 flex items-center justify-end gap-space-sm mb-3">
+        <div className="flex items-center gap-space-sm flex-wrap">
+          <div
+            className={`px-3.5 py-1.5 rounded-full font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm border ${aiStatus?.geminiConnected
+              ? 'bg-secondary-container text-on-secondary-container border-secondary/30'
+              : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}
+          >
+            {!aiStatus?.geminiConnected && (
+  <span className="material-symbols-outlined text-[18px]">
+    cloud_off
+  </span>
+)}
+
+<span>
+  {aiStatus?.geminiConnected
+    ? `Gemini ${aiStatus.model.replace('gemini-', '')} (Online)`
+    : 'Local Fallback (Offline)'}
+</span>
+          </div>
+
+        
+          <button
+            onClick={handleClearChat}
+            className="p-2 rounded-xl text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all cursor-pointer"
+            title="Xóa lịch sử trò chuyện"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
+          </button>
+        </div>
+      </div>
           {/* Card 1: Monthly Financial Health Snapshot */}
           <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-outline-variant/20">
             <div className="flex items-center justify-between mb-space-sm">

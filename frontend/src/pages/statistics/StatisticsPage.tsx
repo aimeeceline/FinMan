@@ -1848,8 +1848,34 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-sm text-on-surface">
-                            {t.note || (isTransfer ? 'Chuyển khoản nội bộ' : (t.category?.name || 'Giao dịch'))}
+                          <div className="font-semibold text-sm text-on-surface flex items-center gap-1.5">
+                            <span>{t.note || (isTransfer ? 'Chuyển khoản nội bộ' : (t.category?.name || 'Giao dịch'))}</span>
+                            {t.category?.isDeleted && (
+                              <span className="relative group/warn inline-flex items-center">
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                  title={`Thuộc danh mục "${t.category.name}" đã bị xóa`}
+                                >
+                                  !
+                                </span>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                  Thuộc danh mục "{t.category.name}" đã bị xóa
+                                </span>
+                              </span>
+                            )}
+                            {t.account?.isDeleted && (
+                              <span className="relative group/warn inline-flex items-center">
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                  title={`Thuộc tài khoản "${t.account.name}" đã bị xóa`}
+                                >
+                                  !
+                                </span>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                  Thuộc tài khoản "{t.account.name}" đã bị xóa
+                                </span>
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-on-surface-variant mt-0.5">
                             {isTransfer
@@ -1990,8 +2016,34 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
                           </span>
                         </div>
                         <div>
-                          <div className="font-semibold text-sm text-on-surface">
-                            {t.note || t.category?.name || 'Giao dịch'}
+                          <div className="font-semibold text-sm text-on-surface flex items-center gap-1.5">
+                            <span>{t.note || t.category?.name || 'Giao dịch'}</span>
+                            {t.category?.isDeleted && (
+                              <span className="relative group/warn inline-flex items-center">
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                  title={`Thuộc danh mục "${t.category.name}" đã bị xóa`}
+                                >
+                                  !
+                                </span>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                  Thuộc danh mục "{t.category.name}" đã bị xóa
+                                </span>
+                              </span>
+                            )}
+                            {t.account?.isDeleted && (
+                              <span className="relative group/warn inline-flex items-center">
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                  title={`Thuộc tài khoản "${t.account.name}" đã bị xóa`}
+                                >
+                                  !
+                                </span>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                  Thuộc tài khoản "{t.account.name}" đã bị xóa
+                                </span>
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-on-surface-variant mt-0.5">
                             {dateStr ? `${dateStr} • ` : ''}{t.account?.name || 'Tài khoản'}{t.time ? ` • ${t.time}` : ''}

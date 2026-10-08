@@ -30,7 +30,14 @@ export const budgetService = {
   async getBudgets(month?: string): Promise<Budget[]> {
     const params = month ? { month } : {};
     const res = await api.get<ApiResponse<Budget[]>>('/budgets', { params });
-    return res.data.data;
+    const list = res.data.data || [];
+    return list.map((b) => ({
+      ...b,
+      category: b.category ? {
+        ...b.category,
+        isDeleted: Boolean(b.category.isDeleted ?? (b.category as any).deleted),
+      } : b.category,
+    }));
   },
 
   /**
@@ -39,7 +46,17 @@ export const budgetService = {
   async getBudgetSummary(month?: string): Promise<BudgetSummary> {
     const params = month ? { month } : {};
     const res = await api.get<ApiResponse<BudgetSummary>>('/budgets/summary', { params });
-    return res.data.data;
+    const summary = res.data.data;
+    if (summary && Array.isArray(summary.budgets)) {
+      summary.budgets = summary.budgets.map((b) => ({
+        ...b,
+        category: b.category ? {
+          ...b.category,
+          isDeleted: Boolean(b.category.isDeleted ?? (b.category as any).deleted),
+        } : b.category,
+      }));
+    }
+    return summary;
   },
 
   /**

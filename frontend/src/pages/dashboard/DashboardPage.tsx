@@ -886,15 +886,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="bg-gradient-to-br from-surface-container-lowest via-surface-container-low to-surface-container-highest/40 p-3.5 sm:p-4 rounded-xl shadow-xs mb-3 sm:mb-3.5 relative overflow-hidden border border-outline-variant/20">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-2.5">
           <div className="flex items-center gap-space-sm">
-            <div className="w-9 h-9 rounded-xl bg-tertiary flex items-center justify-center text-on-tertiary shadow-sm">
-              <span className="material-symbols-outlined text-[22px]">smart_toy</span>
-            </div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden ring-2 ring-blue-100 dark:ring-blue-900/50 shadow-blue-500/20 bg-surface-container-low">
+                      <img
+                        src="/avtAI.png"
+                        alt="FinMan AI"
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    </div>
             <div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">
                 Nhập thông minh AI
               </h3>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Gõ câu tự nhiên bằng tiếng Việt hoặc dùng giọng nói để FinMan tự động trích xuất hạng mục tài chính
+                Gõ câu tự nhiên bằng tiếng Việt để FinMan tự động trích xuất hạng mục tài chính
               </p>
             </div>
           </div>
@@ -907,7 +911,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </span>
           <input
             className="flex-1 bg-transparent py-space-sm px-space-xs font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none"
-            placeholder="Ví dụ: 'Vừa đổ xăng 120k bằng VCB' hoặc 'Lương tháng 9 20 triệu'..."
+            placeholder="Ví dụ: 'Vừa đổ xăng 120k' hoặc 'Lương tháng 9 20 triệu'..."
             type="text"
             value={aiText}
             onChange={(e) => setAiText(e.target.value)}
@@ -925,18 +929,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           )}
-          <button
-            onClick={toggleVoiceInput}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer ${
-              isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'bg-tertiary hover:opacity-90 text-on-tertiary'
-            }`}
-            title="Nhập liệu bằng giọng nói"
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[20px]">mic</span>
-          </button>
+          
           <button
             onClick={handleAiParse}
             disabled={isAiLoading}
@@ -2108,13 +2101,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     {isTransfer ? 'Chuyển khoản' : (tx.category?.name || 'Khác')}
                                   </span>
                                   {tx.category?.isDeleted && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                      Thuộc danh mục {tx.category.name} đã bị xóa
+                                    <span className="relative group/warn inline-flex items-center">
+                                      <span
+                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                        title={`Thuộc danh mục "${tx.category.name}" đã bị xóa`}
+                                      >
+                                        !
+                                      </span>
+                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                        Thuộc danh mục "{tx.category.name}" đã bị xóa
+                                      </span>
                                     </span>
                                   )}
                                   {tx.account?.isDeleted && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                      Thuộc tài khoản {tx.account.name} đã bị xóa
+                                    <span className="relative group/warn inline-flex items-center">
+                                      <span
+                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                        title={`Thuộc tài khoản "${tx.account.name}" đã bị xóa`}
+                                      >
+                                        !
+                                      </span>
+                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                        Thuộc tài khoản "{tx.account.name}" đã bị xóa
+                                      </span>
                                     </span>
                                   )}
                                 </div>

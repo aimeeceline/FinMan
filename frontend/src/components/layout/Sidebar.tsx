@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { route: 'thong-ke-va-bao-cao', label: 'Thống kê - Báo cáo', icon: 'monitoring' },
     { route: 'quan-ly-ngan-sach', label: 'Ngân sách', icon: 'account_balance_wallet' },
     { route: 'tai-khoan-va-tai-san', label: 'Tài khoản', icon: 'account_balance' },
-    { route: 'tro-ly-finman-ai', label: 'Trợ lý FinMan AI', icon: 'neurology' },
+    { route: 'tro-ly-finman-ai', label: 'Trợ lý FinMan', icon: 'neurology' },
     { route: 'cai-dat-va-danh-muc', label: 'Cài đặt', icon: 'tune' },
   ];
 
@@ -48,9 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Fin<span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Man</span>
               </span>
             </div>
-            <span className="text-[10px] font-semibold tracking-wider text-on-surface-variant/70 uppercase leading-none mt-1">
-              Quản lý tài chính
-            </span>
+            
           </div>
         </div>
       </div>

@@ -166,8 +166,11 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
 
   // Selected category in modal
   const selectedFormCategory = useMemo(() => {
-    return categories.find((c) => c.id === formCategoryId) || categories[0];
-  }, [categories, formCategoryId]);
+    if (editingBudget?.category && editingBudget.category.id === formCategoryId) {
+      return editingBudget.category;
+    }
+    return categories.find((c) => c.id === formCategoryId) || (editingBudget?.category?.id === formCategoryId ? editingBudget.category : categories[0]);
+  }, [categories, formCategoryId, editingBudget]);
 
   // Sync pickerYear when selectedMonth changes
   useEffect(() => {
@@ -706,6 +709,19 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                       >
                         <span className={`w-2.5 h-2.5 rounded-full ${color.bg} shrink-0`}></span>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">{b.category?.name}</span>
+                        {b.category?.isDeleted && (
+                          <span className="relative group/warn inline-flex items-center">
+                            <span
+                              className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                              title={`Thuộc danh mục "${b.category.name}" đã bị xóa`}
+                            >
+                              !
+                            </span>
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                              Thuộc danh mục "{b.category.name}" đã bị xóa
+                            </span>
+                          </span>
+                        )}
                         <span className="text-[11px] text-on-surface-variant font-bold">
                           {spent > 0 ? `${pctOfTotal.toFixed(1)}%` : '0%'}
                         </span>
@@ -951,8 +967,16 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                               {b.category.name}
                             </span>
                             {b.category?.isDeleted && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                Thuộc danh mục {b.category.name} đã bị xóa
+                              <span className="relative group/warn inline-flex items-center">
+                                <span
+                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                  title={`Thuộc danh mục "${b.category.name}" đã bị xóa`}
+                                >
+                                  !
+                                </span>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                  Thuộc danh mục "{b.category.name}" đã bị xóa
+                                </span>
                               </span>
                             )}
                             <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm ${badgeClass}`}>
@@ -1120,6 +1144,19 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                         <span className="font-semibold text-sm text-on-surface">
                           {selectedFormCategory.name}
                         </span>
+                        {selectedFormCategory.isDeleted && (
+                          <span className="relative group/warn inline-flex items-center">
+                            <span
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                              title={`Thuộc danh mục "${selectedFormCategory.name}" đã bị xóa`}
+                            >
+                              !
+                            </span>
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                              Thuộc danh mục "{selectedFormCategory.name}" đã bị xóa
+                            </span>
+                          </span>
+                        )}
                       </>
                     ) : (
                       <span className="text-on-surface-variant text-sm">Chọn danh mục chi tiêu...</span>

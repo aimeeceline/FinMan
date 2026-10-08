@@ -1265,13 +1265,29 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                                       : (tx.category?.name || 'Khác')}
                                   </span>
                                   {tx.category?.isDeleted && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                      Thuộc danh mục {tx.category.name} đã bị xóa
+                                    <span className="relative group/warn inline-flex items-center">
+                                      <span
+                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                        title={`Thuộc danh mục "${tx.category.name}" đã bị xóa`}
+                                      >
+                                        !
+                                      </span>
+                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                        Thuộc danh mục "{tx.category.name}" đã bị xóa
+                                      </span>
                                     </span>
                                   )}
                                   {tx.account?.isDeleted && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                      Thuộc tài khoản {tx.account.name} đã bị xóa
+                                    <span className="relative group/warn inline-flex items-center">
+                                      <span
+                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                        title={`Thuộc tài khoản "${tx.account.name}" đã bị xóa`}
+                                      >
+                                        !
+                                      </span>
+                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                        Thuộc tài khoản "{tx.account.name}" đã bị xóa
+                                      </span>
                                     </span>
                                   )}
                                 </div>

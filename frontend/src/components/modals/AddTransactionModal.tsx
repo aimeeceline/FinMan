@@ -311,15 +311,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       }
       setNote(editingTransaction.note || '');
       if (editingTransaction.account) {
-        const matchedAcc = accounts.find((a) => a.id === editingTransaction.account.id);
+        const matchedAcc = accounts.find((a) => a.id === editingTransaction.account.id) || editingTransaction.account;
         if (matchedAcc) setSelectedAccount(matchedAcc);
       }
       if (editingTransaction.toAccount) {
-        const matchedToAcc = accounts.find((a) => a.id === editingTransaction.toAccount?.id);
+        const matchedToAcc = accounts.find((a) => a.id === editingTransaction.toAccount?.id) || editingTransaction.toAccount;
         if (matchedToAcc) setSelectedToAccount(matchedToAcc);
       }
       if (editingTransaction.category) {
-        const matchedCat = categoriesList.find((c) => c.id === editingTransaction.category?.id);
+        const matchedCat = categoriesList.find((c) => c.id === editingTransaction.category?.id) || editingTransaction.category;
         if (matchedCat) setSelectedCategory(matchedCat);
       }
     } else if (
@@ -444,10 +444,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   }, [isOpen]);
 
   const filteredCategories = useMemo(() => {
-    return categoriesList.filter((c) =>
+    const list = categoriesList.filter((c) =>
       type === 'INCOME' ? c.type === 'INCOME' : c.type === 'EXPENSE'
     );
-  }, [categoriesList, type]);
+    if (selectedCategory && selectedCategory.type === type && !list.some((c) => c.id === selectedCategory.id)) {
+      list.unshift(selectedCategory);
+    }
+    return list;
+  }, [categoriesList, type, selectedCategory]);
 
   // Sync selectedCategory when type or filteredCategories change
   useEffect(() => {
@@ -1356,12 +1360,22 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                           {renderCategoryIcon(cat, isSelected)}
                         </div>
                         <span
-                          className={`text-[11px] sm:text-xs truncate w-full px-0.5 ${
+                          className={`text-[11px] sm:text-xs truncate w-full px-0.5 flex items-center justify-center gap-1 ${
                             isSelected ? 'font-bold' : 'font-semibold'
                           }`}
                           title={cat.name}
                         >
-                          {cat.name}
+                          <span className="truncate">{cat.name}</span>
+                          {cat.isDeleted && (
+                            <span className="relative group/warn inline-flex items-center shrink-0">
+                              <span
+                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-black bg-red-100 text-red-700 border border-red-300 cursor-help select-none shadow-2xs"
+                                title={`Thuộc danh mục "${cat.name}" đã bị xóa`}
+                              >
+                                !
+                              </span>
+                            </span>
+                          )}
                         </span>
                       </button>
                     );

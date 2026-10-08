@@ -12,12 +12,8 @@ import { getCategoryTheme } from '../../utils/categoryTheme';
 const PRESET_AVATARS = [
   { id: 'av-1', label: 'Felix', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
   { id: 'av-2', label: 'Aneka', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka' },
-  { id: 'av-3', label: 'Aiden', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aiden' },
-  { id: 'av-4', label: 'Zoe', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe' },
-  { id: 'av-5', label: 'Leo', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Leo' },
-  { id: 'av-6', label: 'FinBot', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FinBot' },
-  { id: 'av-7', label: 'Doanh nhân 1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
-  { id: 'av-8', label: 'Doanh nhân 2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+  { id: 'av-3', label: 'Zoe', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe' },
+  { id: 'av-4', label: 'FinBot', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FinBot' },
 ];
 
 type SettingsTab = 'profile' | 'security' | 'categories' | 'recycle_bin';

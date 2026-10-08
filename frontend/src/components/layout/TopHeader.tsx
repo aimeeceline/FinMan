@@ -18,7 +18,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   searchQuery = '',
   onSearchChange,
 }) => {
-  const { user } = useAuth();
 
   return (
     <header className="fixed top-0 left-72 right-0 h-20 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop">
@@ -57,48 +56,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <span>Excel</span>
           </button>
 
-          {/* Notifications */}
-          <button
-            className="relative p-space-xs rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
-            title="Thông báo"
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[20px]">notifications</span>
-            <span className="absolute top-1 right-1 w-4 h-4 bg-primary text-on-primary font-label-sm text-label-sm text-[10px] leading-tight flex items-center justify-center rounded-full">
-              3
-            </span>
-          </button>
-
-          {/* Theme Mode Toggle */}
-          <button
-            className="p-space-xs rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
-            title="Chế độ giao diện"
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[20px]">light_mode</span>
-          </button>
         </div>
 
-        {/* Profile Avatar Pill */}
-        <div className="pl-space-xs">
-          <img
-            alt="Profile"
-            className="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
-            src={
-              user?.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                user?.fullName || 'User'
-              )}&background=0D8ABC&color=fff`
-            }
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.onerror = null;
-              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                user?.fullName || 'User'
-              )}&background=0D8ABC&color=fff`;
-            }}
-          />
-        </div>
       </div>
     </header>
   );
