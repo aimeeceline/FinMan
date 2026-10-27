@@ -51,9 +51,12 @@ export const calculateOptimalScale = (width: number, height?: number): number =>
   if (width >= 1180) {
     return 0.86; // Laptop 13"
   }
-  if (width >= 900) {
-    return 0.80; // Cửa sổ thu nhỏ
+  // Màn hình điện thoại và máy tính bảng nhỏ (< 768px): giữ nguyên chuẩn 1.0
+  // để giao diện responsive mobile hiển thị tự nhiên, không bị zoom thu nhỏ chữ
+  if (width < 768) {
+    return 1.0;
   }
+
   return 0.75;
 };
 

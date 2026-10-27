@@ -464,13 +464,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         const preferredCat = editingTransaction?.category || initialTransaction?.category;
         const matchedPref = preferredCat
           ? filteredCategories.find(
-              (c) =>
-                c.id === preferredCat.id ||
-                c.name.toLowerCase() === preferredCat.name?.toLowerCase() ||
-                (preferredCat.name &&
-                  (c.name.toLowerCase().includes(preferredCat.name.toLowerCase()) ||
-                    preferredCat.name.toLowerCase().includes(c.name.toLowerCase())))
-            )
+            (c) =>
+              c.id === preferredCat.id ||
+              c.name.toLowerCase() === preferredCat.name?.toLowerCase() ||
+              (preferredCat.name &&
+                (c.name.toLowerCase().includes(preferredCat.name.toLowerCase()) ||
+                  preferredCat.name.toLowerCase().includes(c.name.toLowerCase())))
+          )
           : null;
         setSelectedCategory(matchedPref || filteredCategories[0]);
       }
@@ -487,13 +487,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         const preferredAcc = editingTransaction?.account || initialTransaction?.account;
         const matchedPref = preferredAcc
           ? accountsList.find(
-              (a) =>
-                a.id === preferredAcc.id ||
-                a.name.toLowerCase() === preferredAcc.name?.toLowerCase() ||
-                (preferredAcc.name &&
-                  (a.name.toLowerCase().includes(preferredAcc.name.toLowerCase()) ||
-                    preferredAcc.name.toLowerCase().includes(a.name.toLowerCase())))
-            )
+            (a) =>
+              a.id === preferredAcc.id ||
+              a.name.toLowerCase() === preferredAcc.name?.toLowerCase() ||
+              (preferredAcc.name &&
+                (a.name.toLowerCase().includes(preferredAcc.name.toLowerCase()) ||
+                  preferredAcc.name.toLowerCase().includes(a.name.toLowerCase())))
+          )
           : null;
 
         // Nếu không có preferredAcc nhưng có toAccount (ví dụ khi bấm Thanh toán thẻ tín dụng):
@@ -501,8 +501,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         const avoidId = editingTransaction?.toAccount?.id || initialTransaction?.toAccount?.id || selectedToAccount?.id;
         const fallbackAcc = avoidId
           ? (accountsList.find((a) => a.id !== avoidId && a.type !== 'CREDIT_CARD')
-             || accountsList.find((a) => a.id !== avoidId)
-             || accountsList[0])
+            || accountsList.find((a) => a.id !== avoidId)
+            || accountsList[0])
           : accountsList[0];
 
         setSelectedAccount(matchedPref || fallbackAcc);
@@ -833,24 +833,22 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       >
         {/* Modal Header */}
         <header
-          className={`relative px-7 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between transition-colors duration-300 ${
-            type === 'EXPENSE'
+          className={`relative px-7 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between transition-colors duration-300 ${type === 'EXPENSE'
               ? 'bg-gradient-to-r from-red-50/70 via-white to-amber-50/30'
               : type === 'INCOME'
-              ? 'bg-gradient-to-r from-emerald-50/70 via-white to-teal-50/30'
-              : 'bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/30'
-          }`}
+                ? 'bg-gradient-to-r from-emerald-50/70 via-white to-teal-50/30'
+                : 'bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/30'
+            }`}
         >
           <div className="flex items-center gap-3">
             <div className="relative">
               <div
-                className={`w-11 h-11 rounded-full border p-0.5 flex items-center justify-center shadow-md transition-colors ${
-                  type === 'EXPENSE'
+                className={`w-11 h-11 rounded-full border p-0.5 flex items-center justify-center shadow-md transition-colors ${type === 'EXPENSE'
                     ? 'border-amber-300/40 bg-amber-50 text-amber-600'
                     : type === 'INCOME'
-                    ? 'border-emerald-300/40 bg-emerald-50 text-emerald-600'
-                    : 'border-blue-300/40 bg-blue-50 text-blue-600'
-                }`}
+                      ? 'border-emerald-300/40 bg-emerald-50 text-emerald-600'
+                      : 'border-blue-300/40 bg-blue-50 text-blue-600'
+                  }`}
               >
                 <span className="material-symbols-outlined text-2xl">
                   {type === 'EXPENSE' ? 'payments' : type === 'INCOME' ? 'savings' : 'swap_horiz'}
@@ -858,14 +856,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </div>
               <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
                 <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    type === 'EXPENSE' ? 'bg-red-400' : type === 'INCOME' ? 'bg-emerald-400' : 'bg-blue-400'
-                  }`}
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${type === 'EXPENSE' ? 'bg-red-400' : type === 'INCOME' ? 'bg-emerald-400' : 'bg-blue-400'
+                    }`}
                 ></span>
                 <span
-                  className={`relative inline-flex rounded-full h-4 w-4 border-2 border-white ${
-                    type === 'EXPENSE' ? 'bg-red-600' : type === 'INCOME' ? 'bg-emerald-600' : 'bg-blue-600'
-                  }`}
+                  className={`relative inline-flex rounded-full h-4 w-4 border-2 border-white ${type === 'EXPENSE' ? 'bg-red-600' : type === 'INCOME' ? 'bg-emerald-600' : 'bg-blue-600'
+                    }`}
                 ></span>
               </span>
             </div>
@@ -874,23 +870,23 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 {editingTransaction
                   ? 'Chỉnh sửa giao dịch'
                   : Boolean((initialTransaction as any)?.isAiParsed)
-                  ? 'Chỉnh sửa giao dịch từ AI'
-                  : type === 'TRANSFER'
-                  ? 'Điều chuyển khoản tiền mục đích'
-                  : type === 'EXPENSE'
-                  ? 'Thêm giao dịch chi tiêu'
-                  : 'Thêm giao dịch thu nhập'}
+                    ? 'Chỉnh sửa giao dịch từ AI'
+                    : type === 'TRANSFER'
+                      ? 'Điều chuyển khoản tiền mục đích'
+                      : type === 'EXPENSE'
+                        ? 'Thêm giao dịch chi tiêu'
+                        : 'Thêm giao dịch thu nhập'}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 {editingTransaction
                   ? `Cập nhật thông tin giao dịch #${editingTransaction.id}`
                   : Boolean((initialTransaction as any)?.isAiParsed)
-                  ? 'Kiểm tra và tùy chỉnh thông tin do AI bóc tách trước khi lưu'
-                  : type === 'EXPENSE'
-                  ? 'Ghi nhận chi phí sinh hoạt & dòng tiền ra'
-                  : type === 'INCOME'
-                  ? 'Ghi nhận nguồn thu nhập & tích lũy tài sản'
-                  : 'Điều chuyển tiền giữa các mục đích sử dụng (không ảnh hưởng thu/chi ròng)'}
+                    ? 'Kiểm tra và tùy chỉnh thông tin do AI bóc tách trước khi lưu'
+                    : type === 'EXPENSE'
+                      ? 'Ghi nhận chi phí sinh hoạt & dòng tiền ra'
+                      : type === 'INCOME'
+                        ? 'Ghi nhận nguồn thu nhập & tích lũy tài sản'
+                        : 'Điều chuyển tiền giữa các mục đích sử dụng (không ảnh hưởng thu/chi ròng)'}
               </p>
             </div>
           </div>
@@ -947,11 +943,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('EXPENSE')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
-                  type === 'EXPENSE'
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${type === 'EXPENSE'
                     ? 'bg-red-600 text-white shadow-glow-red'
                     : 'text-slate-600 hover:text-red-700 hover:bg-white/80'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -968,11 +963,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('INCOME')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
-                  type === 'INCOME'
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${type === 'INCOME'
                     ? 'bg-emerald-600 text-white shadow-glow-emerald'
                     : 'text-slate-600 hover:text-emerald-700 hover:bg-white/80'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -989,11 +983,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setType('TRANSFER')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
-                  type === 'TRANSFER'
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${type === 'TRANSFER'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
-                }`}
+                  }`}
               >
                 <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
                 <span>Chuyển khoản</span>
@@ -1003,49 +996,45 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
           {/* Big Amount Hero Input */}
           <div
-            className={`border rounded-2xl p-5 text-center shadow-sm transition-all ${
-              type === 'EXPENSE'
+            className={`border rounded-2xl p-5 text-center shadow-sm transition-all ${type === 'EXPENSE'
                 ? 'bg-gradient-to-b from-red-50/60 to-transparent border-red-100'
                 : type === 'INCOME'
-                ? 'bg-gradient-to-b from-emerald-50/60 to-transparent border-emerald-100'
-                : 'bg-gradient-to-b from-blue-50/60 to-transparent border-blue-100'
-            }`}
+                  ? 'bg-gradient-to-b from-emerald-50/60 to-transparent border-emerald-100'
+                  : 'bg-gradient-to-b from-blue-50/60 to-transparent border-blue-100'
+              }`}
           >
             <label
-              className={`block text-xs font-bold uppercase tracking-wider mb-1 ${
-                type === 'EXPENSE'
+              className={`block text-xs font-bold uppercase tracking-wider mb-1 ${type === 'EXPENSE'
                   ? 'text-red-600/80'
                   : type === 'INCOME'
-                  ? 'text-emerald-600/80'
-                  : 'text-blue-600/80'
-              }`}
+                    ? 'text-emerald-600/80'
+                    : 'text-blue-600/80'
+                }`}
             >
               {type === 'EXPENSE'
                 ? 'Số tiền chi tiêu'
                 : type === 'INCOME'
-                ? 'Số tiền thu nhập'
-                : 'Số tiền điều chuyển'}
+                  ? 'Số tiền thu nhập'
+                  : 'Số tiền điều chuyển'}
             </label>
             <div className="flex items-center justify-center gap-1.5 sm:gap-2">
               <span
-                className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
-                  type === 'EXPENSE'
+                className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${type === 'EXPENSE'
                     ? 'text-red-600'
                     : type === 'INCOME'
-                    ? 'text-emerald-600'
-                    : 'text-blue-600'
-                }`}
+                      ? 'text-emerald-600'
+                      : 'text-blue-600'
+                  }`}
               >
                 {type === 'EXPENSE' ? '-' : type === 'INCOME' ? '+' : '⇄'}
               </span>
               <input
-                className={`w-52 sm:w-72 text-center text-3xl sm:text-4xl font-extrabold bg-transparent border-0 border-b-2 outline-none focus:outline-none focus:ring-0 p-0 pb-0.5 tracking-tight font-currency-display ${
-                  type === 'EXPENSE'
+                className={`w-52 sm:w-72 text-center text-3xl sm:text-4xl font-extrabold bg-transparent border-0 border-b-2 outline-none focus:outline-none focus:ring-0 p-0 pb-0.5 tracking-tight font-currency-display ${type === 'EXPENSE'
                     ? 'text-red-600 border-red-300 focus:border-red-600'
                     : type === 'INCOME'
-                    ? 'text-emerald-600 border-emerald-300 focus:border-emerald-600'
-                    : 'text-blue-600 border-blue-300 focus:border-blue-600'
-                }`}
+                      ? 'text-emerald-600 border-emerald-300 focus:border-emerald-600'
+                      : 'text-blue-600 border-blue-300 focus:border-blue-600'
+                  }`}
                 type="text"
                 inputMode="numeric"
                 autoFocus
@@ -1054,13 +1043,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 placeholder="0"
               />
               <span
-                className={`text-xl sm:text-2xl font-bold underline ${
-                  type === 'EXPENSE'
+                className={`text-xl sm:text-2xl font-bold underline ${type === 'EXPENSE'
                     ? 'text-red-600 decoration-red-300'
                     : type === 'INCOME'
-                    ? 'text-emerald-600 decoration-emerald-300'
-                    : 'text-blue-600 decoration-blue-300'
-                }`}
+                      ? 'text-emerald-600 decoration-emerald-300'
+                      : 'text-blue-600 decoration-blue-300'
+                  }`}
               >
                 đ
               </span>
@@ -1073,13 +1061,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   key={q.value}
                   type="button"
                   onClick={() => handleAddQuickAmount(q.value)}
-                  className={`px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer ${
-                    type === 'EXPENSE'
+                  className={`px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer ${type === 'EXPENSE'
                       ? 'hover:border-red-400 hover:text-red-600 hover:bg-red-50/50'
                       : type === 'INCOME'
-                      ? 'hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50'
-                      : 'hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50'
-                  }`}
+                        ? 'hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50'
+                        : 'hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50'
+                    }`}
                 >
                   +{q.label}
                 </button>
@@ -1087,13 +1074,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <button
                 type="button"
                 onClick={handleClearAmount}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer ${
-                  type === 'EXPENSE'
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer ${type === 'EXPENSE'
                     ? 'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100'
                     : type === 'INCOME'
-                    ? 'text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
-                    : 'text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100'
-                }`}
+                      ? 'text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
+                      : 'text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100'
+                  }`}
                 title="Xóa số tiền về 0"
               >
                 Xóa (C)
@@ -1122,9 +1108,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                     Điều chuyển tiền giữa các Khoản mục đích
                   </label>
-                  <span className="text-xs text-blue-700 font-semibold bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                    Bảo toàn 100% Net Worth
-                  </span>
                 </div>
 
                 {accountsList.length < 2 && (
@@ -1215,20 +1198,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                         <span>Sau khi trích:</span>
                         {selectedAccount.type === 'CREDIT_CARD' ? (
                           <span
-                            className={`font-bold font-currency-row ${
-                              creditLimitValidation?.isExceeded ? 'text-red-600' : 'text-slate-700'
-                            }`}
+                            className={`font-bold font-currency-row ${creditLimitValidation?.isExceeded ? 'text-red-600' : 'text-slate-700'
+                              }`}
                           >
                             Còn hạn mức: {formatVND(Math.max(0, creditLimitValidation?.remainingAfterSpend || 0))}
                             {creditLimitValidation?.isExceeded && ' (⚠️ Vượt hạn mức thẻ)'}
                           </span>
                         ) : (
                           <span
-                            className={`font-bold font-currency-row ${
-                              selectedAccount.currentBalance - amount < 0
+                            className={`font-bold font-currency-row ${selectedAccount.currentBalance - amount < 0
                                 ? 'text-red-600'
                                 : 'text-slate-700'
-                            }`}
+                              }`}
                           >
                             {formatVND(selectedAccount.currentBalance - amount)}
                             {selectedAccount.currentBalance - amount < 0 && ' (⚠️ Vượt số dư)'}
@@ -1310,7 +1291,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     )}
                   </div>
 
-                  
+
                 </div>
               </div>
             ) : (
@@ -1319,9 +1300,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        type === 'EXPENSE' ? 'bg-red-600' : 'bg-emerald-600'
-                      }`}
+                      className={`w-2 h-2 rounded-full ${type === 'EXPENSE' ? 'bg-red-600' : 'bg-emerald-600'
+                        }`}
                     ></span>
                     Chọn Danh mục {type === 'EXPENSE' ? 'chi tiêu' : 'thu nhập'}
                   </label>
@@ -1340,29 +1320,26 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                         key={cat.id}
                         type="button"
                         onClick={() => setSelectedCategory(cat)}
-                        className={`flex flex-col items-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center group ${
-                          isSelected
+                        className={`flex flex-col items-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center group ${isSelected
                             ? type === 'EXPENSE'
                               ? 'bg-red-50/90 border-2 border-red-500 shadow-sm text-red-900 scale-[1.02]'
                               : 'bg-emerald-50/90 border-2 border-emerald-500 shadow-sm text-emerald-900 scale-[1.02]'
                             : 'bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 text-slate-700 hover:scale-[1.02]'
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-1.5 text-lg sm:text-xl transition-all shadow-sm ${
-                            isSelected
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-1.5 text-lg sm:text-xl transition-all shadow-sm ${isSelected
                               ? type === 'EXPENSE'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'bg-emerald-600 text-white shadow-md'
                               : theme.bgClass || 'bg-slate-200/70 text-slate-700'
-                          }`}
+                            }`}
                         >
                           {renderCategoryIcon(cat, isSelected)}
                         </div>
                         <span
-                          className={`text-[11px] sm:text-xs truncate w-full px-0.5 flex items-center justify-center gap-1 ${
-                            isSelected ? 'font-bold' : 'font-semibold'
-                          }`}
+                          className={`text-[11px] sm:text-xs truncate w-full px-0.5 flex items-center justify-center gap-1 ${isSelected ? 'font-bold' : 'font-semibold'
+                            }`}
                           title={cat.name}
                         >
                           <span className="truncate">{cat.name}</span>
@@ -1410,32 +1387,29 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 {budgetStats && (
                   budgetStats.hasBudget ? (
                     <div
-                      className={`p-3.5 border rounded-2xl transition-all animate-fadeIn ${
-                        budgetStats.isOverBudget
+                      className={`p-3.5 border rounded-2xl transition-all animate-fadeIn ${budgetStats.isOverBudget
                           ? 'bg-red-50/70 border-red-200/80'
                           : budgetStats.isWarning
-                          ? 'bg-amber-50/70 border-amber-200/80'
-                          : 'bg-emerald-50/50 border-emerald-200/80'
-                      }`}
+                            ? 'bg-amber-50/70 border-amber-200/80'
+                            : 'bg-emerald-50/50 border-emerald-200/80'
+                        }`}
                     >
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span
-                          className={`font-bold flex items-center gap-1.5 ${
-                            budgetStats.isOverBudget
+                          className={`font-bold flex items-center gap-1.5 ${budgetStats.isOverBudget
                               ? 'text-red-900'
                               : budgetStats.isWarning
-                              ? 'text-amber-900'
-                              : 'text-emerald-900'
-                          }`}
+                                ? 'text-amber-900'
+                                : 'text-emerald-900'
+                            }`}
                         >
                           <svg
-                            className={`w-4 h-4 ${
-                              budgetStats.isOverBudget
+                            className={`w-4 h-4 ${budgetStats.isOverBudget
                                 ? 'text-red-600'
                                 : budgetStats.isWarning
-                                ? 'text-amber-600'
-                                : 'text-emerald-600'
-                            }`}
+                                  ? 'text-amber-600'
+                                  : 'text-emerald-600'
+                              }`}
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -1448,26 +1422,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                           Ngân sách "{selectedCategory?.name}" {budgetStats.monthLabel}:
                         </span>
                         <span
-                          className={`font-semibold font-currency-row ${
-                            budgetStats.isOverBudget
+                          className={`font-semibold font-currency-row ${budgetStats.isOverBudget
                               ? 'text-red-800'
                               : budgetStats.isWarning
-                              ? 'text-amber-800'
-                              : 'text-emerald-800'
-                          }`}
+                                ? 'text-amber-800'
+                                : 'text-emerald-800'
+                            }`}
                         >
                           Đã chi {formatVND(budgetStats.spent)} / {formatVND(budgetStats.limit)}
                         </span>
                       </div>
                       <div className="w-full bg-slate-200/60 rounded-full h-2 overflow-hidden">
                         <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            budgetStats.isOverBudget
+                          className={`h-2 rounded-full transition-all duration-300 ${budgetStats.isOverBudget
                               ? 'bg-red-500'
                               : budgetStats.isWarning
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
-                          }`}
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
                           style={{ width: `${Math.min(budgetStats.percentage, 100)}%` }}
                         ></div>
                       </div>
@@ -1482,19 +1454,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                             : `Còn lại: ${formatVND(budgetStats.remaining)}`}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            budgetStats.isOverBudget
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${budgetStats.isOverBudget
                               ? 'bg-red-100 text-red-800'
                               : budgetStats.isWarning
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
                         >
                           {budgetStats.isOverBudget
                             ? `Vượt mức (${budgetStats.percentage}%)`
                             : budgetStats.isWarning
-                            ? `Cảnh báo (${budgetStats.percentage}%)`
-                            : `An toàn (${Math.max(0, 100 - budgetStats.percentage)}%)`}
+                              ? `Cảnh báo (${budgetStats.percentage}%)`
+                              : `An toàn (${Math.max(0, 100 - budgetStats.percentage)}%)`}
                         </span>
                       </p>
                     </div>
@@ -1598,11 +1569,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   {/* THÔNG TIN THẺ TÍN DỤNG & CẢNH BÁO HẠN MỨC */}
                   {selectedAccount?.type === 'CREDIT_CARD' && creditLimitValidation && (
                     <div
-                      className={`mt-2 p-2.5 rounded-xl border text-xs transition-all ${
-                        creditLimitValidation.isExceeded
+                      className={`mt-2 p-2.5 rounded-xl border text-xs transition-all ${creditLimitValidation.isExceeded
                           ? 'bg-red-50 border-red-300 text-red-800 shadow-xs'
                           : 'bg-amber-50/70 border-amber-200 text-amber-900'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between font-bold">
                         <span className="flex items-center gap-1">
@@ -1642,30 +1612,28 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     <button
                       type="button"
                       onClick={handleSetToday}
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${
-                        isToday
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${isToday
                           ? type === 'EXPENSE'
                             ? 'bg-red-100 text-red-700'
                             : type === 'INCOME'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-blue-100 text-blue-700'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-blue-100 text-blue-700'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
+                        }`}
                     >
                       Hôm nay
                     </button>
                     <button
                       type="button"
                       onClick={handleSetYesterday}
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${
-                        isYesterday
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${isYesterday
                           ? type === 'EXPENSE'
                             ? 'bg-red-100 text-red-700'
                             : type === 'INCOME'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-blue-100 text-blue-700'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-blue-100 text-blue-700'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
+                        }`}
                     >
                       Hôm qua
                     </button>
@@ -1788,17 +1756,16 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                                   setDate(cell.dateStr);
                                   setIsDatePickerOpen(false);
                                 }}
-                                className={`h-7 rounded-md text-[11px] font-semibold flex items-center justify-center transition-all cursor-pointer relative ${
-                                  cell.isSelected
+                                className={`h-7 rounded-md text-[11px] font-semibold flex items-center justify-center transition-all cursor-pointer relative ${cell.isSelected
                                     ? type === 'EXPENSE'
                                       ? 'bg-red-600 text-white font-bold shadow-xs scale-105'
                                       : type === 'INCOME'
-                                      ? 'bg-emerald-600 text-white font-bold shadow-xs scale-105'
-                                      : 'bg-blue-600 text-white font-bold shadow-xs scale-105'
+                                        ? 'bg-emerald-600 text-white font-bold shadow-xs scale-105'
+                                        : 'bg-blue-600 text-white font-bold shadow-xs scale-105'
                                     : cell.isCurrentMonth
-                                    ? 'text-slate-700 hover:bg-slate-100'
-                                    : 'text-slate-300 hover:bg-slate-50'
-                                }`}
+                                      ? 'text-slate-700 hover:bg-slate-100'
+                                      : 'text-slate-300 hover:bg-slate-50'
+                                  }`}
                               >
                                 {cell.dayNumber}
                                 {cell.isToday && !cell.isSelected && (
@@ -1923,13 +1890,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                     ? !selectedAccount || !selectedToAccount || selectedAccount.id === selectedToAccount.id || accountsList.length < 2
                     : !selectedCategory || !selectedAccount)
                 }
-                className={`px-7 py-2.5 rounded-xl text-xs font-extrabold text-white transition-all flex items-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  type === 'EXPENSE'
+                className={`px-7 py-2.5 rounded-xl text-xs font-extrabold text-white transition-all flex items-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${type === 'EXPENSE'
                     ? 'bg-gradient-to-r from-red-600 via-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-glow-red'
                     : type === 'INCOME'
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-glow-emerald'
-                    : 'bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 shadow-md'
-                }`}
+                      ? 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-glow-emerald'
+                      : 'bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 shadow-md'
+                  }`}
               >
                 {isSubmitting ? (
                   <>
@@ -1953,8 +1919,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                       {editingTransaction
                         ? 'Lưu thay đổi (Enter)'
                         : type === 'TRANSFER'
-                        ? 'Lưu chuyển khoản (Enter)'
-                        : 'Lưu giao dịch (Enter)'}
+                          ? 'Lưu chuyển khoản (Enter)'
+                          : 'Lưu giao dịch (Enter)'}
                     </span>
                   </>
                 )}

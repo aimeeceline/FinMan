@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       style={{ top: 0, bottom: 0, height: '100%' }}
-      className="fixed left-0 top-0 bottom-0 inset-y-0 w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col select-none overflow-hidden h-full min-h-full"
+      className="hidden md:flex fixed left-0 top-0 bottom-0 inset-y-0 w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex-col select-none overflow-hidden h-full min-h-full"
     >
       {/* 1. Brand Header (Fixed Top) */}
       <div className="h-18 lg:h-20 px-space-lg flex items-center justify-between shrink-0">

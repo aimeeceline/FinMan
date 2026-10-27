@@ -540,7 +540,7 @@ export const SettingsPage: React.FC = () => {
   });
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto px-gutter-desktop py-space-lg select-none">
+    <div className="w-full max-w-[1400px] mx-auto px-3 sm:px-4 md:px-gutter-desktop py-3 sm:py-space-lg select-none">
       
       {/* 2-Column Responsive Layout: Left Sidebar Menu + Right Content */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -1177,10 +1177,7 @@ export const SettingsPage: React.FC = () => {
             <div>
               <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">
                 Danh mục thu chi
-              </h3>
-              <p className="text-xs text-on-surface-variant">
-                Quản lý các hạng mục phân loại tài chính trong Giao dịch
-              </p>
+              </h3>              
             </div>
 
             <div className="flex items-center gap-2.5">

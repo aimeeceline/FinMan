@@ -483,147 +483,148 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
-      {/* 1. Top Command Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
-        <div className="flex items-center gap-space-sm flex-wrap">
+    <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-gutter-desktop py-3 sm:py-space-lg select-none">
+      {/* 1. Top Command Action Bar (Hiển thị chung 1 hàng trên mobile & desktop) */}
+      <div className="flex items-center justify-between gap-2 sm:gap-space-md mb-3 sm:mb-space-lg">
+        <div className="flex items-center gap-space-sm">
           {/* Interactive Month & Year Navigator */}
-          <div className="flex items-center gap-1 bg-surface-container-high rounded-xl p-1 relative" ref={pickerRef}>
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                title="Tháng trước"
-              >
-                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-              </button>
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-surface-container-high rounded-xl p-0.5 sm:p-1 relative shrink-0" ref={pickerRef}>
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+              title="Tháng trước"
+            >
+              <span className="material-symbols-outlined text-[16px] sm:text-[18px]">chevron_left</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
-                className="flex items-center gap-space-xs px-2.5 py-1 rounded-lg text-on-surface hover:bg-surface-container-highest transition-all cursor-pointer font-bold text-sm"
-              >
-                <span className="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
-                <span>{formatMonthLabel(selectedMonth)}</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
+              className="flex items-center gap-1 sm:gap-space-xs px-1.5 sm:px-2.5 py-1 rounded-lg text-on-surface hover:bg-surface-container-highest transition-all cursor-pointer font-bold text-xs sm:text-sm"
+            >
+              <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-primary">calendar_month</span>
+              <span>{formatMonthLabel(selectedMonth)}</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                title="Tháng sau"
-              >
-                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-              </button>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+              title="Tháng sau"
+            >
+              <span className="material-symbols-outlined text-[16px] sm:text-[18px]">chevron_right</span>
+            </button>
 
-              {/* Year & Month Popover */}
-              {isMonthPickerOpen && (
-                <div className="absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95">
-                  {/* Year Selector Bar */}
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-container-high/60">
-                    <button
-                      type="button"
-                      onClick={() => setPickerYear((prev) => prev - 1)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
-                      title="Năm trước"
+            {/* Year & Month Popover */}
+            {isMonthPickerOpen && (
+              <div className="absolute left-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl z-50 p-3 sm:p-4 animate-in fade-in zoom-in-95">
+                {/* Year Selector Bar */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-surface-container-high/60">
+                  <button
+                    type="button"
+                    onClick={() => setPickerYear((prev) => prev - 1)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                    title="Năm trước"
+                  >
+                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 font-bold text-on-surface text-base">
+                    <span>Năm</span>
+                    <select
+                      value={pickerYear}
+                      onChange={(e) => setPickerYear(Number(e.target.value))}
+                      className="bg-surface-container-low px-2 py-0.5 rounded-lg border border-outline-variant/40 font-bold text-primary cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 text-sm"
                     >
-                      <span className="material-symbols-outlined text-lg">chevron_left</span>
-                    </button>
-
-                    <div className="flex items-center gap-1.5 font-bold text-on-surface text-base">
-                      <span>Năm</span>
-                      <select
-                        value={pickerYear}
-                        onChange={(e) => setPickerYear(Number(e.target.value))}
-                        className="bg-surface-container-low px-2 py-0.5 rounded-lg border border-outline-variant/40 font-bold text-primary cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 text-sm"
-                      >
-                        {Array.from({ length: 31 }, (_, i) => 2015 + i).map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setPickerYear((prev) => prev + 1)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
-                      title="Năm sau"
-                    >
-                      <span className="material-symbols-outlined text-lg">chevron_right</span>
-                    </button>
+                      {Array.from({ length: 31 }, (_, i) => 2015 + i).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* 12 Months Grid */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                      const mStr = `${pickerYear}-${String(m).padStart(2, '0')}`;
-                      const isSelected = selectedMonth === mStr;
-                      const now = new Date();
-                      const isCurrentMonth = now.getFullYear() === pickerYear && now.getMonth() + 1 === m;
-
-                      return (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => {
-                            setSelectedMonth(mStr);
-                            setIsMonthPickerOpen(false);
-                          }}
-                          className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${
-                            isSelected
-                              ? 'bg-primary text-white shadow-sm font-bold scale-105'
-                              : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                          }`}
-                        >
-                          Tháng {m}
-                          {isCurrentMonth && !isSelected && (
-                            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Footer Quick Action */}
-                  <div className="mt-3 pt-2 border-t border-surface-container-high/60 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const now = new Date();
-                        const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                        setPickerYear(now.getFullYear());
-                        setSelectedMonth(cur);
-                        setIsMonthPickerOpen(false);
-                      }}
-                      className="text-xs font-bold text-secondary hover:underline cursor-pointer"
-                    >
-                      Tháng hiện tại
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsMonthPickerOpen(false)}
-                      className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer"
-                    >
-                      Đóng
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPickerYear((prev) => prev + 1)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container text-on-surface cursor-pointer transition-colors"
+                    title="Năm sau"
+                  >
+                    <span className="material-symbols-outlined text-lg">chevron_right</span>
+                  </button>
                 </div>
-              )}
-            </div>
-          </div>
 
-        {/* Quick CTA Button */}
-        <div className="flex items-center gap-space-sm flex-wrap">
+                {/* 12 Months Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                    const mStr = `${pickerYear}-${String(m).padStart(2, '0')}`;
+                    const isSelected = selectedMonth === mStr;
+                    const now = new Date();
+                    const isCurrentMonth = now.getFullYear() === pickerYear && now.getMonth() + 1 === m;
+
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMonth(mStr);
+                          setIsMonthPickerOpen(false);
+                        }}
+                        className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${isSelected
+                            ? 'bg-primary text-white shadow-sm font-bold scale-105'
+                            : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                          }`}
+                      >
+                        Tháng {m}
+                        {isCurrentMonth && !isSelected && (
+                          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Quick Action */}
+                <div className="mt-3 pt-2 border-t border-surface-container-high/60 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                      setPickerYear(now.getFullYear());
+                      setSelectedMonth(cur);
+                      setIsMonthPickerOpen(false);
+                    }}
+                    className="text-xs font-bold text-secondary hover:underline cursor-pointer"
+                  >
+                    Tháng hiện tại
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMonthPickerOpen(false)}
+                    className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick CTA Button (Nằm chung 1 hàng) */}
+        <div className="flex items-center shrink-0">
           <button
             id="create-budget-btn"
             onClick={handleOpenAddModal}
-            className="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg shadow-md hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
+            className="flex items-center gap-1 sm:gap-space-xs px-2.5 sm:px-space-md py-1.5 sm:py-space-sm rounded-xl bg-primary-container text-on-primary-container font-label-lg text-xs sm:text-label-lg font-bold shadow-md hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer shrink-0"
             type="button"
           >
-            <span className="material-symbols-outlined text-[20px]">add_circle</span>
-            <span>Thiết lập ngân sách mới</span>
+            <span className="material-symbols-outlined text-[17px] sm:text-[20px]">add_circle</span>
+            <span>
+              <span className="hidden sm:inline">Thiết lập </span>ngân sách<span className="hidden sm:inline"> mới</span>
+            </span>
           </button>
         </div>
       </div>
@@ -672,9 +673,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                   return (
                     <div
                       key={seg.id}
-                      className={`h-full ${seg.color.bg} transition-all duration-700 relative group cursor-pointer ${
-                        isFirst ? 'rounded-l-full' : ''
-                      } ${isLast ? 'rounded-r-full' : ''}`}
+                      className={`h-full ${seg.color.bg} transition-all duration-700 relative group cursor-pointer ${isFirst ? 'rounded-l-full' : ''
+                        } ${isLast ? 'rounded-r-full' : ''}`}
                       style={{ width: `${seg.percentOfTotal}%` }}
                       title={`${seg.name}: ${seg.spent.toLocaleString('vi-VN')} đ (${seg.percentOfTotal.toFixed(1)}% tổng ngân sách)`}
                     >
@@ -686,9 +686,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                 {/* Gray segment: Phần chưa sử dụng */}
                 {unusedPercent > 0 && (
                   <div
-                    className={`h-full bg-slate-300 dark:bg-slate-700 transition-all duration-700 flex-1 ${
-                      budgetSegments.length === 0 ? 'rounded-full' : 'rounded-r-full'
-                    }`}
+                    className={`h-full bg-slate-300 dark:bg-slate-700 transition-all duration-700 flex-1 ${budgetSegments.length === 0 ? 'rounded-full' : 'rounded-r-full'
+                      }`}
                     title={`Chưa sử dụng: ${totalRemaining.toLocaleString('vi-VN')} đ (${unusedPercent.toFixed(1)}%)`}
                   ></div>
                 )}
@@ -832,257 +831,253 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
 
       {/* 3. Main Category Budgets Section (Full Width Grid) */}
       <div className="flex flex-col gap-space-md">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-space-xs">
-              <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                Danh mục chi tiêu chi tiết
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
-                {budgets.length} danh mục
-              </span>
-            </div>
-            <div className="flex items-center gap-space-xs">
-              <button
-                type="button"
-                onClick={() => setFilterTab('ALL')}
-                className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${
-                  filterTab === 'ALL'
-                    ? 'bg-surface-container-high text-on-surface font-semibold shadow-xs'
-                    : 'text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                Tất cả
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterTab('WARNING')}
-                className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${
-                  filterTab === 'WARNING'
-                    ? 'bg-error-container text-on-error-container font-semibold shadow-xs'
-                    : 'text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                Cảnh báo ({categoryStats.overbudget + categoryStats.warning})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterTab('SAFE')}
-                className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${
-                  filterTab === 'SAFE'
-                    ? 'bg-secondary-fixed/60 text-on-secondary-fixed font-semibold shadow-xs'
-                    : 'text-on-surface-variant hover:bg-surface-container'
-                }`}
-              >
-                An toàn ({categoryStats.safe})
-              </button>
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-space-xs">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">
+              Danh mục chi tiêu chi tiết
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+              {budgets.length} danh mục
+            </span>
           </div>
+          <div className="flex items-center gap-space-xs">
+            <button
+              type="button"
+              onClick={() => setFilterTab('ALL')}
+              className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${filterTab === 'ALL'
+                  ? 'bg-surface-container-high text-on-surface font-semibold shadow-xs'
+                  : 'text-on-surface-variant hover:bg-surface-container'
+                }`}
+            >
+              Tất cả
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('WARNING')}
+              className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${filterTab === 'WARNING'
+                  ? 'bg-error-container text-on-error-container font-semibold shadow-xs'
+                  : 'text-on-surface-variant hover:bg-surface-container'
+                }`}
+            >
+              Cảnh báo ({categoryStats.overbudget + categoryStats.warning})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('SAFE')}
+              className={`px-3 py-1 text-label-sm font-label-sm rounded-lg transition-colors cursor-pointer ${filterTab === 'SAFE'
+                  ? 'bg-secondary-fixed/60 text-on-secondary-fixed font-semibold shadow-xs'
+                  : 'text-on-surface-variant hover:bg-surface-container'
+                }`}
+            >
+              An toàn ({categoryStats.safe})
+            </button>
+          </div>
+        </div>
 
-          {/* Category List */}
-          {isLoading ? (
-            <div className="p-8 text-center bg-surface-container-lowest rounded-xl border border-outline-variant/20 text-on-surface-variant">
-              Đang tải danh sách ngân sách...
+        {/* Category List */}
+        {isLoading ? (
+          <div className="p-8 text-center bg-surface-container-lowest rounded-xl border border-outline-variant/20 text-on-surface-variant">
+            Đang tải danh sách ngân sách...
+          </div>
+        ) : filteredBudgets.length === 0 ? (
+          <div className="p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant mb-3">
+              <span className="material-symbols-outlined text-3xl">account_balance_wallet</span>
             </div>
-          ) : filteredBudgets.length === 0 ? (
-            <div className="p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant mb-3">
-                <span className="material-symbols-outlined text-3xl">account_balance_wallet</span>
-              </div>
-              <h4 className="font-title-md text-title-md font-bold text-on-surface mb-1">
-                {filterTab === 'ALL'
-                  ? 'Chưa thiết lập ngân sách nào cho tháng này'
-                  : 'Không có danh mục nào thuộc nhóm lọc này'}
-              </h4>
-              <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mb-4">
-                Thiết lập hạn mức chi tiêu để nhận cảnh báo thông minh khi sắp hết tiền.
-              </p>
-              {filterTab === 'ALL' && (
-                <button
-                  onClick={handleOpenAddModal}
-                  className="px-4 py-2 rounded-xl bg-primary text-white font-label-md text-label-md font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
+            <h4 className="font-title-md text-title-md font-bold text-on-surface mb-1">
+              {filterTab === 'ALL'
+                ? 'Chưa thiết lập ngân sách nào cho tháng này'
+                : 'Không có danh mục nào thuộc nhóm lọc này'}
+            </h4>
+            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mb-4">
+              Thiết lập hạn mức chi tiêu để nhận cảnh báo thông minh khi sắp hết tiền.
+            </p>
+            {filterTab === 'ALL' && (
+              <button
+                onClick={handleOpenAddModal}
+                className="px-4 py-2 rounded-xl bg-primary text-white font-label-md text-label-md font-bold shadow-sm hover:brightness-110 transition-all cursor-pointer"
+              >
+                + Thiết lập ngân sách đầu tiên
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
+            {filteredBudgets.map((b, idx) => {
+              const budgetColor = getBudgetColor(idx, b.category?.id);
+              const allocated = b.amount ?? b.allocatedAmount;
+              const pct = allocated > 0 ? (b.spentAmount / allocated) * 100 : 0;
+              const isOver = pct > 100 || b.status === 'OVERBUDGET';
+              const isWarn = (pct >= 80 && pct <= 100) || b.status === 'WARNING';
+
+              // Determine badge and bar styling
+              let badgeClass = 'bg-secondary-fixed/40 text-on-secondary-fixed font-bold';
+              let badgeLabel = 'An toàn';
+              let barClass = budgetColor.bg;
+              let amountTextClass = 'text-secondary';
+
+              if (isOver) {
+                badgeClass = 'bg-primary-container text-on-primary-container font-bold animate-pulse';
+                badgeLabel = '100% Hết hạn mức';
+                barClass = 'bg-primary-container';
+                amountTextClass = 'text-primary';
+              } else if (isWarn) {
+                badgeClass = 'bg-amber-100 text-amber-900 font-bold';
+                badgeLabel = 'Sắp chạm ngưỡng';
+                barClass = 'bg-amber-500';
+                amountTextClass = 'text-amber-700';
+              } else if (b.spentAmount === 0) {
+                badgeClass = 'bg-surface-container-high text-on-surface-variant font-medium';
+                badgeLabel = 'Chưa chi';
+                barClass = 'bg-surface-variant';
+                amountTextClass = 'text-on-surface-variant';
+              }
+
+              const remaining = Math.max(0, allocated - b.spentAmount);
+              const overspent = Math.max(0, b.spentAmount - allocated);
+
+              return (
+                <div
+                  key={b.id}
+                  className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/20 relative overflow-hidden transition-all hover:shadow-md group"
                 >
-                  + Thiết lập ngân sách đầu tiên
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
-              {filteredBudgets.map((b, idx) => {
-                const budgetColor = getBudgetColor(idx, b.category?.id);
-                const allocated = b.amount ?? b.allocatedAmount;
-                const pct = allocated > 0 ? (b.spentAmount / allocated) * 100 : 0;
-                const isOver = pct > 100 || b.status === 'OVERBUDGET';
-                const isWarn = (pct >= 80 && pct <= 100) || b.status === 'WARNING';
-
-                // Determine badge and bar styling
-                let badgeClass = 'bg-secondary-fixed/40 text-on-secondary-fixed font-bold';
-                let badgeLabel = 'An toàn';
-                let barClass = budgetColor.bg;
-                let amountTextClass = 'text-secondary';
-
-                if (isOver) {
-                  badgeClass = 'bg-primary-container text-on-primary-container font-bold animate-pulse';
-                  badgeLabel = '100% Hết hạn mức';
-                  barClass = 'bg-primary-container';
-                  amountTextClass = 'text-primary';
-                } else if (isWarn) {
-                  badgeClass = 'bg-amber-100 text-amber-900 font-bold';
-                  badgeLabel = 'Sắp chạm ngưỡng';
-                  barClass = 'bg-amber-500';
-                  amountTextClass = 'text-amber-700';
-                } else if (b.spentAmount === 0) {
-                  badgeClass = 'bg-surface-container-high text-on-surface-variant font-medium';
-                  badgeLabel = 'Chưa chi';
-                  barClass = 'bg-surface-variant';
-                  amountTextClass = 'text-on-surface-variant';
-                }
-
-                const remaining = Math.max(0, allocated - b.spentAmount);
-                const overspent = Math.max(0, b.spentAmount - allocated);
-
-                return (
-                  <div
-                    key={b.id}
-                    className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-outline-variant/20 relative overflow-hidden transition-all hover:shadow-md group"
-                  >
-                    <div className="flex items-center justify-between mb-space-xs">
-                      <div className="flex items-center gap-space-sm">
-                        <div
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                            isOver
-                              ? 'bg-error-container/70 text-on-error-container'
-                              : isWarn
+                  <div className="flex items-center justify-between mb-space-xs">
+                    <div className="flex items-center gap-space-sm">
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isOver
+                            ? 'bg-error-container/70 text-on-error-container'
+                            : isWarn
                               ? 'bg-amber-100 text-amber-800'
                               : budgetColor.lightBg
                           }`}
-                        >
-                          <span className="text-2xl leading-none select-none">
-                            {getCategoryTheme(b.category).emoji}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${budgetColor.bg} inline-block shrink-0`}></span>
-                            <span className="font-title-md text-title-md font-bold text-on-surface">
-                              {b.category.name}
-                            </span>
-                            {b.category?.isDeleted && (
-                              <span className="relative group/warn inline-flex items-center">
-                                <span
-                                  className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
-                                  title={`Thuộc danh mục "${b.category.name}" đã bị xóa`}
-                                >
-                                  !
-                                </span>
-                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
-                                  Thuộc danh mục "{b.category.name}" đã bị xóa
-                                </span>
-                              </span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm ${badgeClass}`}>
-                              {badgeLabel}
-                            </span>
-                          </div>
-                          <span className="font-body-sm text-body-sm text-on-surface-variant">
-                            Đã tiêu: {b.spentAmount.toLocaleString('vi-VN')} đ / Hạn mức: {allocated.toLocaleString('vi-VN')} đ
-                          </span>
-                        </div>
+                      >
+                        <span className="text-2xl leading-none select-none">
+                          {getCategoryTheme(b.category).emoji}
+                        </span>
                       </div>
-
-                      {/* Right Amount / Percentage */}
-                      <div className="text-right flex flex-col items-end">
+                      <div>
                         <div className="flex items-center gap-2">
-                          <span className={`font-headline-sm text-headline-sm font-bold ${amountTextClass}`}>
-                            {pct.toFixed(0)}%
+                          <span className={`w-2 h-2 rounded-full ${budgetColor.bg} inline-block shrink-0`}></span>
+                          <span className="font-title-md text-title-md font-bold text-on-surface">
+                            {b.category.name}
                           </span>
-
-                          {/* Action Buttons (Edit / Delete) */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(b)}
-                              title="Sửa ngân sách"
-                              className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBudget(b)}
-                              title="Xóa ngân sách"
-                              className="p-1 rounded-lg hover:bg-error-container text-error cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-                          {isOver ? (
-                            <span className="text-primary font-bold">
-                              Vượt: {overspent.toLocaleString('vi-VN')} đ
-                            </span>
-                          ) : (
-                            <>
-                              Còn lại:{' '}
-                              <span className="font-semibold text-on-surface font-currency-row">
-                                {remaining.toLocaleString('vi-VN')} đ
+                          {b.category?.isDeleted && (
+                            <span className="relative group/warn inline-flex items-center">
+                              <span
+                                className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
+                                title={`Thuộc danh mục "${b.category.name}" đã bị xóa`}
+                              >
+                                !
                               </span>
-                            </>
+                              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
+                                Thuộc danh mục "{b.category.name}" đã bị xóa
+                              </span>
+                            </span>
                           )}
+                          <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm ${badgeClass}`}>
+                            {badgeLabel}
+                          </span>
                         </div>
+                        <span className="font-body-sm text-body-sm text-on-surface-variant">
+                          Đã tiêu: {b.spentAmount.toLocaleString('vi-VN')} đ / Hạn mức: {allocated.toLocaleString('vi-VN')} đ
+                        </span>
                       </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700/80 rounded-full overflow-hidden mb-space-xs">
-                      <div
-                        className={`h-full ${barClass} rounded-full transition-all duration-700`}
-                        style={{ width: `${Math.min(100, Math.max(2, pct))}%` }}
-                      ></div>
-                    </div>
+                    {/* Right Amount / Percentage */}
+                    <div className="text-right flex flex-col items-end">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-headline-sm text-headline-sm font-bold ${amountTextClass}`}>
+                          {pct.toFixed(0)}%
+                        </span>
 
-                    {/* Distinct Warning Notice Card for Overbudget/Warning categories */}
-                    {isOver && (
-                      <div className="p-space-sm rounded-xl bg-error-container/50 flex items-center justify-between mt-space-xs flex-wrap gap-2">
-                        <div className="flex items-center gap-space-xs text-on-error-container">
-                          <span className="material-symbols-outlined text-[20px] text-error shrink-0">warning</span>
-                          <span className="font-label-sm text-label-sm font-bold">
-                            Đã đạt giới hạn ngân sách! Không thể chi thêm hoặc cần nâng hạn mức.
-                          </span>
+                        {/* Action Buttons (Edit / Delete) */}
+                        <div className="hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(b)}
+                            title="Sửa ngân sách"
+                            className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBudget(b)}
+                            title="Xóa ngân sách"
+                            className="p-1 rounded-lg hover:bg-error-container text-error cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickBoost(b, 500_000)}
-                          className="px-2.5 py-1 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm font-bold shadow-xs hover:bg-surface-container-low transition-colors cursor-pointer"
-                        >
-                          Nâng quỹ +500k
-                        </button>
                       </div>
-                    )}
-                    {isWarn && !isOver && (
-                      <div className="p-space-sm rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between mt-space-xs flex-wrap gap-2">
-                        <div className="flex items-center gap-space-xs text-amber-900">
-                          <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0">info</span>
-                          <span className="font-label-sm text-label-sm font-bold">
-                            Đã tiêu hơn 80% ngân sách. Hãy cân nhắc chi tiêu tiết kiệm trong những ngày còn lại.
+
+                      <div className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                        {isOver ? (
+                          <span className="text-primary font-bold">
+                            Vượt: {overspent.toLocaleString('vi-VN')} đ
                           </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickBoost(b, 500_000)}
-                          className="px-2.5 py-1 rounded-lg bg-surface-container-lowest text-amber-800 font-label-sm text-label-sm font-bold shadow-xs hover:bg-amber-100 transition-colors cursor-pointer"
-                        >
-                          Nâng quỹ +500k
-                        </button>
+                        ) : (
+                          <>
+                            Còn lại:{' '}
+                            <span className="font-semibold text-on-surface font-currency-row">
+                              {remaining.toLocaleString('vi-VN')} đ
+                            </span>
+                          </>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700/80 rounded-full overflow-hidden mb-space-xs">
+                    <div
+                      className={`h-full ${barClass} rounded-full transition-all duration-700`}
+                      style={{ width: `${Math.min(100, Math.max(2, pct))}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Distinct Warning Notice Card for Overbudget/Warning categories */}
+                  {isOver && (
+                    <div className="p-space-sm rounded-xl bg-error-container/50 flex items-center justify-between mt-space-xs flex-wrap gap-2">
+                      <div className="flex items-center gap-space-xs text-on-error-container">
+                        <span className="material-symbols-outlined text-[20px] text-error shrink-0">warning</span>
+                        <span className="font-label-sm text-label-sm font-bold">
+                          Đã đạt giới hạn ngân sách! Không thể chi thêm hoặc cần nâng hạn mức.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickBoost(b, 500_000)}
+                        className="px-2.5 py-1 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm font-bold shadow-xs hover:bg-surface-container-low transition-colors cursor-pointer"
+                      >
+                        Nâng quỹ +500k
+                      </button>
+                    </div>
+                  )}
+                  {isWarn && !isOver && (
+                    <div className="p-space-sm rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between mt-space-xs flex-wrap gap-2">
+                      <div className="flex items-center gap-space-xs text-amber-900">
+                        <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0">info</span>
+                        <span className="font-label-sm text-label-sm font-bold">
+                          Đã tiêu hơn 80% ngân sách. Hãy cân nhắc chi tiêu tiết kiệm trong những ngày còn lại.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickBoost(b, 500_000)}
+                        className="px-2.5 py-1 rounded-lg bg-surface-container-lowest text-amber-800 font-label-sm text-label-sm font-bold shadow-xs hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        Nâng quỹ +500k
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 4. Modal Thiết Lập / Sửa Ngân Sách Mới (Glassmorphism Modal) */}
       {isModalOpen && (
@@ -1123,13 +1118,12 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                   type="button"
                   disabled={editingBudget != null}
                   onClick={() => setIsFormCategoryDropdownOpen((prev) => !prev)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${
-                    editingBudget != null
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${editingBudget != null
                       ? 'bg-surface-container/50 border-outline-variant/30 text-on-surface-variant cursor-not-allowed opacity-80'
                       : isFormCategoryDropdownOpen
-                      ? 'border-2 border-purple-500 bg-surface-container-low ring-2 ring-purple-500/15'
-                      : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/40 hover:border-purple-400'
-                  }`}
+                        ? 'border-2 border-purple-500 bg-surface-container-low ring-2 ring-purple-500/15'
+                        : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/40 hover:border-purple-400'
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     {selectedFormCategory ? (
@@ -1165,9 +1159,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
 
                   {editingBudget == null && (
                     <span
-                      className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${
-                        isFormCategoryDropdownOpen ? 'rotate-180 text-purple-600' : ''
-                      }`}
+                      className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${isFormCategoryDropdownOpen ? 'rotate-180 text-purple-600' : ''
+                        }`}
                     >
                       expand_more
                     </span>
@@ -1190,11 +1183,10 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                               setFormCategoryId(c.id);
                               setIsFormCategoryDropdownOpen(false);
                             }}
-                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${
-                              isSelected
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${isSelected
                                 ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-900/40 shadow-2xs'
                                 : 'text-slate-700 dark:text-on-surface hover:bg-slate-50 dark:hover:bg-surface-container font-medium'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <div
@@ -1236,11 +1228,10 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                     setIsFormCategoryDropdownOpen(false);
                     setIsFormMonthPickerOpen((prev) => !prev);
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${
-                    isFormMonthPickerOpen
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all cursor-pointer select-none ${isFormMonthPickerOpen
                       ? 'border-2 border-primary bg-surface-container-low ring-2 ring-primary/15'
                       : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/40 hover:border-primary/50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1252,9 +1243,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                   </div>
 
                   <span
-                    className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${
-                      isFormMonthPickerOpen ? 'rotate-180 text-primary' : ''
-                    }`}
+                    className={`material-symbols-outlined text-[20px] text-slate-500 transition-transform duration-200 ${isFormMonthPickerOpen ? 'rotate-180 text-primary' : ''
+                      }`}
                   >
                     expand_more
                   </span>
@@ -1315,11 +1305,10 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
                               setFormMonth(mStr);
                               setIsFormMonthPickerOpen(false);
                             }}
-                            className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${
-                              isSelected
+                            className={`py-2 px-1 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer relative ${isSelected
                                 ? 'bg-primary text-white shadow-sm font-bold scale-[1.02]'
                                 : 'bg-slate-50 dark:bg-surface-container-low hover:bg-slate-100 dark:hover:bg-surface-container text-slate-800 dark:text-on-surface border border-slate-200/50 dark:border-transparent'
-                            }`}
+                              }`}
                           >
                             Tháng {m}
                             {isCurrentMonth && !isSelected && (

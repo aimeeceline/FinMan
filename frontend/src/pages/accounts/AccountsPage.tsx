@@ -167,6 +167,11 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
   // ============================================================
   // FETCH
   // ============================================================
+  const propAccountsRef = React.useRef(propAccounts);
+  useEffect(() => {
+    propAccountsRef.current = propAccounts;
+  }, [propAccounts]);
+
   const fetchAccounts = useCallback(async () => {
     setError(null);
     try {
@@ -201,11 +206,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
       } catch {
         // Silently continue if transactions API is unavailable
       }
-
-      if (onRefresh) onRefresh();
     } catch (err: unknown) {
       console.warn('Could not fetch accounts from backend:', err);
-      const accList = propAccounts || [];
+      const accList = propAccountsRef.current || [];
       const totalAssets = accList
         .filter((account) => account.type !== 'CREDIT_CARD' && !account.isArchived)
         .reduce((sum, account) => sum + (account.currentBalance || 0), 0);
@@ -221,7 +224,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         accounts: accList,
       });
     }
-  }, [propAccounts, onRefresh]);
+  }, []);
 
   useEffect(() => {
     fetchAccounts();
@@ -301,8 +304,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
     return account.type === 'CREDIT_CARD'
       ? 'Thẻ tín dụng'
       : account.type === 'CASH'
-      ? 'Ví tiền mặt'
-      : 'Tài khoản thanh toán';
+        ? 'Ví tiền mặt'
+        : 'Tài khoản thanh toán';
   };
 
   const getAccountIncome = (account: Account): number => {
@@ -586,10 +589,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
         className={`
           p-space-sm
           rounded-xl
-          ${
-            isNegative
-              ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400 shadow-2xs hover:shadow-md'
-              : 'bg-surface-container-lowest border border-slate-200 hover:border-primary/50 hover:shadow-md'
+          ${isNegative
+            ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400 shadow-2xs hover:shadow-md'
+            : 'bg-surface-container-lowest border border-slate-200 hover:border-primary/50 hover:shadow-md'
           }
           transition-all
           flex flex-col justify-between
@@ -598,7 +600,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           min-w-0
           cursor-pointer
           active:scale-[0.99]
-        `}    
+        `}
       >
         {/* TOP ROW: AVATAR + TITLE/SUBTITLE + SỬA & 3 DOTS MENU */}
         <div className="flex items-start justify-between gap-1.5">
@@ -675,7 +677,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
                     text-xs font-medium text-on-surface
                     animate-in fade-in zoom-in-95 duration-100
                   "
-                >                
+                >
 
                   <button
                     type="button"
@@ -757,9 +759,8 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             </div>
             <div className="w-full h-1.5 rounded-full bg-surface-container overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
-                  usedPercent > 80 ? 'bg-error' : 'bg-primary-container'
-                }`}
+                className={`h-full rounded-full transition-all ${usedPercent > 80 ? 'bg-error' : 'bg-primary-container'
+                  }`}
                 style={{ width: `${usedPercent}%` }}
               />
             </div>
@@ -936,10 +937,9 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
               }}
               className={`
                 p-space-sm rounded-xl
-                ${
-                  isNegative
-                    ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400'
-                    : 'bg-surface-container-lowest border border-slate-200 hover:border-slate-300'
+                ${isNegative
+                  ? 'bg-red-50/70 border border-red-200/90 hover:border-red-400'
+                  : 'bg-surface-container-lowest border border-slate-200 hover:border-slate-300'
                 }
                 hover:shadow-md transition-all flex flex-col justify-between gap-space-xs cursor-pointer active:scale-[0.99]
               `}
@@ -1041,93 +1041,93 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
           STICKY HEADER STRIP: 3 KPI CARDS + TOOLBAR (TABS & ADD BUTTON)
           Stays fixed under the TopHeader (top-20) when scrolling!
       ======================================================== */}
-      <div className="sticky top-20 z-30 bg-surface/90 backdrop-blur-xl pt-1 pb-space-sm -mx-space-md sm:-mx-space-lg px-space-md sm:px-space-lg border-b border-surface-container/50 shadow-xs flex flex-col gap-space-sm">
-        {/* 1. 3 PRESTIGE METRIC KPI HERO CARDS (CHÍNH XÁC THEO CSS BÊN THỐNG KÊ) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md w-full">
+      <div className="sticky top-16 md:top-20 z-30 bg-surface/90 backdrop-blur-xl pt-1 pb-space-sm -mx-space-md sm:-mx-space-lg px-space-md sm:px-space-lg border-b border-surface-container/50 shadow-xs flex flex-col gap-space-sm">
+        {/* 1. 3 PRESTIGE METRIC KPI HERO CARDS (2 Ô MỖI HÀNG TRÊN MOBILE) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-space-md w-full">
           {/* Card 1: TÀI SẢN (Xanh dương Gradient) */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-space-lg rounded-xl shadow-md shadow-blue-500/15 flex flex-col justify-between border border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/25 transition-all text-white">
+          <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-blue-500/15 flex flex-col justify-between border border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/25 transition-all text-white">
             <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
             <div className="flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-space-xs">
-                <span className="font-label-md text-label-md text-blue-100 uppercase tracking-wider font-bold">
+              <div className="flex items-center gap-1 sm:gap-space-xs min-w-0">
+                <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-blue-100 uppercase tracking-wider font-bold truncate">
                   TÀI SẢN
                 </span>
                 <button
                   type="button"
                   onClick={toggleHideBalance}
-                  className="p-1 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                  className="p-0.5 text-blue-200 hover:text-white transition-colors cursor-pointer shrink-0"
                   title={hideBalance ? 'Hiện số dư' : 'Ẩn số dư'}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[15px] sm:text-[18px]">
                     {hideBalance ? 'visibility_off' : 'visibility'}
                   </span>
                 </button>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-                <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+                <span className="material-symbols-outlined text-[15px] sm:text-[20px]">account_balance_wallet</span>
               </div>
             </div>
 
-            <div className="mt-space-sm mb-space-md relative z-10">
-              <div className="flex items-baseline gap-space-2xs">
-                <span className="font-currency-display text-currency-display text-white font-extrabold tracking-tight">
+            <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+              <div className="flex items-baseline gap-0.5 sm:gap-space-2xs">
+                <span className="font-currency-display text-sm sm:text-lg md:text-currency-display text-white font-extrabold tracking-tight truncate">
                   {hideBalance ? '••••••••' : totalAssets.toLocaleString('vi-VN')}
                 </span>
-                <span className="font-title-md text-title-md text-blue-200 font-bold">
+                <span className="text-[10px] sm:text-title-md text-blue-200 font-bold shrink-0">
                   ₫
                 </span>
               </div>
-            </div>            
+            </div>
           </div>
 
           {/* Card 2: KHOẢN NỢ (Đỏ Gradient) */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-rose-600 to-rose-700 p-space-lg rounded-xl shadow-md shadow-red-500/15 flex flex-col justify-between border border-red-400/30 hover:shadow-lg hover:shadow-red-500/25 transition-all text-white">
+          <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-rose-600 to-rose-700 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-red-500/15 flex flex-col justify-between border border-red-400/30 hover:shadow-lg hover:shadow-red-500/25 transition-all text-white">
             <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
             <div className="flex items-center justify-between relative z-10">
-              <span className="font-label-md text-label-md text-rose-100 uppercase tracking-wider font-bold">
+              <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-rose-100 uppercase tracking-wider font-bold truncate">
                 KHOẢN NỢ
               </span>
-              <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-                <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+                <span className="material-symbols-outlined text-[15px] sm:text-[20px]">arrow_upward</span>
               </div>
             </div>
 
-            <div className="mt-space-sm mb-space-md relative z-10">
-              <div className="flex items-baseline gap-space-2xs text-white">
-                <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
+            <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+              <div className="flex items-baseline gap-0.5 sm:gap-space-2xs text-white">
+                <span className="font-currency-display text-sm sm:text-lg md:text-currency-display font-extrabold tracking-tight truncate">
                   {hideBalance
                     ? '••••••••'
                     : totalLiabilities > 0
-                    ? `-${totalLiabilities.toLocaleString('vi-VN')}`
-                    : '0'}
+                      ? `-${totalLiabilities.toLocaleString('vi-VN')}`
+                      : '0'}
                 </span>
-                <span className="font-title-md text-title-md text-rose-200 font-bold">₫</span>
-              </div>        
+                <span className="text-[10px] sm:text-title-md text-rose-200 font-bold shrink-0">₫</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 3: TÀI SẢN RÒNG (Xanh lá Gradient) */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-700 p-space-lg rounded-xl shadow-md shadow-emerald-500/15 flex flex-col justify-between border border-emerald-400/30 hover:shadow-lg hover:shadow-emerald-500/25 transition-all text-white">
+          {/* Card 3: TÀI SẢN RÒNG (Xanh lá Gradient) - Col-span-2 on mobile, col-span-1 on md */}
+          <div className="col-span-2 md:col-span-1 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-700 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-emerald-500/15 flex flex-col justify-between border border-emerald-400/30 hover:shadow-lg hover:shadow-emerald-500/25 transition-all text-white">
             <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
             <div className="flex items-center justify-between relative z-10">
-              <span className="font-label-md text-label-md text-emerald-100 uppercase tracking-wider font-bold">
+              <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-emerald-100 uppercase tracking-wider font-bold truncate">
                 TÀI SẢN RÒNG
               </span>
-              <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-                <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+                <span className="material-symbols-outlined text-[15px] sm:text-[20px]">arrow_downward</span>
               </div>
             </div>
 
-            <div className="mt-space-sm mb-space-md relative z-10">
-              <div className="flex items-baseline gap-space-2xs text-white">
-                <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
+            <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+              <div className="flex items-baseline gap-0.5 sm:gap-space-2xs text-white">
+                <span className="font-currency-display text-sm sm:text-lg md:text-currency-display font-extrabold tracking-tight truncate">
                   {hideBalance
                     ? '••••••••'
                     : netWorth >= 0
-                    ? `+${netWorth.toLocaleString('vi-VN')}`
-                    : netWorth.toLocaleString('vi-VN')}
+                      ? `+${netWorth.toLocaleString('vi-VN')}`
+                      : netWorth.toLocaleString('vi-VN')}
                 </span>
-                <span className="font-title-md text-title-md text-emerald-200 font-bold">₫</span>
+                <span className="text-[10px] sm:text-title-md text-emerald-200 font-bold shrink-0">₫</span>
               </div>
             </div>
           </div>
@@ -1140,11 +1140,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('ACTIVE')}
-              className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'ACTIVE'
+              className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'ACTIVE'
                   ? 'bg-surface-container-lowest text-on-surface shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-[17px]">
                 account_balance_wallet
@@ -1154,11 +1153,10 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('ARCHIVED')}
-              className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'ARCHIVED'
+              className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'ARCHIVED'
                   ? 'bg-surface-container-lowest text-on-surface shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-[17px]">
                 inventory_2

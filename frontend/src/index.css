@@ -21,6 +21,7 @@
     background-color: #faf8ff;
     color: #131b2e;
     font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow-x: hidden;
   }
 
   body {

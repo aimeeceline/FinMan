@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScreenZoomProvider } from './context/ScreenZoomContext';
 import { Sidebar, type NavRoute } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
+import { BottomNav } from './components/layout/BottomNav';
+import { AIAssistantChatBall } from './components/layout/AIAssistantChatBall';
 import { AddTransactionModal } from './components/modals/AddTransactionModal';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
@@ -309,6 +311,8 @@ const MainApp: React.FC = () => {
       <TopHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
         onExportExcel={async () => {
           try {
             await statisticsService.exportExcel();
@@ -319,8 +323,8 @@ const MainApp: React.FC = () => {
         }}
       />
 
-      {/* 3. Main Stage Content Area (Offset pl-72 pt-20) */}
-      <main className={`pl-72 pt-20 bg-surface ${currentRoute === 'tro-ly-finman-ai' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+      {/* 3. Main Stage Content Area (Offset pl-0 md:pl-72 pt-16 md:pt-20 pb-20 md:pb-6) */}
+      <main className={`pl-0 md:pl-72 pt-16 md:pt-20 pb-20 md:pb-6 bg-surface ${currentRoute === 'tro-ly-finman-ai' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
         {currentRoute === 'giao-dich' && (
           <DashboardPage
             transactions={filteredTransactions}
@@ -372,6 +376,22 @@ const MainApp: React.FC = () => {
 
         {currentRoute === 'cai-dat-va-danh-muc' && <SettingsPage />}
       </main>
+
+      {/* 4. Mobile Bottom Navigation (Giao dịch, Thống kê, Thêm (+), Ngân sách, Tài khoản) */}
+      <BottomNav
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
+        onOpenAddModal={handleOpenAddModal}
+      />
+
+      {/* 5. Trợ lý FinMan AI Floating Chat Ball (Góc phải dưới màn hình) */}
+      <AIAssistantChatBall
+        onOpenFullScreen={() => handleNavigate('tro-ly-finman-ai')}
+        accounts={accounts}
+        categories={categories}
+        onApplyAiTransaction={handleAddTransaction}
+        onRefreshData={loadData}
+      />
 
       {/* 4. Global Add/Edit Transaction Modal */}
       <AddTransactionModal

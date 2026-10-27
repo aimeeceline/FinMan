@@ -45,22 +45,29 @@ export const ScreenZoomControl: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none shadow-2xs ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none shadow-2xs ${
           isOpen
             ? 'bg-secondary/15 text-secondary border border-secondary/30 ring-2 ring-secondary/20'
             : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
         }`}
         title="Tự động thu phóng theo kích thước màn hình"
       >
-        <span className="material-symbols-outlined text-[17px] text-secondary">
+        <span className="material-symbols-outlined text-[16px] sm:text-[17px] text-secondary">
           fit_screen
         </span>
-        <span className="font-bold text-on-surface">
-          {zoomMode === 'auto' ? `Auto ${formattedPercent}` : formattedPercent}
+        <span className="font-bold text-on-surface text-[11px] sm:text-xs">
+          {zoomMode === 'auto' ? (
+            <>
+              <span className="hidden sm:inline">Auto </span>
+              {formattedPercent}
+            </>
+          ) : (
+            formattedPercent
+          )}
         </span>
         {zoomMode === 'auto' && (
           <span
-            className="w-2 h-2 rounded-full bg-secondary animate-pulse"
+            className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-secondary animate-pulse"
             title="Đang bật chế độ tự động căn chỉnh màn hình"
           />
         )}
@@ -68,7 +75,7 @@ export const ScreenZoomControl: React.FC = () => {
 
       {/* Popover Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-72 p-3.5 bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl shadow-xl border border-outline-variant/30 z-50 animate-fadeIn">
+        <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] p-3 sm:p-3.5 bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl shadow-xl border border-outline-variant/30 z-50 animate-fadeIn">
           {/* Header */}
           <div className="flex items-center justify-between pb-2.5 border-b border-surface-container-high/70">
             <div className="flex items-center gap-1.5">

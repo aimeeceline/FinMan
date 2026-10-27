@@ -755,136 +755,136 @@ export const StatisticsPage: React.FC<StatisticsPageProps> = ({
 
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-gutter-desktop py-space-lg select-none">
-      {/* 0. TOP LEVEL KPI METRICS STRIP */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter-desktop mb-space-xl">
+    <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-gutter-desktop py-3 sm:py-space-lg select-none">
+      {/* 0. TOP LEVEL KPI METRICS STRIP (2 Ô MỖI HÀNG TRÊN MOBILE) */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-gutter-desktop mb-3 sm:mb-space-xl">
         {/* Card 1: Net Available Balance (Xanh dương Gradient) */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-space-lg rounded-xl shadow-md shadow-blue-500/15 flex flex-col justify-between border border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/25 transition-all text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-blue-500/15 flex flex-col justify-between border border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/25 transition-all text-white">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
           <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-space-xs">
-              <span className="font-label-md text-label-md text-blue-100 uppercase tracking-wider font-bold">
-                Tổng số dư khả dụng
+            <div className="flex items-center gap-1 sm:gap-space-xs min-w-0">
+              <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-blue-100 uppercase tracking-wider font-bold truncate">
+                <span className="hidden sm:inline">Tổng </span>Số dư
               </span>
               <button
                 onClick={toggleBalance}
-                className="p-1 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                className="p-0.5 text-blue-200 hover:text-white transition-colors cursor-pointer shrink-0"
                 title={showBalance ? 'Ẩn tất cả số tiền' : 'Hiện tất cả số tiền'}
               >
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[15px] sm:text-[18px]">
                   {showBalance ? 'visibility' : 'visibility_off'}
                 </span>
               </button>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[20px]">account_balance_wallet</span>
             </div>
           </div>
 
-          <div className="mt-space-sm mb-space-md relative z-10">
-            <div className="flex items-baseline gap-space-2xs">
-              <span className="font-currency-display text-currency-display text-white font-extrabold tracking-tight">
+          <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+            <div className="flex items-baseline gap-0.5 sm:gap-space-2xs">
+              <span className="font-currency-display text-sm sm:text-lg md:text-currency-display text-white font-extrabold tracking-tight truncate">
                 {showBalance ? netBalance.toLocaleString('vi-VN') : '••••••••'}
               </span>
-              <span className="font-title-md text-title-md text-blue-200 font-bold">
+              <span className="text-[10px] sm:text-title-md text-blue-200 font-bold shrink-0">
                 ₫
               </span>
             </div>
           </div>
 
-          <div className="pt-space-xs border-t border-white/20 flex items-center justify-between text-xs text-blue-100 relative z-10">
-            <span>Tài sản ròng</span>
+          <div className="pt-1 sm:pt-space-xs border-t border-white/20 flex items-center justify-between text-[10px] sm:text-xs text-blue-100 relative z-10">
+            <span className="truncate">Tài sản ròng</span>
             {onNavigateToAccounts && (
               <button
                 onClick={onNavigateToAccounts}
-                className="text-white font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                className="text-white font-bold hover:underline flex items-center gap-0.5 cursor-pointer shrink-0 text-[10px] sm:text-xs"
               >
-                Chi tiết ví <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                <span className="hidden sm:inline">Chi tiết </span>ví <span className="material-symbols-outlined text-[12px] sm:text-[14px]">chevron_right</span>
               </button>
             )}
           </div>
         </div>
 
         {/* Card 2: Total Income (Xanh lá Gradient) */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-700 p-space-lg rounded-xl shadow-md shadow-emerald-500/15 flex flex-col justify-between border border-emerald-400/30 hover:shadow-lg hover:shadow-emerald-500/25 transition-all text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-700 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-emerald-500/15 flex flex-col justify-between border border-emerald-400/30 hover:shadow-lg hover:shadow-emerald-500/25 transition-all text-white">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
           <div className="flex items-center justify-between relative z-10">
-            <span className="font-label-md text-label-md text-emerald-100 uppercase tracking-wider font-bold">
-              Tổng Thu nhập
+            <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-emerald-100 uppercase tracking-wider font-bold truncate">
+              <span className="hidden sm:inline">Tổng </span>Thu nhập
             </span>
-            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">arrow_downward</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[20px]">arrow_downward</span>
             </div>
           </div>
-          <div className="mt-space-sm mb-space-md relative z-10">
-            <div className="flex items-baseline gap-space-2xs text-white">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
+          <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+            <div className="flex items-baseline gap-0.5 sm:gap-space-2xs text-white">
+              <span className="font-currency-display text-sm sm:text-lg md:text-currency-display font-extrabold tracking-tight truncate">
                 {showBalance ? `+${allTimeIncome.toLocaleString('vi-VN')}` : '••••••••'}
               </span>
-              <span className="font-title-md text-title-md text-emerald-200 font-bold">₫</span>
+              <span className="text-[10px] sm:text-title-md text-emerald-200 font-bold shrink-0">₫</span>
             </div>
-            <p className="font-body-sm text-body-sm text-emerald-100 font-medium flex items-center gap-1 mt-0.5">
+            <p className="hidden sm:flex font-body-sm text-body-sm text-emerald-100 font-medium items-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-[15px]">trending_up</span> Khoản thu ghi nhận
             </p>
           </div>
-          <div className="pt-space-xs border-t border-white/20 text-xs text-emerald-100 relative z-10">
-            Lương thưởng và các nguồn thu nhập
+          <div className="pt-1 sm:pt-space-xs border-t border-white/20 text-[10px] sm:text-xs text-emerald-100 relative z-10 truncate">
+            <span className="hidden sm:inline">Lương thưởng & </span>nguồn thu
           </div>
         </div>
 
         {/* Card 3: Total Expenses (Đỏ Gradient) */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-rose-600 to-rose-700 p-space-lg rounded-xl shadow-md shadow-red-500/15 flex flex-col justify-between border border-red-400/30 hover:shadow-lg hover:shadow-red-500/25 transition-all text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-rose-600 to-rose-700 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-red-500/15 flex flex-col justify-between border border-red-400/30 hover:shadow-lg hover:shadow-red-500/25 transition-all text-white">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
           <div className="flex items-center justify-between relative z-10">
-            <span className="font-label-md text-label-md text-rose-100 uppercase tracking-wider font-bold">
-              Tổng Chi tiêu
+            <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-rose-100 uppercase tracking-wider font-bold truncate">
+              <span className="hidden sm:inline">Tổng </span>Chi tiêu
             </span>
-            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[20px]">arrow_upward</span>
             </div>
           </div>
-          <div className="mt-space-sm mb-space-md relative z-10">
-            <div className="flex items-baseline gap-space-2xs text-white">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
+          <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+            <div className="flex items-baseline gap-0.5 sm:gap-space-2xs text-white">
+              <span className="font-currency-display text-sm sm:text-lg md:text-currency-display font-extrabold tracking-tight truncate">
                 {showBalance ? `-${allTimeExpense.toLocaleString('vi-VN')}` : '••••••••'}
               </span>
-              <span className="font-title-md text-title-md text-rose-200 font-bold">₫</span>
+              <span className="text-[10px] sm:text-title-md text-rose-200 font-bold shrink-0">₫</span>
             </div>
-            <p className="font-body-sm text-body-sm text-rose-100 font-medium flex items-center gap-1 mt-0.5">
+            <p className="hidden sm:flex font-body-sm text-body-sm text-rose-100 font-medium items-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-[15px]">info</span> Chi tiêu thực tế
             </p>
           </div>
-          <div className="pt-space-xs border-t border-white/20 text-xs text-rose-100 relative z-10">
-            Sinh hoạt, mua sắm và ăn uống
+          <div className="pt-1 sm:pt-space-xs border-t border-white/20 text-[10px] sm:text-xs text-rose-100 relative z-10 truncate">
+            <span className="hidden sm:inline">Sinh hoạt, </span>mua sắm & ăn uống
           </div>
         </div>
 
         {/* Card 4: Savings Rate / Net Cash Flow (Tím Gradient) */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 p-space-lg rounded-xl shadow-md shadow-purple-500/15 flex flex-col justify-between border border-purple-400/30 hover:shadow-lg hover:shadow-purple-500/25 transition-all text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 p-2.5 sm:p-space-lg rounded-xl shadow-md shadow-purple-500/15 flex flex-col justify-between border border-purple-400/30 hover:shadow-lg hover:shadow-purple-500/25 transition-all text-white">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
           <div className="flex items-center justify-between relative z-10">
-            <span className="font-label-md text-label-md text-purple-100 uppercase tracking-wider font-bold">
+            <span className="font-label-md text-[10px] sm:text-xs md:text-label-md text-purple-100 uppercase tracking-wider font-bold truncate">
               Tỷ lệ tích lũy
             </span>
-            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[20px]">savings</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-[15px] sm:text-[20px]">savings</span>
             </div>
           </div>
-          <div className="mt-space-sm mb-space-md relative z-10">
-            <div className="flex items-baseline gap-space-2xs text-white">
-              <span className="font-currency-display text-currency-display font-extrabold tracking-tight">
+          <div className="mt-1 sm:mt-space-sm mb-1 sm:mb-space-md relative z-10">
+            <div className="flex items-baseline gap-0.5 sm:gap-space-2xs text-white">
+              <span className="font-currency-display text-sm sm:text-lg md:text-currency-display font-extrabold tracking-tight">
                 {allTimeSavingsRate}%
               </span>
             </div>
-            <p className="font-body-sm text-body-sm text-purple-100 font-medium flex items-center gap-1 mt-0.5">
+            <p className="hidden sm:flex font-body-sm text-body-sm text-purple-100 font-medium items-center gap-1 mt-0.5 truncate">
               <span className="material-symbols-outlined text-[15px]">verified</span>{' '}
-              Dòng tiền ròng: {showBalance ? `${allTimeSurplus >= 0 ? '+' : ''}${allTimeSurplus.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
+              Ròng: {showBalance ? `${allTimeSurplus >= 0 ? '+' : ''}${allTimeSurplus.toLocaleString('vi-VN')} ₫` : '•••••••• ₫'}
             </p>
           </div>
-          <div className="pt-space-xs border-t border-white/20 flex items-center justify-between text-xs text-purple-100 relative z-10">
-            <span>Báo cáo tài chính</span>
-            <span className="text-white font-semibold bg-white/15 px-2 py-0.5 rounded-full text-[11px]">
-              {allTimeSurplus >= 0 ? 'Thặng dư an toàn' : 'Cần cân đối'}
+          <div className="pt-1 sm:pt-space-xs border-t border-white/20 flex items-center justify-between text-[10px] sm:text-xs text-purple-100 relative z-10">
+            <span className="truncate">Thặng dư</span>
+            <span className="text-white font-semibold bg-white/15 px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[11px] shrink-0">
+              {allTimeSurplus >= 0 ? 'An toàn' : 'Cân đối'}
             </span>
           </div>
         </div>
