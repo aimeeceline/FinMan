@@ -1344,13 +1344,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                         >
                           <span className="truncate">{cat.name}</span>
                           {cat.isDeleted && (
-                            <span className="relative group/warn inline-flex items-center shrink-0">
-                              <span
-                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-black bg-red-100 text-red-700 border border-red-300 cursor-help select-none shadow-2xs"
-                                title={`Thuộc danh mục "${cat.name}" đã bị xóa`}
-                              >
-                                !
-                              </span>
+                            <span className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-1 rounded shrink-0">
+                              Đã xóa
                             </span>
                           )}
                         </span>

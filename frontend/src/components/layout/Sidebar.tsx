@@ -6,6 +6,9 @@ export type NavRoute =
   | 'thong-ke-va-bao-cao'
   | 'quan-ly-ngan-sach'
   | 'tai-khoan-va-tai-san'
+  | 'tin-tuc-tai-chinh'
+  | 'ban-tin-hang-ngay'
+  | 'thi-truong'
   | 'tro-ly-finman-ai'
   | 'cai-dat-va-danh-muc';
 
@@ -22,13 +25,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
 
-  const navItems: { route: NavRoute; label: string; icon: string }[] = [
-    { route: 'giao-dich', label: 'Giao dịch', icon: 'receipt_long' },
+  const navItems: { route: NavRoute; label: string; icon: string }[] = [    
     { route: 'thong-ke-va-bao-cao', label: 'Thống kê - Báo cáo', icon: 'monitoring' },
+    { route: 'giao-dich', label: 'Giao dịch', icon: 'receipt_long' },
     { route: 'quan-ly-ngan-sach', label: 'Ngân sách', icon: 'account_balance_wallet' },
     { route: 'tai-khoan-va-tai-san', label: 'Tài khoản', icon: 'account_balance' },
-    { route: 'tro-ly-finman-ai', label: 'Trợ lý FinMan', icon: 'neurology' },
-    { route: 'cai-dat-va-danh-muc', label: 'Cài đặt', icon: 'tune' },
+    { route: 'tin-tuc-tai-chinh', label: 'Tin tức tài chính', icon: 'newspaper' },
+    //{ route: 'tro-ly-finman-ai', label: 'Trợ lý FinMan', icon: 'neurology' },
+    //{ route: 'cai-dat-va-danh-muc', label: 'Cài đặt', icon: 'tune' },
   ];
 
   return (
@@ -48,7 +52,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Fin<span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Man</span>
               </span>
             </div>
-            
           </div>
         </div>
       </div>

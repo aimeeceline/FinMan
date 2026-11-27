@@ -7,6 +7,7 @@ import type { Category, RecycleBinItem, RecycleBinType } from '../../types';
 import { AddCategoryModal } from '../../components/modals/AddCategoryModal';
 import { ConfirmModal } from '../../components/modals/ConfirmModal';
 import { getCategoryTheme } from '../../utils/categoryTheme';
+import { ToggleSwitch } from '../../components/common/ToggleSwitch';
 
 // Preset avatar list for quick 1-click selection
 const PRESET_AVATARS = [
@@ -16,7 +17,7 @@ const PRESET_AVATARS = [
   { id: 'av-4', label: 'FinBot', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FinBot' },
 ];
 
-type SettingsTab = 'profile' | 'security' | 'categories' | 'recycle_bin';
+type SettingsTab = 'profile' | 'security' | 'categories' | 'recycle_bin' | 'preferences';
 
 /**
  * Tự động phân giải liên kết trang web thông dụng sang liên kết tệp ảnh trực tiếp (Direct Image URL).
@@ -115,6 +116,17 @@ export const SettingsPage: React.FC = () => {
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
+  // --- Market & Display Preferences State ---
+  const [enableMarketSection, setEnableMarketSection] = useState<boolean>(() => {
+    return localStorage.getItem('finman_enable_market_section') === 'true';
+  });
+
+  const handleToggleMarketSection = (enabled: boolean) => {
+    setEnableMarketSection(enabled);
+    localStorage.setItem('finman_enable_market_section', enabled ? 'true' : 'false');
+    window.dispatchEvent(new Event('finman_settings_changed'));
+  };
 
   // --- Profile State ---
   const [fullName, setFullName] = useState(user?.fullName || '');
@@ -637,6 +649,31 @@ export const SettingsPage: React.FC = () => {
                 }`}
               >
                 {recycleBinItems.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('preferences')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'preferences'
+                  ? 'bg-primary text-white shadow-sm shadow-primary/25'
+                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[19px]">candlestick_chart</span>
+                <span>Thị trường & Hiển thị</span>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  activeTab === 'preferences'
+                    ? 'bg-white/20 text-white'
+                    : enableMarketSection
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold'
+                    : 'bg-surface-container text-on-surface-variant'
+                }`}
+              >
+                {enableMarketSection ? 'Bật' : 'Tắt'}
               </span>
             </button>
           </div>          
@@ -1679,6 +1716,80 @@ export const SettingsPage: React.FC = () => {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: TÙY CHỌN HIỂN THỊ & PHÂN HỆ THỊ TRƯỜNG */}
+      {/* ========================================================================= */}
+      {activeTab === 'preferences' && (
+        <div className="space-y-6">
+          <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/25 shadow-2xs space-y-6">
+            
+
+            {/* Toggle Card */}
+            <div className="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <span className="font-headline-sm text-sm font-bold text-on-surface">
+                    Tích hợp Bảng giá thị trường vào Tin tức tài chính
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      enableMarketSection
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400'
+                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400'
+                    }`}
+                  >
+                    {enableMarketSection ? 'Đang bật' : 'Đang tắt'}
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Khi bật tính năng này, trang <strong>Tin tức tài chính</strong> sẽ hiển thị thêm nút <em>&quot;Bảng giá & Chi tiết ↘&quot;</em> tại mục Tổng quan thị trường và gắn liền phân hệ Bảng giá chứng khoán (VN-Index, VN30, HNX, UPCOM, đồ thị kỹ thuật và Watchlist) ngay bên dưới luồng tin tức.
+                </p>
+              </div>
+
+              {/* Toggle switch (Chế độ ON / OFF kiểu chuẩn công tắc) */}
+              <ToggleSwitch
+                checked={enableMarketSection}
+                onChange={handleToggleMarketSection}
+                ariaLabel="Bật/tắt phân hệ thị trường"
+              />
+            </div>
+
+            {/* Feature details showcase */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2">
+              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/20 space-y-1.5">
+                <div className="flex items-center gap-2 text-primary">
+                  <span className="material-symbols-outlined text-[18px]">show_chart</span>
+                  <span className="font-bold text-xs">Chỉ số & Đồ thị trực quan</span>
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Theo dõi thời gian thực biến động VN-Index, VN30, HNX, UPCOM kèm biểu đồ xu hướng trong phiên.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/20 space-y-1.5">
+                <div className="flex items-center gap-2 text-primary">
+                  <span className="material-symbols-outlined text-[18px]">table_chart</span>
+                  <span className="font-bold text-xs">Bảng giá điện tử đầy đủ</span>
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Màu sắc chuẩn chứng khoán (Xanh, Đỏ, Tím trần, Xanh lam sàn, Vàng tham chiếu), lọc theo sàn HOSE/HNX/UPCOM.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/20 space-y-1.5">
+                <div className="flex items-center gap-2 text-primary">
+                  <span className="material-symbols-outlined text-[18px]">star</span>
+                  <span className="font-bold text-xs">Danh mục Watchlist cá nhân</span>
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Ghi chú mục tiêu giá, đánh dấu sao cổ phiếu quan tâm và đồng bộ tin tức trực tiếp theo mã CK.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

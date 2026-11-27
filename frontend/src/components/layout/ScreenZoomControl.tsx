@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useScreenZoom } from '../../context/ScreenZoomContext';
+import { ToggleSwitch } from '../common/ToggleSwitch';
 
 export const ScreenZoomControl: React.FC = () => {
   const {
@@ -100,32 +101,20 @@ export const ScreenZoomControl: React.FC = () => {
                   auto_awesome
                 </span>
               </span>
-              <span className="text-[11px] text-on-surface-variant leading-tight mt-0.5">
-                Tối ưu cho thiết lập 2 màn hình
-              </span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (zoomMode === 'auto') {
-                  setZoomMode('manual');
-                } else {
+            <ToggleSwitch
+              size="sm"
+              checked={zoomMode === 'auto'}
+              onChange={(checked) => {
+                if (checked) {
                   resetZoom();
+                } else {
+                  setZoomMode('manual');
                 }
               }}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                zoomMode === 'auto' ? 'bg-secondary' : 'bg-surface-container-highest'
-              }`}
-              role="switch"
-              aria-checked={zoomMode === 'auto'}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  zoomMode === 'auto' ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
+              ariaLabel="Tự động theo màn hình"
+            />
           </div>
 
           {/* Stepper Controls */}

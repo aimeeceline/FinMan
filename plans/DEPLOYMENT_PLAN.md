@@ -1,9 +1,9 @@
 # KẾ HOẠCH TRIỂN KHAI FINMAN LÊN INTERNET (DEPLOYMENT PLAN)
 
 > **Dự án**: FinMan - Hệ thống Quản lý Tài chính Cá nhân Thông minh  
-> **Phiên bản tài liệu**: 1.0.0  
-> **Ngày lập**: 21/09/2026  
-> **Trạng thái**: Sẵn sàng triển khai (Production Ready)
+> **Phiên bản tài liệu**: 1.1.0  
+> **Ngày cập nhật**: 03/11/2026  
+> **Trạng thái**: Đã triển khai Production (Production Active)
 
 ---
 
@@ -167,7 +167,7 @@ git push origin main
 > **Giải pháp khắc phục miễn phí**:
 > 1. Đăng ký tài khoản miễn phí tại [cron-job.org](https://cron-job.org/) hoặc [UptimeRobot.com](https://uptimerobot.com/).
 > 2. Tạo một lịch kiểm tra định kỳ (Monitor/Ping):
->    - URL: `https://finman-backend.onrender.com/api/v1/auth/ping` (hoặc endpoint GET bất kỳ)
+>    - URL: `https://finman-backend-8oac.onrender.com/api/v1/ai/status` (hoặc endpoint GET công khai `/api/v1/ai/status` trả về mã 200 OK ngay lập tức, không tốn token AI)
 >    - Chu kỳ lặp lại: Cứ **10 phút** gọi một lần.
 >    - Server Render sẽ luôn nhận được request định kỳ và không bao giờ bị rơi vào trạng thái ngủ!
 
@@ -336,3 +336,33 @@ docker compose -f docker-compose.prod.yml logs -f backend
    ```bash
    gunzip < /var/backups/finman_2026-xx-xx.sql.gz | docker exec -i finman-postgres-prod psql -U postgres finman
    ```
+
+---
+
+## 8. TRIỂN KHAI & VẬN HÀNH CÁC DỊCH VỤ MỞ RỘNG FINMAN 2.0 `[PLANNED]`
+
+### 8.1. Các Biến Môi Trường Bổ Sung (Environment Variables)
+Khi triển khai các module mở rộng từ Phase 14 đến 18, bổ sung các biến sau vào **Render Environment** hoặc file `.env.prod`:
+
+| Tên Biến | Ý Nghĩa / Giá Trị | Mặc Định / Khuyến Nghị |
+|---|---|---|
+| `NEWS_API_KEY` | API Key thu thập tin tức quốc tế từ NewsAPI | Tuỳ chọn (Optional) |
+| `MARKET_DATA_API_KEY` | API Key dữ liệu chứng khoán (nếu dùng dịch vụ có key) | Tuỳ chọn (Optional) |
+| `SPRING_TASK_SCHEDULING_POOL_SIZE` | Số thread dành riêng cho background scheduler | `4` (Tránh nghẽn thread web) |
+| `NEWS_INGESTION_ENABLED` | Bật/tắt tác vụ crawl tin tự động | `true` |
+| `MARKET_SYNC_ENABLED` | Bật/tắt tác vụ đồng bộ chỉ số thị trường | `true` |
+
+### 8.2. Chiến Lược Caching & Bộ Nhớ Trên Hạ Tầng Miễn Phí (Render Free Tier)
+- **Caffeine In-Memory Cache**: Lưu cache trực tiếp trong RAM của ứng dụng Java Spring Boot (giới hạn tối đa 512MB RAM trên Render Free).
+- Cấu hình kích thước tối đa cho cache:
+  - Cache tin tức: Tối đa 500 bài viết gần nhất trong bộ nhớ (~5MB RAM).
+  - Cache chỉ số thị trường: Tối đa 50 chỉ số và mã cổ phiếu (~1MB RAM).
+  - Không cần dựng Redis cluster riêng biệt ở giai đoạn đầu, tiết kiệm 100% chi phí hạ tầng.
+
+### 8.3. Vận Hành Tác Vụ Định Kỳ (@Scheduled Jobs) Trên Cloud
+- Do Backend Render đã được giữ thức 24/7 thông qua cron-job định kỳ gọi endpoint `/api/v1/ai/status`, các tiến trình Spring `@Scheduled` (thu thập tin tức mỗi 30 phút, đồng bộ thị trường lúc 15:30 và tạo bản tin sáng lúc 06:30) sẽ hoạt động chính xác theo lịch mà không bị gián đoạn bởi cơ chế ngủ đông.
+
+### 8.4. Tuân Thủ Bản Quyền & Điều Khoản Sử Dụng Nguồn Dữ Liệu (Compliance & Fair Use)
+1. **Dẫn Nguồn Minh Bạch**: Mọi bài báo hiển thị trên FinMan đều phải có link gốc dẫn về trang báo chính thức (`original_url`), tên báo (`source_name`) và tên tác giả nếu có.
+2. **Crawl Lịch Sự**: Áp dụng cơ chế giãn cách tối thiểu 2 giây giữa các request khi đọc RSS/Web từ cùng một domain, tôn trọng tuyệt đối file `robots.txt` của các đơn vị báo chí.
+3. **Miễn Trừ Trách Nhiệm Dữ Liệu**: Ghi rõ tuyên bố miễn trừ trách nhiệm (Disclaimer) rằng số liệu chứng khoán cuối ngày (EOD) chỉ phục vụ mục đích tham khảo quản lý danh mục cá nhân, không phục vụ giao dịch ký quỹ hay đặt lệnh thời gian thực.

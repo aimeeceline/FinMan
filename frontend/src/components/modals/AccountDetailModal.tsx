@@ -1253,41 +1253,18 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                                   <span className="text-xs sm:text-sm text-on-surface font-semibold truncate">
                                     {tx.note || (isTransfer ? subLabel : (tx.category?.name || 'Giao dịch'))}
                                   </span>
-                                  <span
-                                    className={`px-1.5 py-0.2 rounded text-[10px] font-medium ${
-                                      isTransfer
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'bg-surface-container text-on-surface'
-                                    }`}
-                                  >
-                                    {isTransfer
-                                      ? 'Chuyển khoản'
-                                      : (tx.category?.name || 'Khác')}
-                                  </span>
-                                  {tx.category?.isDeleted && (
-                                    <span className="relative group/warn inline-flex items-center">
-                                      <span
-                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-300 dark:border-red-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
-                                        title={`Thuộc danh mục "${tx.category.name}" đã bị xóa`}
-                                      >
-                                        !
-                                      </span>
-                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
-                                        Thuộc danh mục "{tx.category.name}" đã bị xóa
-                                      </span>
+                                  {isTransfer ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                      Chuyển khoản
                                     </span>
-                                  )}
-                                  {tx.account?.isDeleted && (
-                                    <span className="relative group/warn inline-flex items-center">
-                                      <span
-                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800 cursor-help select-none hover:scale-110 transition-transform shadow-2xs"
-                                        title={`Thuộc tài khoản "${tx.account.name}" đã bị xóa`}
-                                      >
-                                        !
-                                      </span>
-                                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/warn:flex items-center whitespace-nowrap rounded-lg bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white px-2 py-1 text-[11px] font-medium shadow-xl border border-white/10 z-50">
-                                        Thuộc tài khoản "{tx.account.name}" đã bị xóa
-                                      </span>
+                                  ) : tx.category?.isDeleted ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60">
+                                      <span className="line-through opacity-75">{tx.category.name}</span>
+                                      <span className="text-[9px] text-rose-600 dark:text-rose-400 font-semibold">(Đã xóa)</span>
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                      {tx.category?.name || 'Khác'}
                                     </span>
                                   )}
                                 </div>

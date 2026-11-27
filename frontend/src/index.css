@@ -65,3 +65,23 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+/* Market Ticker Marquee Animation */
+@keyframes tickerMarquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker-marquee {
+  display: flex;
+  width: max-content;
+  animation: tickerMarquee 45s linear infinite;
+}
+
+.animate-ticker-marquee:hover {
+  animation-play-state: paused;
+}

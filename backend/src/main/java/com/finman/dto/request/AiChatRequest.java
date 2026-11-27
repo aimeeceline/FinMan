@@ -8,6 +8,8 @@ public class AiChatRequest {
     @NotBlank(message = "Nội dung câu lệnh không được để trống")
     private String message;
 
+    private Long conversationId;
+
     private List<AiChatMessageDto> conversationHistory;
 
     public AiChatRequest() {
@@ -22,12 +24,25 @@ public class AiChatRequest {
         this.conversationHistory = conversationHistory;
     }
 
+    public AiChatRequest(String message, Long conversationId) {
+        this.message = message;
+        this.conversationId = conversationId;
+    }
+
     public String getMessage() {
         return message;
     }
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public Long getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(Long conversationId) {
+        this.conversationId = conversationId;
     }
 
     public List<AiChatMessageDto> getConversationHistory() {

@@ -14,6 +14,7 @@ import { AccountsPage } from './pages/accounts/AccountsPage';
 import { StatisticsPage } from './pages/statistics/StatisticsPage';
 import { AIAssistantPage } from './pages/ai/AIAssistantPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { NewsDashboardPage } from './pages/news/NewsDashboardPage';
 import { accountService } from './services/accountService';
 import { categoryService } from './services/categoryService';
 import { transactionService } from './services/transactionService';
@@ -21,37 +22,49 @@ import { statisticsService } from './services/statisticsService';
 import type { Account, Category, Transaction } from './types';
 
 const VALID_ROUTES: NavRoute[] = [
-  'giao-dich',
   'thong-ke-va-bao-cao',
+  'giao-dich',
   'quan-ly-ngan-sach',
   'tai-khoan-va-tai-san',
+  'tin-tuc-tai-chinh',
+  'ban-tin-hang-ngay',
+  'thi-truong',
   'tro-ly-finman-ai',
   'cai-dat-va-danh-muc',
 ];
 
 const getInitialRoute = (): NavRoute => {
-  if (typeof window === 'undefined') return 'giao-dich';
+  if (typeof window === 'undefined') return 'thong-ke-va-bao-cao';
 
-  // If user is not authenticated (no token stored), route MUST always be 'giao-dich'
+  // If user is not authenticated (no token stored), route MUST always be 'thong-ke-va-bao-cao'
   const token = localStorage.getItem('finman_token');
   if (!token) {
-    return 'giao-dich';
+    return 'thong-ke-va-bao-cao';
   }
 
   // 1. Check pathname (e.g. /tai-khoan-va-tai-san)
   const path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  if (path === 'thi-truong' || path === 'ban-tin-hang-ngay') {
+    return 'tin-tuc-tai-chinh';
+  }
   if (VALID_ROUTES.includes(path as NavRoute)) {
     return path as NavRoute;
   }
 
   // 2. Check hash (e.g. #/tai-khoan-va-tai-san or #tai-khoan-va-tai-san)
   const hash = window.location.hash.replace(/^#[/]?/, '').replace(/\/+$/, '');
+  if (hash === 'thi-truong' || hash === 'ban-tin-hang-ngay') {
+    return 'tin-tuc-tai-chinh';
+  }
   if (VALID_ROUTES.includes(hash as NavRoute)) {
     return hash as NavRoute;
   }
 
   // 3. Check localStorage
   const saved = localStorage.getItem('finman_current_route') as NavRoute | null;
+  if (saved === 'thi-truong' || saved === 'ban-tin-hang-ngay') {
+    return 'tin-tuc-tai-chinh';
+  }
   if (saved && VALID_ROUTES.includes(saved)) {
     return saved;
   }
@@ -69,16 +82,17 @@ const MainApp: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [aiInitialPrompt, setAiInitialPrompt] = useState('');
 
   // Always reset to 'giao-dich' upon logout and when logging back in
   const prevAuthRef = React.useRef(isAuthenticated);
   useEffect(() => {
     if (!isAuthenticated) {
-      setCurrentRoute('giao-dich');
-      localStorage.setItem('finman_current_route', 'giao-dich');
+      setCurrentRoute('thong-ke-va-bao-cao');
+      localStorage.setItem('finman_current_route', 'thong-ke-va-bao-cao');
     } else if (!prevAuthRef.current && isAuthenticated) {
-      setCurrentRoute('giao-dich');
-      localStorage.setItem('finman_current_route', 'giao-dich');
+      setCurrentRoute('thong-ke-va-bao-cao');
+      localStorage.setItem('finman_current_route', 'thong-ke-va-bao-cao');
       if (window.location.pathname !== '/' || window.location.hash) {
         window.history.replaceState(null, '', '/');
       }
@@ -89,7 +103,7 @@ const MainApp: React.FC = () => {
   const handleNavigate = useCallback((route: NavRoute) => {
     setCurrentRoute(route);
     localStorage.setItem('finman_current_route', route);
-    const targetPath = route === 'giao-dich' ? '/' : `/${route}`;
+    const targetPath = route === 'thong-ke-va-bao-cao' ? '/' : `/${route}`;
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
     }
@@ -118,7 +132,7 @@ const MainApp: React.FC = () => {
         window.history.replaceState(null, '', targetAuthPath);
       }
     } else {
-      const targetPath = currentRoute === 'giao-dich' ? '/' : `/${currentRoute}`;
+      const targetPath = currentRoute === 'thong-ke-va-bao-cao' ? '/' : `/${currentRoute}`;
       if (window.location.pathname !== targetPath && !window.location.hash) {
         window.history.replaceState(null, '', targetPath);
       }
@@ -152,13 +166,19 @@ const MainApp: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Listen for account updates across components
+  // Listen for account, category, and transaction updates across components
   useEffect(() => {
-    const handleAccountsUpdated = () => {
+    const handleDataUpdated = () => {
       loadData();
     };
-    window.addEventListener('finman_accounts_updated', handleAccountsUpdated);
-    return () => window.removeEventListener('finman_accounts_updated', handleAccountsUpdated);
+    window.addEventListener('finman_accounts_updated', handleDataUpdated);
+    window.addEventListener('finman_categories_updated', handleDataUpdated);
+    window.addEventListener('finman_transactions_updated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('finman_accounts_updated', handleDataUpdated);
+      window.removeEventListener('finman_categories_updated', handleDataUpdated);
+      window.removeEventListener('finman_transactions_updated', handleDataUpdated);
+    };
   }, [loadData]);
 
   // Handle adding new transaction into database
@@ -371,6 +391,41 @@ const MainApp: React.FC = () => {
             categories={categories}
             onApplyAiTransaction={handleAddTransaction}
             onRefreshData={loadData}
+            initialPrompt={aiInitialPrompt}
+          />
+        )}
+
+        {currentRoute === 'tin-tuc-tai-chinh' && (
+          <NewsDashboardPage
+            externalSearchQuery={searchQuery}
+            onNavigateToAi={(prompt) => {
+              if (prompt) setAiInitialPrompt(prompt);
+              handleNavigate('tro-ly-finman-ai');
+            }}
+            onNavigateToBudget={() => handleNavigate('quan-ly-ngan-sach')}
+          />
+        )}
+
+        {currentRoute === 'thi-truong' && (
+          <NewsDashboardPage
+            externalSearchQuery={searchQuery}
+            autoScrollToMarket={true}
+            onNavigateToAi={(prompt) => {
+              if (prompt) setAiInitialPrompt(prompt);
+              handleNavigate('tro-ly-finman-ai');
+            }}
+            onNavigateToBudget={() => handleNavigate('quan-ly-ngan-sach')}
+          />
+        )}
+
+        {currentRoute === 'ban-tin-hang-ngay' && (
+          <NewsDashboardPage
+            externalSearchQuery={searchQuery}
+            onNavigateToAi={(prompt) => {
+              if (prompt) setAiInitialPrompt(prompt);
+              handleNavigate('tro-ly-finman-ai');
+            }}
+            onNavigateToBudget={() => handleNavigate('quan-ly-ngan-sach')}
           />
         )}
 
@@ -384,17 +439,20 @@ const MainApp: React.FC = () => {
         onOpenAddModal={handleOpenAddModal}
       />
 
-      {/* 5. Trợ lý FinMan AI Floating Chat Ball (Góc phải dưới màn hình) */}
-      <AIAssistantChatBall
-        onOpenFullScreen={() => handleNavigate('tro-ly-finman-ai')}
-        accounts={accounts}
-        categories={categories}
-        onApplyAiTransaction={handleAddTransaction}
-        onRefreshData={loadData}
-      />
+      {/* 5. Trợ lý FinMan AI Floating Chat Ball (Ẩn khi đang ở trang Trợ lý AI toàn màn hình để không che nút gửi) */}
+      {currentRoute !== 'tro-ly-finman-ai' && (
+        <AIAssistantChatBall
+          onOpenFullScreen={() => handleNavigate('tro-ly-finman-ai')}
+          accounts={accounts}
+          categories={categories}
+          onApplyAiTransaction={handleAddTransaction}
+          onRefreshData={loadData}
+        />
+      )}
 
       {/* 4. Global Add/Edit Transaction Modal */}
       <AddTransactionModal
+        key={editingTransaction ? `edit-${editingTransaction.id}` : 'add-new'}
         isOpen={isAddModalOpen}
         onClose={handleCloseModal}
         onAddTransaction={handleAddTransaction}

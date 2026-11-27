@@ -110,6 +110,23 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <span>Excel</span>
           </button>
 
+          {/* Nút truy cập nhanh Tin tức tài chính trên Mobile */}
+          <button
+            onClick={() => onNavigate?.('tin-tuc-tai-chinh')}
+            className={`md:hidden p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
+              currentRoute === 'tin-tuc-tai-chinh'
+                ? 'bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs'
+                : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+            }`}
+            title="Tin tức tài chính"
+            type="button"
+            aria-label="Tin tức tài chính"
+          >
+            <span className="material-symbols-outlined text-[19px]">
+              newspaper
+            </span>
+          </button>
+
           {/* Nút Cài đặt (Theo yêu cầu: Header để phần cài đặt) */}
           <button
             onClick={() => onNavigate?.('cai-dat-va-danh-muc')}

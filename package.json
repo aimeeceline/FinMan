@@ -1,0 +1,29 @@
+{
+  "name": "finman",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "auth:save": "node scripts/save-auth.js",
+    "seed:data": "playwright test tests/seed_data.spec.ts --project=chromium --headed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aimeeceline/FinMan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aimeeceline/FinMan/issues"
+  },
+  "homepage": "https://github.com/aimeeceline/FinMan#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5"
+  }
+}
